@@ -24,7 +24,17 @@ abstract class AppStrings {
   // --- Accessibility labels ---
   static const String semanticBackButton = 'Go back';
   static const String semanticCloseButton = 'Close';
+  static const String semanticContinueButton = 'Continue';
+  static const String semanticGetStartedButton = 'Get Started';
+  static const String semanticSkipButton = 'Skip';
+  static const String semanticSignInButton = 'Sign in';
 
   // --- Welcome pages ---
   static const String welcomeFirstTitle = 'All your pet\'s health, in one place.';
+  static const String welcomeFirstDescription = 'Centralize vaccines, medications, records, and documents. Never miss a dose or appointment again.';
+  static const String welcomeSecondTitle = 'Track vaccines & medications';
+  static const String welcomeSecondDescription = 'Timeline-based vaccine history, smart reminders for medications, and overdue alerts that keep you informed.';
+  static const String welcomeThirdTitle = 'NFC sharing anywhere';
+  static const String welcomeThirdDescription = 'Write your pet\'s info to an NFC tag. Anyone who finds your pet can contact you instantly.';
+  static const String welcomeAlreadyHaveAccount = 'Already have an account?';
 }

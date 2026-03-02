@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/presentation/pages/welcome/welcome_page.dart';
+import '../presentation/pages/welcome/welcome_page.dart';
 import '../presentation/pages/home/home_page.dart';
 
 /// Centralized route definitions for the app.
@@ -17,8 +17,8 @@ class Routes {
   /// Called automatically by MaterialApp when navigating.
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
-      // case welcomePage:
-      //   return _buildRoute(const WelcomePage(), settings);
+      case welcomePage:
+        return _buildRoute(const WelcomePage(), settings);
 
       case home:
         return _buildRoute(const HomePage(), settings);
