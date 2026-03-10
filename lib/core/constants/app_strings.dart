@@ -22,8 +22,47 @@ abstract class AppStrings {
   static const String errorNoConnection = 'No internet connection.';
 
   // --- Accessibility labels ---
-  static const String semanticBackButton = 'Go back';
+  static const String semanticBackButton = 'Back';
   static const String semanticCloseButton = 'Close';
+  static const String semanticContinueButton = 'Continue';
+  static const String semanticSaveButton = 'Save';
+  static const String semanticAddVaccineButton = 'Add Vaccine';
+
+  // --- Page titles ---
+  static const String addVaccineTitle = 'Add New Vaccine';
+
+  // --- Form field labels ---
+  static const String labelVaccineName = 'Vaccine Name';
+  static const String labelDate = 'Date';
+  static const String labelProductName = 'Product Name';
+  static const String labelPetName = 'Pet Name';
+  static const String labelClinicProvider = 'Clinic / Provider';
+  static const String labelDose = 'Dose';
+  static const String labelNotes = 'Notes';
+  static const String labelAdministeredBy = 'Administered By';
+  static const String labelAdditionalFiles = 'Additional Files';
+
+  // --- Form field hints ---
+  static const String hintVaccineName = 'e.g. Rabies';
+  static const String hintDate = 'dd/mm/yyyy';
+  static const String hintProductName = 'e.g. Rabisin';
+  static const String hintPetName = 'Max';
+  static const String hintClinicProvider = 'e.g. City Vet Clinic';
+  static const String hintDose = '1';
+  static const String hintNotes = 'Optional notes';
+  static const String hintNotProvided = 'Not provided';
+  static const String hintAdministeredBy = 'e.g. Doctor Tatiana';
+  static const String uploadDocuments = 'Upload Documents';
+  static const String uploadHint = 'Tap to upload or take a photo';
+
+  // --- Validation messages ---
+  static const String validationRequired = 'This field is required.';
+  static const String validationInvalidDate = 'Please enter a valid date.';
+
+  // --- Step names ---
+  static const String stepBasicInfo = 'Basic Info';
+  static const String stepDetails = 'Details';
+  static const String stepOverview = 'Overview';
 
   // --- Welcome pages ---
   static const String welcomeFirstTitle = 'All your pet\'s health, in one place.';
