@@ -30,6 +30,11 @@ abstract class AppStrings {
 
   // --- Page titles ---
   static const String addVaccineTitle = 'Add New Vaccine';
+  static const String healthRecordsTitle = 'Health Records';
+  static const String recordsFilterAll = 'All';
+  static const String recordsFilterVaccines = 'Vaccines';
+  static const String recordsFilterEvents = 'Events';
+  static const String recordsFilterSummary = 'Displaying';
 
   // --- Form field labels ---
   static const String labelVaccineName = 'Vaccine Name';
