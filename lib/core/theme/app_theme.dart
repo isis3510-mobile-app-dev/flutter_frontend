@@ -107,7 +107,7 @@ abstract class AppTheme {
   // Material3 text styles: displayLarge → bodySmall
   static const TextTheme _textTheme = TextTheme(
     displayLarge: TextStyle(fontSize: 57, fontWeight: FontWeight.w400),
-    headlineLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.w600),
+    headlineLarge: TextStyle(fontSize: 33, fontWeight: FontWeight.w600),
     headlineMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w600),
     titleLarge: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
     titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
