@@ -14,12 +14,10 @@ abstract class AppTheme {
       colorScheme: const ColorScheme.light(
         primary: AppColors.primary,
         secondary: AppColors.secondary,
-        background: AppColors.background,
         surface: AppColors.surface,
         error: AppColors.error,
         onPrimary: AppColors.onPrimary,
         onSecondary: AppColors.onSecondary,
-        onBackground: AppColors.onBackground,
         onSurface: AppColors.onSurface,
       ),
 
@@ -65,12 +63,10 @@ abstract class AppTheme {
       colorScheme: const ColorScheme.dark(
         primary: AppColors.primary,
         secondary: AppColors.secondary,
-        background: AppColors.backgroundDark,
         surface: AppColors.surfaceDark,
         error: AppColors.error,
         onPrimary: AppColors.onPrimary,
         onSecondary: AppColors.onSecondary,
-        onBackground: AppColors.onBackgroundDark,
         onSurface: AppColors.onSurfaceDark,
       ),
 

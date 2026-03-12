@@ -26,6 +26,9 @@ abstract class AppStrings {
   static const String semanticCloseButton = 'Close';
   static const String semanticContinueButton = 'Continue';
   static const String semanticSaveButton = 'Save';
+  static const String semanticGetStartedButton = 'Get Started';
+  static const String semanticSkipButton = 'Skip';
+  static const String semanticSignInButton = 'Sign in';
   static const String semanticAddVaccineButton = 'Add Vaccine';
 
   // --- Page titles ---

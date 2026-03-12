@@ -21,8 +21,8 @@ class Routes {
   /// Called automatically by MaterialApp when navigating.
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
-      // case welcomePage:
-      //   return _buildRoute(const WelcomePage(), settings);
+      case welcomePage:
+        return _buildRoute(const WelcomePage(), settings);
 
       case home:
         return _buildRoute(const HomePage(), settings);
