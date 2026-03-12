@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../shared/widgets/petcare_bottom_nav_bar.dart';
+import '../../../shared/widgets/quick_actions_fab.dart';
 
 /// Home page of the application.
 /// This is a placeholder — replace with your actual home screen content.
@@ -22,6 +23,12 @@ class _HomePageState extends State<HomePage> {
       ),
       body: const Center(
         child: Text(AppStrings.homeWelcome),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: QuickActionsFab(
+        onAddPet: () {},
+        onAddVaccine: () {},
+        onAddEvent: () {},
       ),
       bottomNavigationBar: PetcareBottomNavBar(
         currentIndex: _currentIndex,

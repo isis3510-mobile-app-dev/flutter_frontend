@@ -47,4 +47,21 @@ abstract class AppColors {
   static const Color bottomNavInactive = Color(0xFF3F4948);
   static const Color bottomNavBackground = Color(0xFFFFFFFF);
   static const Color bottomNavTopBorder = Color(0xFFE8EEEE);
+  static const Color bottomNavInactiveDark = Color(0xFFC7C7C7);
+  static const Color bottomNavBackgroundDark = Color(0xFF1C1B1F);
+  static const Color bottomNavTopBorderDark = Color(0xFF2A2A2A);
+
+  // --- Quick actions FAB ---
+  static const Color quickFabBackground = Color(0xFF006A60);
+  static const Color quickFabBackgroundDark = Color(0xFF0C8378);
+  static const Color quickFabIcon = Color(0xFFFFFFFF);
+  static const Color quickActionPillBackground = Color(0xFFFFFFFF);
+  static const Color quickActionPillBackgroundDark = Color(0xFF2A2A2A);
+  static const Color quickActionText = Color(0xFF1C1B1F);
+  static const Color quickActionTextDark = Color(0xFFE6E1E5);
+  static const Color quickActionIconBackground = Color(0xFF9FF2E2);
+  static const Color quickActionIconBackgroundDark = Color(0xFF1D4F49);
+  static const Color quickActionIconTint = Color(0xFF004D45);
+  static const Color quickActionIconTintDark = Color(0xFF9FF2E2);
+  static const Color quickActionShadow = Color(0x1A000000);
 }

@@ -15,12 +15,19 @@ class PetcareBottomNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = _navItems;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDark
+        ? AppColors.bottomNavBackgroundDark
+        : AppColors.bottomNavBackground;
+    final borderColor = isDark
+        ? AppColors.bottomNavTopBorderDark
+        : AppColors.bottomNavTopBorder;
 
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.bottomNavBackground,
+      decoration: BoxDecoration(
+        color: backgroundColor,
         border: Border(
-          top: BorderSide(color: AppColors.bottomNavTopBorder, width: 1),
+          top: BorderSide(color: borderColor, width: 1),
         ),
       ),
       child: SafeArea(
@@ -60,9 +67,12 @@ class _NavBarItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final color = isActive
         ? AppColors.bottomNavActive
-        : AppColors.bottomNavInactive;
+      : (isDark
+        ? AppColors.bottomNavInactiveDark
+        : AppColors.bottomNavInactive);
     final useActiveAsset = isActive && item.activeAssetPath != null;
     final assetPath = useActiveAsset ? item.activeAssetPath! : item.assetPath;
     final iconColor = useActiveAsset ? null : color;
