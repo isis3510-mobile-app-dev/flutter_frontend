@@ -35,6 +35,24 @@ abstract class AppStrings {
   static const String recordsFilterVaccines = 'Vaccines';
   static const String recordsFilterEvents = 'Events';
   static const String recordsFilterSummary = 'Displaying';
+  static const String vaccineDetailsTitle = 'Vaccine Details';
+  static const String vaccineDetailsSubtitle = 'Max • Dog';
+  static const String vaccineStatusCompleted = 'Completed';
+  static const String vaccineNameBordetella = 'Bordetella';
+  static const String vaccineDateGivenValue = 'Sep 19, 2024';
+  static const String vaccineNextDueValue = 'Sep 19, 2025';
+  static const String vaccineVeterinarianValue = 'Dr. Smith';
+  static const String vaccineClinicValue = 'Happy Paws Clinic';
+  static const String vaccineTimelineTitle = 'Timeline';
+  static const String vaccineDateGivenLabel = 'Date Given';
+  static const String vaccineNextDueLabel = 'Next Due Date';
+  static const String vaccineProviderInfoTitle = 'Provider Information';
+  static const String vaccineVeterinarianLabel = 'Veterinarian';
+  static const String vaccineClinicLabel = 'Clinic';
+  static const String vaccineAttachedDocumentTitle = 'Attached Document';
+  static const String vaccineNoDocuments = 'No documents attached';
+  static const String actionDelete = 'Delete';
+  static const String actionEdit = 'Edit';
 
   // --- Form field labels ---
   static const String labelVaccineName = 'Vaccine Name';

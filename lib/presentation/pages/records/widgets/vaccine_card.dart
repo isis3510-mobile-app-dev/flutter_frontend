@@ -10,6 +10,7 @@ class VaccineCard extends StatelessWidget {
     required this.petName,
     required this.dateAdministered,
     required this.status,
+    required this.onTap,
     this.administeredBy,
   });
 
@@ -17,6 +18,7 @@ class VaccineCard extends StatelessWidget {
   final String petName;
   final DateTime dateAdministered;
   final String status;
+  final VoidCallback onTap;
   final String? administeredBy;
 
   @override
@@ -26,49 +28,54 @@ class VaccineCard extends StatelessWidget {
       color: AppColors.secondary,
       shadowColor: AppColors.grey100,
       elevation: 0.5,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          children: [
-            const CircleAvatar(radius: 24, backgroundImage: NetworkImage('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRJA50hPAm9xtoIcWvkRRffK-yhDOEFpTNgVg&s')),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        vaccineName,
-                        style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '$petName · ${dateAdministered.toLocal().toString().split(' ')[0]}',
-                    style: context.textTheme.bodySmall,
-                  ),
-                  if (administeredBy != null)
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        splashColor: AppColors.primaryVariant,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              const CircleAvatar(radius: 24, backgroundImage: NetworkImage('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRJA50hPAm9xtoIcWvkRRffK-yhDOEFpTNgVg&s')),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          vaccineName,
+                          style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 2),
                     Text(
-                      administeredBy??'',
+                      '$petName · ${dateAdministered.toLocal().toString().split(' ')[0]}',
                       style: context.textTheme.bodySmall,
                     ),
-                ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: status == 'active' ? Color(0xFFE8F5E9) : Colors.red,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                status.capitalize,
-                style: TextStyle(
-                  color: status == 'active' ? const Color(0xFF2E7D32) : const Color.fromARGB(255, 144, 39, 31),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
+                    if (administeredBy != null)
+                      Text(
+                        administeredBy??'',
+                        style: context.textTheme.bodySmall,
+                      ),
+                  ],
                 ),
               ),
-            ),
-          ],
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: status == 'active' ? AppColors.positiveBackground : AppColors.negativeBackground,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  status.capitalize,
+                  style: TextStyle(
+                    color: status == 'active' ? AppColors.positiveText : AppColors.negativeText,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

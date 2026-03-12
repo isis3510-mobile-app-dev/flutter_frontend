@@ -11,7 +11,7 @@ abstract class AppColors {
 
   // --- Secondary palette ---
   static const Color secondary = Color(0xFFFFFFFF);
-  static const Color onSecondary = Color(0xFF191C1C);
+  static const Color onSecondary = Color.fromARGB(255, 64, 65, 65);
 
   // --- Background & surface ---
   static const Color background = Color(0xFFF6FCFB);
@@ -23,6 +23,10 @@ abstract class AppColors {
   static const Color error = Color(0xFFB3261E);
   static const Color success = Color(0xFF386A20);
   static const Color warning = Color(0xFFE65100);
+  static const Color positiveBackground = Color(0xFFE8F5E9);
+  static const Color negativeBackground = Color(0xFFFFEBEE);
+  static const Color positiveText = Color(0xFF2E7D32);
+  static const Color negativeText = Color(0xFFC62828);
 
   // --- Neutral / grey scale ---
   static const Color grey100 = Color(0xFFF2F2F2);

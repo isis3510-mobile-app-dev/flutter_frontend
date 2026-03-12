@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/core/constants/app_strings.dart';
 import 'package:flutter_frontend/core/utils/context_extensions.dart';
 import 'package:flutter_frontend/presentation/pages/records/widgets/vaccine_card.dart';
+import 'package:flutter_frontend/presentation/pages/vaccine_detail/vaccine_detail_page.dart';
 import 'package:flutter_frontend/shared/widgets/filter_toggle_bar.dart';
 
 class RecordsPage extends StatefulWidget{
@@ -30,6 +31,12 @@ class _RecordsPageState extends State<RecordsPage>{
       icon: Icons.event_note_outlined,
     ),
   ];
+
+  void navigateToVaccineDetail() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => const VaccineDetailPage()),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -77,6 +84,7 @@ class _RecordsPageState extends State<RecordsPage>{
                     dateAdministered: DateTime(2026, 2, 24),
                     status: 'active',
                     administeredBy: 'Dr. Smith',
+                    onTap: navigateToVaccineDetail,
                   ),
                 ],
               ),

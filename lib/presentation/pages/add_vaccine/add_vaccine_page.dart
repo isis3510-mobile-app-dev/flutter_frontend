@@ -74,6 +74,7 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
 
   void _submit() {
     if (_formKey.currentState?.validate() ?? false) {
+      Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Sample vaccine form submitted')),
       );

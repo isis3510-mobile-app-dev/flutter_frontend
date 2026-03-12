@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/core/constants/app_colors.dart';
 
 class FullWidthButton extends StatelessWidget{
   const FullWidthButton({
@@ -9,7 +10,8 @@ class FullWidthButton extends StatelessWidget{
     this.height = 46,
     this.backgroundColor,
     this.borderColor,
-    this.textColor = Colors.white,
+    this.textColor = AppColors.onPrimary,
+    this.splashColor = AppColors.grey100,
     this.icon,
   });
 
@@ -19,6 +21,7 @@ class FullWidthButton extends StatelessWidget{
   final Color ?backgroundColor;
   final Color ?borderColor;
   final Color textColor;
+  final Color splashColor;
   final IconData ?icon;
 
   @override  Widget build(BuildContext context) {
@@ -27,6 +30,7 @@ class FullWidthButton extends StatelessWidget{
       style: ElevatedButton.styleFrom(
         backgroundColor: backgroundColor ?? Theme.of(context).primaryColor,
         minimumSize: Size.fromHeight(height),
+        overlayColor: splashColor,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(height),
           side: borderColor != null ? BorderSide(color: borderColor!) : BorderSide.none,
