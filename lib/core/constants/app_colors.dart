@@ -41,4 +41,10 @@ abstract class AppColors {
   static const List<Color> welcomeFirstBackground = [Color(0xFF006A60), Color(0xFF00897B)];
   static const List<Color> welcomeSecondBackground = [Color(0xFF4B607A), Color(0xFF37505F)];
   static const List<Color> welcomeThirdBackground = [Color(0xFF7B3DC4), Color(0xFF5E2A9D)];
+
+  // --- Bottom navigation ---
+  static const Color bottomNavActive = Color(0xFF006A60);
+  static const Color bottomNavInactive = Color(0xFF3F4948);
+  static const Color bottomNavBackground = Color(0xFFFFFFFF);
+  static const Color bottomNavTopBorder = Color(0xFFE8EEEE);
 }
