@@ -35,7 +35,7 @@ class PetUiModel {
   final String color;
   final String? photoUrl;
 
-  /// 'healthy' | 'needs attention'
+  /// 'healthy' | 'needs attention' | 'lost'
   final String status;
   final bool isNfcSynced;
   final String knownAllergies;
@@ -49,16 +49,17 @@ class PetUiModel {
   /// Human-readable age, e.g. "4 yrs" or "3 mo".
   String get ageLabel {
     final now = DateTime.now();
-    final years = now.year -
+    final years =
+        now.year -
         birthDate.year -
         (now.month < birthDate.month ||
                 (now.month == birthDate.month && now.day < birthDate.day)
             ? 1
             : 0);
     if (years > 0) return '$years yr${years > 1 ? 's' : ''}';
-    final months = ((now.year - birthDate.year) * 12 +
-            (now.month - birthDate.month))
-        .clamp(0, 11);
+    final months =
+        ((now.year - birthDate.year) * 12 + (now.month - birthDate.month))
+            .clamp(0, 11);
     if (months > 0) return '$months mo';
     return '< 1 mo';
   }

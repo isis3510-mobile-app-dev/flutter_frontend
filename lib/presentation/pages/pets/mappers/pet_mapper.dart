@@ -4,23 +4,72 @@ import '../models/pet_ui_model.dart';
 abstract class PetMapper {
   static PetUiModel fromJson(Map<String, dynamic> json) {
     return PetUiModel(
-      id: json['id'] as String,
-      userIds: (json['user_ids'] as List<dynamic>? ?? [])
-          .map((e) => e as String)
+      id: _readString(json, ['id', '_id']),
+      userIds: (json['user_ids'] as List<dynamic>? ?? const <dynamic>[])
+          .map((entry) => entry.toString())
           .toList(),
-      name: json['name'] as String,
-      species: json['species'] as String,
-      breed: json['breed'] as String,
-      gender: json['gender'] as String,
-      birthDate: DateTime.parse(json['birth_date'] as String),
-      weight: (json['weight'] as num).toDouble(),
-      color: json['color'] as String,
-      photoUrl: json['photo_url'] as String?,
-      status: json['status'] as String,
-      isNfcSynced: json['is_nfc_synced'] as bool,
+      name: _readString(json, ['name'], fallback: 'Unnamed Pet'),
+      species: _readString(json, ['species'], fallback: 'Unknown'),
+      breed: _readString(json, ['breed'], fallback: 'Unknown breed'),
+      gender: _readString(json, ['gender'], fallback: 'Unknown'),
+      birthDate: _readDate(json['birth_date']),
+      weight: _readDouble(json['weight']),
+      color: _readString(json, ['color'], fallback: 'Unknown'),
+      photoUrl: _readNullableString(json, ['photo_url', 'photoUrl']),
+      status: _normalizeStatus(
+        _readString(json, ['status'], fallback: 'needs attention'),
+      ),
+      isNfcSynced: json['is_nfc_synced'] == true,
       knownAllergies: json['known_allergies'] as String? ?? '',
       defaultVet: json['default_vet'] as String? ?? '',
       defaultClinic: json['default_clinic'] as String? ?? '',
     );
+  }
+
+  static String _readString(
+    Map<String, dynamic> json,
+    List<String> keys, {
+    String fallback = '',
+  }) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value is String && value.trim().isNotEmpty) {
+        return value.trim();
+      }
+    }
+    return fallback;
+  }
+
+  static String? _readNullableString(
+    Map<String, dynamic> json,
+    List<String> keys,
+  ) {
+    final value = _readString(json, keys);
+    return value.isEmpty ? null : value;
+  }
+
+  static DateTime _readDate(dynamic value) {
+    if (value is String && value.isNotEmpty) {
+      return DateTime.tryParse(value) ?? DateTime(2000, 1, 1);
+    }
+    return DateTime(2000, 1, 1);
+  }
+
+  static double _readDouble(dynamic value) {
+    if (value is num) {
+      return value.toDouble();
+    }
+    if (value is String) {
+      return double.tryParse(value) ?? 0;
+    }
+    return 0;
+  }
+
+  static String _normalizeStatus(String value) {
+    final normalized = value.trim().toLowerCase();
+    if (normalized == 'healthy' || normalized == 'lost') {
+      return normalized;
+    }
+    return 'needs attention';
   }
 }

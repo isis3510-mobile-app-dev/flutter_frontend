@@ -19,15 +19,11 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(AppStrings.homeTitle),
-      ),
-      body: const Center(
-        child: Text(AppStrings.homeWelcome),
-      ),
+      appBar: AppBar(title: const Text(AppStrings.homeTitle)),
+      body: const Center(child: Text(AppStrings.homeWelcome)),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: QuickActionsFab(
-        onAddPet: () {},
+        onAddPet: () => Navigator.pushNamed(context, Routes.addPet),
         onAddVaccine: () {},
         onAddEvent: () {},
       ),

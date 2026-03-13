@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../presentation/pages/welcome/welcome_page.dart';
 import '../presentation/pages/home/home_page.dart';
+import '../presentation/pages/pets/add_pet/add_pet_screen.dart';
 import '../presentation/pages/pets/pets_page.dart';
 
 /// Centralized route definitions for the app.
@@ -13,6 +14,7 @@ class Routes {
   static const String home = '/';
   static const String welcomePage = '/welcome';
   static const String pets = '/pets';
+  static const String addPet = '/pets/add';
 
   /// Maps route names to their corresponding page widgets.
   /// Called automatically by MaterialApp when navigating.
@@ -27,6 +29,9 @@ class Routes {
       case pets:
         return _buildRoute(const PetsPage(), settings);
 
+      case addPet:
+        return _buildRoute(const AddPetScreen(), settings);
+
       default:
         // Fallback for unknown routes
         return _buildRoute(const HomePage(), settings);
@@ -35,9 +40,6 @@ class Routes {
 
   /// Helper to build a consistent page transition for all routes.
   static MaterialPageRoute _buildRoute(Widget page, RouteSettings settings) {
-    return MaterialPageRoute(
-      builder: (_) => page,
-      settings: settings,
-    );
+    return MaterialPageRoute(builder: (_) => page, settings: settings);
   }
 }
