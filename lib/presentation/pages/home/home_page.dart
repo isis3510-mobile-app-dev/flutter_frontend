@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app/routes.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../shared/widgets/petcare_bottom_nav_bar.dart';
 import '../../../shared/widgets/quick_actions_fab.dart';
@@ -32,7 +33,14 @@ class _HomePageState extends State<HomePage> {
       ),
       bottomNavigationBar: PetcareBottomNavBar(
         currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
+        onTap: (index) {
+          if (index == 0) return;
+          if (index == 1) {
+            Navigator.pushNamed(context, Routes.pets);
+            return;
+          }
+          setState(() => _currentIndex = index);
+        },
       ),
     );
   }

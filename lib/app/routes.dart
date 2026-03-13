@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../presentation/pages/welcome/welcome_page.dart';
 import '../presentation/pages/home/home_page.dart';
+import '../presentation/pages/pets/pets_page.dart';
 
 /// Centralized route definitions for the app.
 /// Using named routes makes navigation cleaner and easier to maintain.
@@ -10,8 +11,8 @@ class Routes {
 
   // Route name constants — use these instead of raw strings throughout the app
   static const String home = '/';
-  static const String detail = '/detail';
   static const String welcomePage = '/welcome';
+  static const String pets = '/pets';
 
   /// Maps route names to their corresponding page widgets.
   /// Called automatically by MaterialApp when navigating.
@@ -23,11 +24,8 @@ class Routes {
       case home:
         return _buildRoute(const HomePage(), settings);
 
-      case detail:
-        // Example of passing arguments to a route
-        // final args = settings.arguments as MyArguments;
-        // return _buildRoute(DetailPage(args: args), settings);
-        return null;
+      case pets:
+        return _buildRoute(const PetsPage(), settings);
 
       default:
         // Fallback for unknown routes

@@ -14,7 +14,7 @@ class App extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
-      initialRoute: Routes.welcomePage, // Start with the first welcome page
+      initialRoute: Routes.home, // Start with the first welcome page
       onGenerateRoute: Routes.onGenerateRoute,
     );
   }

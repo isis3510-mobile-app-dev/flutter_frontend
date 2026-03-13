@@ -14,8 +14,8 @@ abstract class AppColors {
   static const Color onSecondary = Color(0xFFFFFFFF);
 
   // --- Background & surface ---
-  static const Color background = Color(0xFFFFFBFE);
-  static const Color surface = Color(0xFFFFFBFE);
+  static const Color background = Color(0xFFF6FCFB);
+  static const Color surface = Color(0xFFF6FCFB);
   static const Color onBackground = Color(0xFF1C1B1F);
   static const Color onSurface = Color(0xFF1C1B1F);
 
@@ -64,4 +64,27 @@ abstract class AppColors {
   static const Color quickActionIconTint = Color(0xFF004D45);
   static const Color quickActionIconTintDark = Color(0xFF9FF2E2);
   static const Color quickActionShadow = Color(0x1A000000);
+
+  // --- Pet status pills ---
+  static const Color petStatusHealthyText = Color(0xFF1B5E20);
+  static const Color petStatusHealthyBg = Color(0xFFE8F5E9);
+  static const Color petStatusAttentionText = Color(0xFFE65100);
+  static const Color petStatusAttentionBg = Color(0xFFFFF8E1);
+
+  // --- Pet filters ---
+  static const Color petFilterInactiveBorder = Color(0xFFBEC9C8);
+
+  // --- Pet card ---
+  static const Color petCardBackground = Color(0xFFFFFFFF);
+  static const Color petCardBackgroundDark = Color(0xFF2A2A2A);
+  static const Color petCardQuickActionBg = Color(0xFFEEF8F7);
+  static const Color petCardQuickActionBgDark = Color(0xFF1D4F49);
+  static const Color petAgeIcon = Color(0xFFE63600);
+  static const Color petQuickActionNfc = Color(0xFF3949AB);
+
+  // --- Pets search bar ---
+  static const Color petsSearchBarBackground = Color(0xFFEEFAF8);
+  static const Color petsSearchBarBackgroundDark = Color(0xFF20312F);
+  static const Color petsSearchBarIcon = Color(0xFF757575);
+  static const Color petsSearchBarPlaceholder = Color(0xFF8E8E93);
 }

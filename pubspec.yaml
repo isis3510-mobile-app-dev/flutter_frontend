@@ -21,3 +21,5 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/featureIcons/
+    - assets/icons/petRelated/
+    - assets/icons/status/
