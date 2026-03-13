@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import '../presentation/pages/welcome/welcome_page.dart';
+import 'package:flutter_frontend/presentation/pages/add_vaccine/add_vaccine_page.dart';
+import 'package:flutter_frontend/presentation/pages/records/records_page.dart';
+import 'package:flutter_frontend/presentation/pages/welcome/welcome_page.dart';
 import '../presentation/pages/home/home_page.dart';
 
 /// Centralized route definitions for the app.
@@ -12,6 +14,8 @@ class Routes {
   static const String home = '/';
   static const String detail = '/detail';
   static const String welcomePage = '/welcome';
+  static const String addVaccine = '/add-vaccine';
+  static const String records = '/records';
 
   /// Maps route names to their corresponding page widgets.
   /// Called automatically by MaterialApp when navigating.
@@ -22,6 +26,12 @@ class Routes {
 
       case home:
         return _buildRoute(const HomePage(), settings);
+
+      case addVaccine:
+        return _buildRoute(const AddVaccinePage(), settings);
+
+      case records:
+        return _buildRoute(const RecordsPage(), settings);
 
       case detail:
         // Example of passing arguments to a route
