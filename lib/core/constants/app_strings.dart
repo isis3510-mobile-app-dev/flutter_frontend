@@ -92,4 +92,10 @@ abstract class AppStrings {
 
   // --- Welcome pages ---
   static const String welcomeFirstTitle = 'All your pet\'s health, in one place.';
+  static const String welcomeFirstDescription = 'Centralize vaccines, medications, records, and documents. Never miss a dose or appointment again';
+  static const String welcomeSecondTitle = 'Track vaccines & medications';
+  static const String welcomeSecondDescription = 'Timeline-based vaccine history, smart reminders for medications, and overdue alerts that keep you informed.';
+  static const String welcomeThirdTitle = 'NFC tag integration';
+  static const String welcomeThirdDescription = 'Write your pet\'s info to an NFC tag. Anyone who finds your pet can contact you instantly.';
+  static const String welcomeAlreadyHaveAccount = 'Already have an account?';
 }
