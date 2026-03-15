@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/presentation/pages/add_vaccine/add_vaccine_page.dart';
-import 'package:flutter_frontend/presentation/pages/records/records_page.dart';
-import 'package:flutter_frontend/presentation/pages/welcome/welcome_page.dart';
+
+import '../presentation/pages/add_vaccine/add_vaccine_page.dart';
 import '../presentation/pages/home/home_page.dart';
+import '../presentation/pages/pets/models/pet_ui_model.dart';
 import '../presentation/pages/pets/add_pet/add_pet_screen.dart';
 import '../presentation/pages/pets/pet_detail/pet_detail_screen.dart';
-import '../presentation/pages/pets/models/pet_ui_model.dart';
 import '../presentation/pages/pets/pets_page.dart';
+import '../presentation/pages/records/records_page.dart';
+import '../presentation/pages/welcome/welcome_page.dart';
 
 /// Centralized route definitions for the app.
 /// Using named routes makes navigation cleaner and easier to maintain.
@@ -20,7 +21,7 @@ class Routes {
   static const String pets = '/pets';
   static const String addPet = '/pets/add';
   static const String petDetail = '/pets/detail';
-  static const String addVaccine = '/add-vaccine';
+  static const String addVaccine = '/vaccines/add';
   static const String records = '/records';
 
   /// Maps route names to their corresponding page widgets.
@@ -40,19 +41,13 @@ class Routes {
         return _buildRoute(const AddPetScreen(), settings);
 
       case petDetail:
-        final pet = settings.arguments! as PetUiModel;
-        return _buildRoute(PetDetailScreen(pet: pet), settings);
+        return _buildPetDetailRoute(settings);
+
       case addVaccine:
         return _buildRoute(const AddVaccinePage(), settings);
 
       case records:
         return _buildRoute(const RecordsPage(), settings);
-
-      case detail:
-        // Example of passing arguments to a route
-        // final args = settings.arguments as MyArguments;
-        // return _buildRoute(DetailPage(args: args), settings);
-        return null;
 
       default:
         // Fallback for unknown routes
@@ -63,5 +58,24 @@ class Routes {
   /// Helper to build a consistent page transition for all routes.
   static MaterialPageRoute _buildRoute(Widget page, RouteSettings settings) {
     return MaterialPageRoute(builder: (_) => page, settings: settings);
+  }
+
+  static MaterialPageRoute _buildPetDetailRoute(RouteSettings settings) {
+    final pet = settings.arguments;
+
+    if (pet is! PetUiModel) {
+      return _buildRoute(const PetsPage(), settings);
+    }
+
+    return _buildRoute(PetDetailScreen(pet: pet), settings);
+  }
+
+  static String? bottomNavRouteForIndex(int index) {
+    return switch (index) {
+      0 => home,
+      1 => pets,
+      2 => records,
+      _ => null,
+    };
   }
 }
