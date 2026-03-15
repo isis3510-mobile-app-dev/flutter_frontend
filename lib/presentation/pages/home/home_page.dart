@@ -51,12 +51,20 @@ class _HomePageState extends State<HomePage> {
       body: const Center(child: Text(AppStrings.homeWelcome)),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: QuickActionsFab(
-        onAddPet: () {},
+        onAddPet: () => Navigator.pushNamed(context, Routes.addPet),
         onAddVaccine: _goToAddVaccine,
         onAddEvent: () {},
       ),
       bottomNavigationBar: PetcareBottomNavBar(
         currentIndex: _currentIndex,
+        onTap: (index) {
+          if (index == 0) return;
+          if (index == 1) {
+            Navigator.pushNamed(context, Routes.pets);
+            return;
+          }
+          setState(() => _currentIndex = index);
+        },
         onTap: _handleBottomNavTap,
       ),
     );

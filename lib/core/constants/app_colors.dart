@@ -42,9 +42,18 @@ abstract class AppColors {
   static const Color onSurfaceDark = Color(0xFFE6E1E5);
 
   // --- Welcome pages colors ---
-  static const List<Color> welcomeFirstBackground = [Color(0xFF006A60), Color(0xFF00897B)];
-  static const List<Color> welcomeSecondBackground = [Color(0xFF4B607A), Color(0xFF37505F)];
-  static const List<Color> welcomeThirdBackground = [Color(0xFF7B3DC4), Color(0xFF5E2A9D)];
+  static const List<Color> welcomeFirstBackground = [
+    Color(0xFF006A60),
+    Color(0xFF00897B),
+  ];
+  static const List<Color> welcomeSecondBackground = [
+    Color(0xFF4B607A),
+    Color(0xFF37505F),
+  ];
+  static const List<Color> welcomeThirdBackground = [
+    Color(0xFF7B3DC4),
+    Color(0xFF5E2A9D),
+  ];
 
   // --- Bottom navigation ---
   static const Color bottomNavActive = Color(0xFF006A60);
@@ -68,4 +77,47 @@ abstract class AppColors {
   static const Color quickActionIconTint = Color(0xFF004D45);
   static const Color quickActionIconTintDark = Color(0xFF9FF2E2);
   static const Color quickActionShadow = Color(0x1A000000);
+  static const Color addPetBannerText = Color(0xFF00201C);
+
+  // --- Pet status pills ---
+  static const Color petStatusHealthyText = Color(0xFF1B5E20);
+  static const Color petStatusHealthyBg = Color(0xFFE8F5E9);
+  static const Color petStatusAttentionText = Color(0xFFE65100);
+  static const Color petStatusAttentionBg = Color(0xFFFFF8E1);
+  static const Color petStatusLostText = Color(0xFFB3261E);
+  static const Color petStatusLostBg = Color(0xFFFDECEC);
+
+  // --- Pet filters ---
+  static const Color petFilterInactiveBorder = Color(0xFFBEC9C8);
+
+  // --- Add pet flow ---
+  static const Color addPetStepInactiveLineDark = Color(0xFF4C4B51);
+  static const Color addPetStepInactiveCircle = Color(0xFFF1F2F4);
+  static const Color addPetStepInactiveCircleDark = Color(0xFF34333A);
+  static const Color addPetChipBackgroundDark = Color(0xFF252429);
+  static const Color addPetPhotoBackground = Color(0xFF9FF2E2);
+  static const Color addPetPhotoBackgroundDark = Color(0xFF1E4F48);
+  static const Color addPetPhotoAccent = Color(0xFF006A60);
+  static const Color addPetReminderBackground = Color(0xFFF8F9FA);
+  static const Color addPetReminderBackgroundDark = Color(0xFF2A2C31);
+
+  // --- Pet detail ---
+  static const Color petDetailHeaderBg = Color(0xFF004D40);
+  static const Color petDetailHealthSummaryBg = Color(0xFFE0F5F2);
+  static const Color petDetailHealthSummaryBgDark = Color(0xFF1A3B38);
+  static const Color petDetailInfoBackgroundDark = Color(0xFF1C2B29);
+
+  // --- Pet card ---
+  static const Color petCardBackground = Color(0xFFFFFFFF);
+  static const Color petCardBackgroundDark = Color(0xFF2A2A2A);
+  static const Color petCardQuickActionBg = Color(0xFFEEF8F7);
+  static const Color petCardQuickActionBgDark = Color(0xFF1D4F49);
+  static const Color petAgeIcon = Color(0xFFE63600);
+  static const Color petQuickActionNfc = Color(0xFF3949AB);
+
+  // --- Pets search bar ---
+  static const Color petsSearchBarBackground = Color(0xFFEEFAF8);
+  static const Color petsSearchBarBackgroundDark = Color(0xFF20312F);
+  static const Color petsSearchBarIcon = Color(0xFF757575);
+  static const Color petsSearchBarPlaceholder = Color(0xFF8E8E93);
 }

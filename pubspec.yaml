@@ -10,6 +10,8 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_svg: ^2.0.10
+  http: ^1.6.0
+  flutter_dotenv: ^5.2.1
 
 dev_dependencies:
   flutter_test:
@@ -19,5 +21,8 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
+    - .env
     - assets/images/
     - assets/icons/featureIcons/
+    - assets/icons/petRelated/
+    - assets/icons/status/

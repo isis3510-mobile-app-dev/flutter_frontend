@@ -3,6 +3,10 @@ import 'package:flutter_frontend/presentation/pages/add_vaccine/add_vaccine_page
 import 'package:flutter_frontend/presentation/pages/records/records_page.dart';
 import 'package:flutter_frontend/presentation/pages/welcome/welcome_page.dart';
 import '../presentation/pages/home/home_page.dart';
+import '../presentation/pages/pets/add_pet/add_pet_screen.dart';
+import '../presentation/pages/pets/pet_detail/pet_detail_screen.dart';
+import '../presentation/pages/pets/models/pet_ui_model.dart';
+import '../presentation/pages/pets/pets_page.dart';
 
 /// Centralized route definitions for the app.
 /// Using named routes makes navigation cleaner and easier to maintain.
@@ -12,8 +16,10 @@ class Routes {
 
   // Route name constants — use these instead of raw strings throughout the app
   static const String home = '/';
-  static const String detail = '/detail';
   static const String welcomePage = '/welcome';
+  static const String pets = '/pets';
+  static const String addPet = '/pets/add';
+  static const String petDetail = '/pets/detail';
   static const String addVaccine = '/add-vaccine';
   static const String records = '/records';
 
@@ -27,6 +33,15 @@ class Routes {
       case home:
         return _buildRoute(const HomePage(), settings);
 
+      case pets:
+        return _buildRoute(const PetsPage(), settings);
+
+      case addPet:
+        return _buildRoute(const AddPetScreen(), settings);
+
+      case petDetail:
+        final pet = settings.arguments! as PetUiModel;
+        return _buildRoute(PetDetailScreen(pet: pet), settings);
       case addVaccine:
         return _buildRoute(const AddVaccinePage(), settings);
 
@@ -47,9 +62,6 @@ class Routes {
 
   /// Helper to build a consistent page transition for all routes.
   static MaterialPageRoute _buildRoute(Widget page, RouteSettings settings) {
-    return MaterialPageRoute(
-      builder: (_) => page,
-      settings: settings,
-    );
+    return MaterialPageRoute(builder: (_) => page, settings: settings);
   }
 }

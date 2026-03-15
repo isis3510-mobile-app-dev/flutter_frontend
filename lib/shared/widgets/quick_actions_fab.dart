@@ -54,6 +54,21 @@ class _QuickActionsFabState extends State<QuickActionsFab>
     });
   }
 
+  void _close() {
+    if (!_isOpen) {
+      return;
+    }
+    setState(() {
+      _isOpen = false;
+      _controller.reverse();
+    });
+  }
+
+  void _onActionTap(VoidCallback action) {
+    _close();
+    action();
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -70,63 +85,66 @@ class _QuickActionsFabState extends State<QuickActionsFab>
         ? AppColors.quickActionIconBackgroundDark
         : AppColors.quickActionIconBackground;
     final iconTint = isDark
-      ? AppColors.quickActionIconTintDark
-      : AppColors.quickActionIconTint;
+        ? AppColors.quickActionIconTintDark
+        : AppColors.quickActionIconTint;
 
-    return SizedBox(
-      width: 236,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          IgnorePointer(
-            ignoring: !_isOpen,
-            child: _ActionItem(
-              label: 'Add Pet',
-              iconAssetPath: 'assets/icons/featureIcons/pets.svg',
-              onTap: widget.onAddPet,
-              backgroundColor: pillBackground,
-              textColor: textColor,
-              iconBackground: iconBackground,
-              iconTint: iconTint,
-              animation: _buildItemAnimation(0.0, 0.4),
+    return TapRegion(
+      onTapOutside: (_) => _close(),
+      child: SizedBox(
+        width: 236,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            IgnorePointer(
+              ignoring: !_isOpen,
+              child: _ActionItem(
+                label: 'Add Pet',
+                iconAssetPath: 'assets/icons/featureIcons/pets.svg',
+                onTap: () => _onActionTap(widget.onAddPet),
+                backgroundColor: pillBackground,
+                textColor: textColor,
+                iconBackground: iconBackground,
+                iconTint: iconTint,
+                animation: _buildItemAnimation(0.0, 0.4),
+              ),
             ),
-          ),
-          const SizedBox(height: _actionSpacing),
-          IgnorePointer(
-            ignoring: !_isOpen,
-            child: _ActionItem(
-              label: 'Add Vaccine',
-              iconAssetPath: 'assets/icons/featureIcons/vaccines.svg',
-              onTap: widget.onAddVaccine,
-              backgroundColor: pillBackground,
-              textColor: textColor,
-              iconBackground: iconBackground,
-              iconTint: iconTint,
-              animation: _buildItemAnimation(0.2, 0.6),
+            const SizedBox(height: _actionSpacing),
+            IgnorePointer(
+              ignoring: !_isOpen,
+              child: _ActionItem(
+                label: 'Add Vaccine',
+                iconAssetPath: 'assets/icons/featureIcons/vaccines.svg',
+                onTap: () => _onActionTap(widget.onAddVaccine),
+                backgroundColor: pillBackground,
+                textColor: textColor,
+                iconBackground: iconBackground,
+                iconTint: iconTint,
+                animation: _buildItemAnimation(0.2, 0.6),
+              ),
             ),
-          ),
-          const SizedBox(height: _actionSpacing),
-          IgnorePointer(
-            ignoring: !_isOpen,
-            child: _ActionItem(
-              label: 'Add Event',
-              iconAssetPath: 'assets/icons/featureIcons/calendar.svg',
-              onTap: widget.onAddEvent,
-              backgroundColor: pillBackground,
-              textColor: textColor,
-              iconBackground: iconBackground,
-              iconTint: iconTint,
-              animation: _buildItemAnimation(0.4, 0.8),
+            const SizedBox(height: _actionSpacing),
+            IgnorePointer(
+              ignoring: !_isOpen,
+              child: _ActionItem(
+                label: 'Add Event',
+                iconAssetPath: 'assets/icons/featureIcons/calendar.svg',
+                onTap: () => _onActionTap(widget.onAddEvent),
+                backgroundColor: pillBackground,
+                textColor: textColor,
+                iconBackground: iconBackground,
+                iconTint: iconTint,
+                animation: _buildItemAnimation(0.4, 0.8),
+              ),
             ),
-          ),
-          const SizedBox(height: _fabGap),
-          _MainFabButton(
-            isOpen: _isOpen,
-            onTap: _toggle,
-            backgroundColor: fabBackground,
-          ),
-        ],
+            const SizedBox(height: _fabGap),
+            _MainFabButton(
+              isOpen: _isOpen,
+              onTap: _toggle,
+              backgroundColor: fabBackground,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -161,7 +179,7 @@ class _MainFabButton extends StatelessWidget {
           tween: Tween<double>(begin: 0, end: isOpen ? 1 : 0),
           duration: const Duration(milliseconds: 220),
           curve: Curves.easeOut,
-          builder: (context, value, __) {
+          builder: (context, value, _) {
             final rotation = value * (math.pi / 4);
 
             return Stack(
@@ -276,15 +294,9 @@ class _ActionItem extends StatelessWidget {
                       iconAssetPath,
                       width: 20,
                       height: 20,
-                      colorFilter: ColorFilter.mode(
-                        iconTint,
-                        BlendMode.srcIn,
-                      ),
-                      placeholderBuilder: (_) => Icon(
-                        Icons.circle,
-                        size: 18,
-                        color: iconTint,
-                      ),
+                      colorFilter: ColorFilter.mode(iconTint, BlendMode.srcIn),
+                      placeholderBuilder: (_) =>
+                          Icon(Icons.circle, size: 18, color: iconTint),
                     ),
                   ),
                 ),
