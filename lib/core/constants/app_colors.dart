@@ -95,6 +95,12 @@ abstract class AppColors {
   static const Color addPetReminderBackground = Color(0xFFF8F9FA);
   static const Color addPetReminderBackgroundDark = Color(0xFF2A2C31);
 
+  // --- Pet detail ---
+  static const Color petDetailHeaderBg = Color(0xFF004D40);
+  static const Color petDetailHealthSummaryBg = Color(0xFFE0F5F2);
+  static const Color petDetailHealthSummaryBgDark = Color(0xFF1A3B38);
+  static const Color petDetailInfoBackgroundDark = Color(0xFF1C2B29);
+
   // --- Pet card ---
   static const Color petCardBackground = Color(0xFFFFFFFF);
   static const Color petCardBackgroundDark = Color(0xFF2A2A2A);

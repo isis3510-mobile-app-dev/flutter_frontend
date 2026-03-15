@@ -159,14 +159,13 @@ class _PetsPageState extends State<PetsPage> {
         AppDimensions.spaceXXL,
       ),
       itemCount: _filtered.length,
-      separatorBuilder: (_, __) => const SizedBox(height: AppDimensions.spaceM),
+      separatorBuilder: (_, _) => const SizedBox(height: AppDimensions.spaceM),
       itemBuilder: (_, index) {
         final pet = _filtered[index];
         return PetCard(
           pet: pet,
-          onTap: () {
-            // TODO: Navigator.pushNamed(context, Routes.petDetail, arguments: pet.id)
-          },
+          onTap: () =>
+              Navigator.pushNamed(context, Routes.petDetail, arguments: pet),
           onVaccinesTap: () {},
           onLostModeTap: () {},
           onNfcTap: () {},

@@ -75,6 +75,27 @@ abstract class AppStrings {
   static const String addPetValidationRequired = 'This field is required.';
   static const String addPetSavedMessage = 'Pet ready to be saved.';
 
+  // --- Pet detail ---
+  static const String petDetailTabOverview = 'Overview';
+  static const String petDetailTabVaccines = 'Vaccines';
+  static const String petDetailTabEvents = 'Events';
+  static const String petDetailSectionPetInfo = 'Pet Information';
+  static const String petDetailSectionHealthSummary = 'Health Summary';
+  static const String petDetailFieldSpecies = 'Species';
+  static const String petDetailFieldBreed = 'Breed';
+  static const String petDetailFieldDob = 'Date of Birth';
+  static const String petDetailFieldAge = 'Age';
+  static const String petDetailFieldWeight = 'Weight';
+  static const String petDetailFieldColor = 'Color';
+  static const String petDetailFieldGender = 'Gender';
+  static const String petDetailFieldMicrochip = 'Microchip';
+  static const String petDetailStatusHealthy = 'Healthy';
+  static const String petDetailStatusNeedsAttention = 'Needs Attention';
+  static const String petDetailStatusLost = 'Lost';
+  static const String petDetailShareSemantics = 'Share pet';
+  static const String petDetailEditSemantics = 'Edit pet';
+  static const String petDetailMoreSemantics = 'More options';
+
   // --- Welcome pages ---
   static const String welcomeFirstTitle =
       'All your pet\'s health, in one place.';
