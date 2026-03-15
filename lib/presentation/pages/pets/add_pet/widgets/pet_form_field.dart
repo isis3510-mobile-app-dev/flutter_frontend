@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../../../core/constants/app_colors.dart';
 import '../../../../../core/constants/app_dimensions.dart';
@@ -15,6 +16,7 @@ class PetFormField extends StatelessWidget {
     this.keyboardType,
     this.maxLines = 1,
     this.suffixIcon,
+    this.inputFormatters,
   });
 
   final String label;
@@ -26,6 +28,7 @@ class PetFormField extends StatelessWidget {
   final TextInputType? keyboardType;
   final int maxLines;
   final Widget? suffixIcon;
+  final List<TextInputFormatter>? inputFormatters;
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +51,7 @@ class PetFormField extends StatelessWidget {
           readOnly: readOnly,
           onTap: onTap,
           keyboardType: keyboardType,
+          inputFormatters: inputFormatters,
           maxLines: maxLines,
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
             color: isDark ? AppColors.onSurfaceDark : AppColors.onSurface,

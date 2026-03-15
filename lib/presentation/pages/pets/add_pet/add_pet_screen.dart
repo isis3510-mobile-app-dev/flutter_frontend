@@ -53,9 +53,11 @@ class _AddPetScreenState extends State<AddPetScreen> {
   }
 
   Future<void> _pickDateOfBirth() async {
+    final parsedDate = _parseDate(_dateOfBirthController.text);
+
     final pickedDate = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: parsedDate ?? DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime.now(),
     );
@@ -68,6 +70,30 @@ class _AddPetScreenState extends State<AddPetScreen> {
     final month = pickedDate.month.toString().padLeft(2, '0');
     final year = pickedDate.year.toString();
     _dateOfBirthController.text = '$day/$month/$year';
+  }
+
+  DateTime? _parseDate(String value) {
+    final parts = value.split('/');
+    if (parts.length != 3) {
+      return null;
+    }
+
+    final day = int.tryParse(parts[0]);
+    final month = int.tryParse(parts[1]);
+    final year = int.tryParse(parts[2]);
+
+    if (day == null || month == null || year == null) {
+      return null;
+    }
+
+    final parsed = DateTime.tryParse(
+      '${year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}',
+    );
+    if (parsed == null || parsed.isAfter(DateTime.now())) {
+      return null;
+    }
+
+    return parsed;
   }
 
   void _goBack() {
@@ -163,7 +189,7 @@ class _AddPetScreenState extends State<AddPetScreen> {
           AppDimensions.pageHorizontalPadding,
           AppDimensions.spaceM,
           AppDimensions.pageHorizontalPadding,
-          AppDimensions.spaceL,
+          AppDimensions.spaceXXL + AppDimensions.spaceM,
         ),
         child: Row(
           children: [
@@ -176,10 +202,10 @@ class _AddPetScreenState extends State<AddPetScreen> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(999),
                     ),
-                    side: const BorderSide(color: AppColors.grey300),
-                    foregroundColor: AppColors.grey900,
+                    side: const BorderSide(color: AppColors.bottomNavActive),
+                    foregroundColor: AppColors.bottomNavActive,
                   ),
-                  child: const Text(AppStrings.semanticBackButton),
+                  child: const Text(AppStrings.addPetBackButton),
                 ),
               ),
               const SizedBox(width: AppDimensions.spaceS),

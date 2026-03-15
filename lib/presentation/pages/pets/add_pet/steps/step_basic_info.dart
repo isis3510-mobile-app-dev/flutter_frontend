@@ -28,8 +28,9 @@ class StepBasicInfo extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const SizedBox(height: AppDimensions.spaceM),
         PetPhotoPicker(onTap: onPhotoTap),
-        const SizedBox(height: AppDimensions.spaceXL),
+        const SizedBox(height: AppDimensions.spaceXXL),
         PetFormField(
           label: '${AppStrings.addPetNameLabel} *',
           controller: nameController,

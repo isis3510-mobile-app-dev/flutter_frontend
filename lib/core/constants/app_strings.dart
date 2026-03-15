@@ -38,6 +38,7 @@ abstract class AppStrings {
 
   // --- Add pet ---
   static const String addPetTitle = 'Add New Pet';
+  static const String addPetBackButton = 'Back';
   static const String addPetStepBasicInfo = 'Basic Info';
   static const String addPetStepDetails = 'Details';
   static const String addPetStepMedical = 'Medical';
@@ -70,7 +71,7 @@ abstract class AppStrings {
   static const String addPetColorHint = 'e.g. Brown with white paws';
   static const String addPetVeterinarianHint = 'e.g. Dr. Smith';
   static const String addPetClinicHint = 'e.g. Happy Paws Clinic';
-  static const String addPetAllergiesHint = 'Optional notes';
+  static const String addPetAllergiesHint = 'e.g. None, or Penicillin';
   static const String addPetValidationRequired = 'This field is required.';
   static const String addPetSavedMessage = 'Pet ready to be saved.';
 

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../../core/constants/app_colors.dart';
 import '../../../../../core/constants/app_dimensions.dart';
 import '../../../../../core/constants/app_strings.dart';
 import '../add_pet_form_types.dart';
 import '../widgets/pet_form_field.dart';
+import '../widgets/selection_pill.dart';
 
 class StepDetails extends StatelessWidget {
   const StepDetails({
@@ -51,51 +54,72 @@ class StepDetails extends StatelessWidget {
           ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: AppDimensions.spaceS),
-        SegmentedButton<PetGender>(
-          showSelectedIcon: false,
-          segments: const [
-            ButtonSegment(
-              value: PetGender.male,
-              label: Text(AppStrings.addPetGenderMale),
+        Row(
+          children: [
+            SelectionPill(
+              label: AppStrings.addPetGenderMale,
+              isSelected: gender == PetGender.male,
+              expand: true,
+              minWidth: 0,
+              horizontalPadding: 12,
+              verticalPadding: 10,
+              iconSpacing: 4,
+              labelStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: gender == PetGender.male
+                    ? Colors.white
+                    : (Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.onSurfaceDark
+                          : AppColors.grey700),
+                fontWeight: FontWeight.w600,
+              ),
+              icon: SvgPicture.asset(
+                'assets/icons/petRelated/male.svg',
+                width: 14,
+                height: 14,
+                colorFilter: ColorFilter.mode(
+                  gender == PetGender.male
+                      ? Colors.white
+                      : (Theme.of(context).brightness == Brightness.dark
+                            ? AppColors.onSurfaceDark
+                            : AppColors.grey700),
+                  BlendMode.srcIn,
+                ),
+              ),
+              onTap: () => onGenderSelected(PetGender.male),
             ),
-            ButtonSegment(
-              value: PetGender.female,
-              label: Text(AppStrings.addPetGenderFemale),
+            const SizedBox(width: AppDimensions.spaceS),
+            SelectionPill(
+              label: AppStrings.addPetGenderFemale,
+              isSelected: gender == PetGender.female,
+              expand: true,
+              minWidth: 0,
+              horizontalPadding: 12,
+              verticalPadding: 10,
+              iconSpacing: 4,
+              labelStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: gender == PetGender.female
+                    ? Colors.white
+                    : (Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.onSurfaceDark
+                          : AppColors.grey700),
+                fontWeight: FontWeight.w600,
+              ),
+              icon: SvgPicture.asset(
+                'assets/icons/petRelated/female.svg',
+                width: 14,
+                height: 14,
+                colorFilter: ColorFilter.mode(
+                  gender == PetGender.female
+                      ? Colors.white
+                      : (Theme.of(context).brightness == Brightness.dark
+                            ? AppColors.onSurfaceDark
+                            : AppColors.grey700),
+                  BlendMode.srcIn,
+                ),
+              ),
+              onTap: () => onGenderSelected(PetGender.female),
             ),
           ],
-          selected: gender == null ? const {} : {gender!},
-          onSelectionChanged: (selection) {
-            if (selection.isNotEmpty) {
-              onGenderSelected(selection.first);
-            }
-          },
-          style: ButtonStyle(
-            backgroundColor: WidgetStateProperty.resolveWith((states) {
-              if (states.contains(WidgetState.selected)) {
-                return AppColors.bottomNavActive;
-              }
-              return Colors.white;
-            }),
-            foregroundColor: WidgetStateProperty.resolveWith((states) {
-              if (states.contains(WidgetState.selected)) {
-                return Colors.white;
-              }
-              return AppColors.grey700;
-            }),
-            side: WidgetStateProperty.resolveWith(
-              (states) => BorderSide(
-                color: states.contains(WidgetState.selected)
-                    ? AppColors.bottomNavActive
-                    : AppColors.grey300,
-              ),
-            ),
-            shape: WidgetStatePropertyAll(
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-            ),
-            padding: const WidgetStatePropertyAll(
-              EdgeInsets.symmetric(vertical: 14),
-            ),
-          ),
         ),
         const SizedBox(height: AppDimensions.spaceL),
         PetFormField(
@@ -103,6 +127,9 @@ class StepDetails extends StatelessWidget {
           controller: weightController,
           hintText: AppStrings.addPetWeightHint,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+          ],
         ),
         const SizedBox(height: AppDimensions.spaceL),
         PetFormField(

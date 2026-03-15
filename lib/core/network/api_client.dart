@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 import 'api_config.dart';
@@ -41,13 +42,27 @@ class ApiClient {
   Future<Map<String, String>> _buildHeaders(
     Map<String, String>? headers,
   ) async {
-    final token = await _tokenProvider?.call();
+    final token = await _resolveAuthToken();
 
     return <String, String>{
       'Accept': 'application/json',
       if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
       ...?headers,
     };
+  }
+
+  Future<String?> _resolveAuthToken() async {
+    final providerToken = await _tokenProvider?.call();
+    if (providerToken != null && providerToken.isNotEmpty) {
+      return providerToken;
+    }
+
+    final envToken = dotenv.env['BEARER_TOKEN']?.trim();
+    if (envToken != null && envToken.isNotEmpty) {
+      return envToken;
+    }
+
+    return null;
   }
 
   dynamic _decodeResponse(http.Response response) {
