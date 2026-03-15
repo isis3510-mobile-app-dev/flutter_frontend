@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import '../presentation/pages/welcome/welcome_page.dart';
+import 'package:flutter_frontend/presentation/pages/add_vaccine/add_vaccine_page.dart';
+import 'package:flutter_frontend/presentation/pages/records/records_page.dart';
+import 'package:flutter_frontend/presentation/pages/welcome/welcome_page.dart';
 import '../presentation/pages/home/home_page.dart';
 import '../presentation/pages/pets/add_pet/add_pet_screen.dart';
 import '../presentation/pages/pets/pet_detail/pet_detail_screen.dart';
@@ -18,6 +20,8 @@ class Routes {
   static const String pets = '/pets';
   static const String addPet = '/pets/add';
   static const String petDetail = '/pets/detail';
+  static const String addVaccine = '/add-vaccine';
+  static const String records = '/records';
 
   /// Maps route names to their corresponding page widgets.
   /// Called automatically by MaterialApp when navigating.
@@ -38,6 +42,17 @@ class Routes {
       case petDetail:
         final pet = settings.arguments! as PetUiModel;
         return _buildRoute(PetDetailScreen(pet: pet), settings);
+      case addVaccine:
+        return _buildRoute(const AddVaccinePage(), settings);
+
+      case records:
+        return _buildRoute(const RecordsPage(), settings);
+
+      case detail:
+        // Example of passing arguments to a route
+        // final args = settings.arguments as MyArguments;
+        // return _buildRoute(DetailPage(args: args), settings);
+        return null;
 
       default:
         // Fallback for unknown routes

@@ -104,13 +104,13 @@ abstract class AppTheme {
   // Material3 text styles: displayLarge → bodySmall
   static const TextTheme _textTheme = TextTheme(
     displayLarge: TextStyle(fontSize: 57, fontWeight: FontWeight.w400),
-    headlineLarge: TextStyle(fontSize: 33, fontWeight: FontWeight.w600),
-    headlineMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w600),
-    titleLarge: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
-    titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-    bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
-    bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w400),
-    bodySmall: TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+    headlineLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.w700),
+    headlineMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
+    titleLarge: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+    titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+    bodyLarge: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+    bodyMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+    bodySmall: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
     labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
   );
 }
