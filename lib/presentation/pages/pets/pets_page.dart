@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../../app/routes.dart';
-import '../../../core/network/api_exception.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../shared/widgets/petcare_bottom_nav_bar.dart';
 import '../../../shared/widgets/quick_actions_fab.dart';
+import 'data/pets_mock_data.dart';
 import 'models/pet_ui_model.dart';
-import 'services/pets_api_service.dart';
 import 'widgets/pet_card.dart';
 import 'widgets/pet_count_pill.dart';
 import 'widgets/pet_filter_chips.dart';
@@ -21,51 +20,15 @@ class PetsPage extends StatefulWidget {
 }
 
 class _PetsPageState extends State<PetsPage> {
-  final _service = PetsApiService();
-
-  List<PetUiModel> _allPets = [];
+  final List<PetUiModel> _allPets = PetsMockData.all;
   List<PetUiModel> _filtered = [];
-  bool _loading = true;
-  String? _errorMessage;
   PetFilter _activeFilter = PetFilter.all;
   String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
-    _loadPets();
-  }
-
-  Future<void> _loadPets() async {
-    setState(() {
-      _loading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final pets = await _service.fetchPets();
-      if (!mounted) return;
-
-      setState(() {
-        _allPets = pets;
-        _filtered = _applyFilters(pets, _activeFilter, _searchQuery);
-        _loading = false;
-      });
-    } on ApiException catch (error) {
-      if (!mounted) return;
-
-      setState(() {
-        _loading = false;
-        _errorMessage = error.message;
-      });
-    } catch (_) {
-      if (!mounted) return;
-
-      setState(() {
-        _loading = false;
-        _errorMessage = 'Unable to load pets right now.';
-      });
-    }
+    _filtered = _applyFilters(_allPets, _activeFilter, _searchQuery);
   }
 
   void _onFilterChanged(PetFilter filter) => setState(() {
@@ -116,7 +79,7 @@ class _PetsPageState extends State<PetsPage> {
           children: [
             _PageHeader(
               petCount: _allPets.length,
-              showCount: !_loading,
+              showCount: true,
               activeFilter: _activeFilter,
               onFilterChanged: _onFilterChanged,
               onSearchChanged: _onSearchChanged,
@@ -142,12 +105,6 @@ class _PetsPageState extends State<PetsPage> {
   }
 
   Widget _buildBody() {
-    if (_loading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (_errorMessage != null) {
-      return _ErrorState(message: _errorMessage!, onRetry: _loadPets);
-    }
     if (_filtered.isEmpty) {
       return _EmptyState(filter: _activeFilter);
     }
@@ -252,49 +209,6 @@ class _EmptyState extends StatelessWidget {
               ).textTheme.titleMedium?.copyWith(color: AppColors.grey500),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.message, required this.onRetry});
-
-  final String message;
-  final Future<void> Function() onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppDimensions.spaceXL),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.cloud_off_rounded,
-                size: 56,
-                color: AppColors.grey300,
-              ),
-              const SizedBox(height: AppDimensions.spaceM),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                maxLines: 6,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(color: AppColors.grey500),
-              ),
-              const SizedBox(height: AppDimensions.spaceM),
-              FilledButton(
-                onPressed: onRetry,
-                child: const Text(AppStrings.petsRetry),
-              ),
-            ],
-          ),
         ),
       ),
     );

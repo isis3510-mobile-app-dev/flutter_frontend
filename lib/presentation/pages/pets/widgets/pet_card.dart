@@ -22,8 +22,9 @@ class PetCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor =
-        isDark ? AppColors.petCardBackgroundDark : AppColors.petCardBackground;
+    final cardColor = isDark
+        ? AppColors.petCardBackgroundDark
+        : AppColors.petCardBackground;
     final dividerColor = isDark
         ? AppColors.bottomNavTopBorderDark
         : AppColors.bottomNavTopBorder;
@@ -34,7 +35,7 @@ class PetCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.18 : 0.06),
+            color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.06),
             blurRadius: 18,
             offset: const Offset(0, 6),
           ),
@@ -110,13 +111,13 @@ class _PetCardTopSection extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            color: isDark
-                                ? AppColors.onSurfaceDark
-                                : AppColors.grey900,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                            height: 1.1,
-                          ),
+                        color: isDark
+                            ? AppColors.onSurfaceDark
+                            : AppColors.grey900,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        height: 1.1,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -193,9 +194,8 @@ class _PetCardPhoto extends StatelessWidget {
           ? Image.network(
               photoUrl!,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => _PetCardPhotoPlaceholder(
-                isDark: isDark,
-              ),
+              errorBuilder: (_, _, _) =>
+                  _PetCardPhotoPlaceholder(isDark: isDark),
             )
           : _PetCardPhotoPlaceholder(isDark: isDark),
     );
@@ -282,11 +282,8 @@ class _PetCardBreedLine extends StatelessWidget {
           _PetCardAssets.speciesIcon(species: species, isDark: isDark),
           width: 16,
           height: 16,
-          errorBuilder: (_, __, ___) => SvgPicture.asset(
-            _PetCardAssets.pets,
-            width: 16,
-            height: 16,
-          ),
+          errorBuilder: (_, _, _) =>
+              SvgPicture.asset(_PetCardAssets.pets, width: 16, height: 16),
         ),
         const SizedBox(width: 6),
         Expanded(
@@ -295,13 +292,13 @@ class _PetCardBreedLine extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: isDark
-                      ? AppColors.onSurfaceDark.withOpacity(0.84)
-                      : AppColors.grey700,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w400,
-                  height: 1.1,
-                ),
+              color: isDark
+                  ? AppColors.onSurfaceDark.withValues(alpha: 0.84)
+                  : AppColors.grey700,
+              fontSize: 15,
+              fontWeight: FontWeight.w400,
+              height: 1.1,
+            ),
           ),
         ),
       ],
@@ -383,11 +380,11 @@ class _PetCardMetaItem extends StatelessWidget {
         Text(
           label,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: textColor,
-                fontSize: 12.5,
-                fontWeight: FontWeight.w500,
-                height: 1,
-              ),
+            color: textColor,
+            fontSize: 12.5,
+            fontWeight: FontWeight.w500,
+            height: 1,
+          ),
         ),
       ],
     );

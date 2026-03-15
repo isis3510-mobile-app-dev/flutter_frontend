@@ -5,6 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../shared/widgets/quick_actions_fab.dart';
 import '../models/pet_ui_model.dart';
 import 'tabs/events_tab.dart';
 import 'tabs/overview_tab.dart';
@@ -65,19 +66,10 @@ class _PetDetailScreenState extends State<PetDetailScreen>
             ),
           ],
         ),
-        floatingActionButton: AnimatedBuilder(
-          animation: _tabController,
-          builder: (context, child) => AnimatedScale(
-            scale: _tabController.index > 0 ? 1.0 : 0.0,
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeInOut,
-            child: child,
-          ),
-          child: FloatingActionButton(
-            onPressed: () {},
-            backgroundColor: AppColors.bottomNavActive,
-            child: const Icon(Icons.add, color: Colors.white),
-          ),
+        floatingActionButton: QuickActionsFab(
+          onAddPet: () {},
+          onAddVaccine: () {},
+          onAddEvent: () {},
         ),
       ),
     );

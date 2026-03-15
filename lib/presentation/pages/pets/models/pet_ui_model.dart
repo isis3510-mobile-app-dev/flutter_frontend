@@ -1,6 +1,6 @@
 /// UI model for a pet.
-/// Field names are camelCase, mapping 1-to-1 with the backend JSON schema
-/// (snake_case). See [PetMapper.fromJson] for the conversion.
+/// Kept intentionally framework-agnostic so it can be backed by mock data
+/// now and by a repository/service layer later.
 class PetUiModel {
   const PetUiModel({
     required this.id,

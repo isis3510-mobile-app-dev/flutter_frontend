@@ -13,10 +13,10 @@ class PetsSearchBar extends StatelessWidget {
         ? AppColors.petsSearchBarBackgroundDark
         : AppColors.petsSearchBarBackground;
     final iconColor = isDark
-        ? AppColors.onSurfaceDark.withOpacity(0.72)
+        ? AppColors.onSurfaceDark.withValues(alpha: 0.72)
         : AppColors.petsSearchBarIcon;
     final placeholderColor = isDark
-        ? AppColors.onSurfaceDark.withOpacity(0.58)
+        ? AppColors.onSurfaceDark.withValues(alpha: 0.58)
         : AppColors.petsSearchBarPlaceholder;
     final textColor = isDark ? AppColors.onSurfaceDark : AppColors.onSurface;
 
@@ -31,11 +31,7 @@ class PetsSearchBar extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
-              Icon(
-                Icons.search_rounded,
-                size: 20,
-                color: iconColor,
-              ),
+              Icon(Icons.search_rounded, size: 20, color: iconColor),
               const SizedBox(width: 12),
               Expanded(
                 child: TextField(

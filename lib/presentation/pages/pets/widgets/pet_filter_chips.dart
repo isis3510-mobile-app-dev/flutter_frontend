@@ -5,11 +5,11 @@ enum PetFilter { all, healthy, vaccineDue, lost }
 
 extension PetFilterLabel on PetFilter {
   String get label => switch (this) {
-        PetFilter.all => 'All Pets',
-        PetFilter.healthy => 'Healthy',
-        PetFilter.vaccineDue => 'Vaccine Due',
-        PetFilter.lost => 'Lost',
-      };
+    PetFilter.all => 'All Pets',
+    PetFilter.healthy => 'Healthy',
+    PetFilter.vaccineDue => 'Vaccine Due',
+    PetFilter.lost => 'Lost',
+  };
 }
 
 class PetFilterChips extends StatelessWidget {
@@ -65,7 +65,9 @@ class _FilterChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: isActive
               ? AppColors.bottomNavActive
-              : (isDark ? AppColors.petCardBackgroundDark : AppColors.petCardBackground),
+              : (isDark
+                    ? AppColors.petCardBackgroundDark
+                    : AppColors.petCardBackground),
           borderRadius: BorderRadius.circular(999),
           border: isActive
               ? null
