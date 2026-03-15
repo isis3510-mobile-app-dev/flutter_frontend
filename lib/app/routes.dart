@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../presentation/pages/add_vaccine/add_vaccine_page.dart';
+import '../presentation/pages/auth/auth_page.dart';
 import '../presentation/pages/home/home_page.dart';
 import '../presentation/pages/pets/models/pet_ui_model.dart';
 import '../presentation/pages/pets/add_pet/add_pet_screen.dart';
@@ -17,6 +18,7 @@ class Routes {
 
   // Route name constants — use these instead of raw strings throughout the app
   static const String home = '/';
+  static const String auth = '/auth';
   static const String welcomePage = '/welcome';
   static const String pets = '/pets';
   static const String addPet = '/pets/add';
@@ -28,6 +30,9 @@ class Routes {
   /// Called automatically by MaterialApp when navigating.
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
+      case auth:
+        return _buildRoute(const AuthPage(), settings);
+
       case welcomePage:
         return _buildRoute(const WelcomePage(), settings);
 
