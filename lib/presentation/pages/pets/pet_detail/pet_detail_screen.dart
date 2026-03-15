@@ -105,11 +105,11 @@ class _PetDetailHeader extends StatelessWidget {
           children: [
             // Decorative background circle
             Positioned(
-              right: -50,
-              top: -30,
+              right: -30,
+              top: -96,
               child: Container(
-                width: 240,
-                height: 240,
+                width: 172,
+                height: 172,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: AppColors.bottomNavActive.withValues(alpha: 0.45),
@@ -334,24 +334,21 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color bgColor;
-    final Color textColor;
-    final String label;
-
-    switch (status) {
-      case 'healthy':
-        bgColor = AppColors.petStatusHealthyBg;
-        textColor = AppColors.petStatusHealthyText;
-        label = AppStrings.petDetailStatusHealthy;
-      case 'lost':
-        bgColor = AppColors.petStatusAttentionBg;
-        textColor = AppColors.petStatusAttentionText;
-        label = AppStrings.petDetailStatusLost;
-      default:
-        bgColor = AppColors.petStatusAttentionBg;
-        textColor = AppColors.petStatusAttentionText;
-        label = AppStrings.petDetailStatusNeedsAttention;
-    }
+    final bgColor = switch (status) {
+      'healthy' => AppColors.petStatusHealthyBg,
+      'lost' => AppColors.petStatusLostBg,
+      _ => AppColors.petStatusAttentionBg,
+    };
+    final textColor = switch (status) {
+      'healthy' => AppColors.petStatusHealthyText,
+      'lost' => AppColors.petStatusLostText,
+      _ => AppColors.petStatusAttentionText,
+    };
+    final label = switch (status) {
+      'healthy' => AppStrings.petDetailStatusHealthy,
+      'lost' => AppStrings.petDetailStatusLost,
+      _ => AppStrings.petDetailStatusNeedsAttention,
+    };
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),

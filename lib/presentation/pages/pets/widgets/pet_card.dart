@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/app_strings.dart';
 import '../models/pet_ui_model.dart';
 
 class PetCard extends StatelessWidget {
@@ -232,14 +233,21 @@ class _PetCardStatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isHealthy = status == 'healthy';
-    final backgroundColor = isHealthy
-        ? AppColors.petStatusHealthyBg
-        : AppColors.petStatusAttentionBg;
-    final textColor = isHealthy
-        ? AppColors.petStatusHealthyText
-        : AppColors.petStatusAttentionText;
-    final label = isHealthy ? 'Healthy' : 'Needs Attention';
+    final backgroundColor = switch (status) {
+      'healthy' => AppColors.petStatusHealthyBg,
+      'lost' => AppColors.petStatusLostBg,
+      _ => AppColors.petStatusAttentionBg,
+    };
+    final textColor = switch (status) {
+      'healthy' => AppColors.petStatusHealthyText,
+      'lost' => AppColors.petStatusLostText,
+      _ => AppColors.petStatusAttentionText,
+    };
+    final label = switch (status) {
+      'healthy' => AppStrings.petDetailStatusHealthy,
+      'lost' => AppStrings.petDetailStatusLost,
+      _ => AppStrings.petDetailStatusNeedsAttention,
+    };
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
