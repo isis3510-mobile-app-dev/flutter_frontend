@@ -292,22 +292,22 @@ class _AuthPageState extends State<AuthPage> {
   String _firebaseErrorMessage(FirebaseAuthException error) {
     switch (error.code) {
       case 'invalid-email':
-        return 'The email address is not valid.';
+        return AppStrings.authErrorInvalidEmail;
       case 'user-not-found':
-        return 'No account found with this email.';
+        return AppStrings.authErrorUserNotFound;
       case 'wrong-password':
       case 'invalid-credential':
-        return 'Invalid email or password.';
+        return AppStrings.authErrorWrongPassword;
       case 'email-already-in-use':
-        return 'An account with this email already exists.';
+        return AppStrings.authErrorEmailInUse;
       case 'weak-password':
-        return 'Password is too weak. Use at least 6 characters.';
+        return AppStrings.authErrorWeakPassword;
       case 'network-request-failed':
-        return 'No internet connection.';
+        return AppStrings.errorNoConnection;
       case 'account-exists-with-different-credential':
-        return 'An account already exists with this email.';
+        return AppStrings.authErrorAccountExistsDifferentCredential;
       case 'too-many-requests':
-        return 'Too many attempts. Please try again later.';
+        return AppStrings.authErrorTooManyRequests;
       default:
         return AppStrings.errorGeneric;
     }

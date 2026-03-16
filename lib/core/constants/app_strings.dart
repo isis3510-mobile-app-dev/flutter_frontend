@@ -32,6 +32,15 @@ abstract class AppStrings {
   static const String authOrContinueWith = 'or continue with';
   static const String authContinueWithGoogle = 'Continue with Google';
 
+    // --- Auth error messages ---
+    static const String authErrorInvalidEmail = 'The email address is not valid.';
+    static const String authErrorUserNotFound = 'No account found with this email.';
+    static const String authErrorWrongPassword = 'Invalid email or password.';
+    static const String authErrorEmailInUse = 'An account with this email already exists.';
+    static const String authErrorWeakPassword = 'Password is too weak. Use at least 6 characters.';
+    static const String authErrorAccountExistsDifferentCredential = 'An account already exists with this email.';
+    static const String authErrorTooManyRequests = 'Too many attempts. Please try again later.';
+
   // --- Error messages ---
   static const String errorGeneric = 'An unexpected error occurred.';
   static const String errorNoConnection = 'No internet connection.';
