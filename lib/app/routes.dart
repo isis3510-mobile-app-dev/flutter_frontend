@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/pages/add_event/add_event_page.dart';
 import 'package:flutter_frontend/presentation/pages/add_vaccine/add_vaccine_page.dart';
+import 'package:flutter_frontend/presentation/pages/nfc/nfc_page.dart';
 import 'package:flutter_frontend/presentation/pages/records/detail/detail_page.dart';
 import '../presentation/pages/auth/auth_page.dart';
 import '../presentation/pages/home/home_page.dart';
@@ -29,6 +30,7 @@ class Routes {
   static const String vaccineDetail = 'vaccine/detail';
   static const String addEvent = '/event/add';
   static const String eventDetail = 'event/detail';
+  static const String nfc = '/nfc';
   static const String records = '/records';
   static const String profile = '/profile';
 
@@ -60,6 +62,9 @@ class Routes {
 
       case addVaccine:
         return _buildRoute(const AddVaccinePage(), settings);
+
+      case nfc:
+        return _buildRoute(const NfcPage(), settings);
 
       case records:
         return _buildRecordsRoute(settings);

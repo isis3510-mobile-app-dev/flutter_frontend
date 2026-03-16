@@ -90,7 +90,7 @@ class _HomePageState extends State<HomePage> {
                 userName: 'Sarah',
                 hasNotification: false,
                 onNotificationTap: () => _showUnavailableMessage(),
-                onNfcTap: () => _showUnavailableMessage(),
+                onNfcTap: () => Navigator.of(context).pushNamed(Routes.nfc),
               ),
               const SizedBox(height: AppDimensions.spaceL),
 

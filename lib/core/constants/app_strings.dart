@@ -30,6 +30,57 @@ abstract class AppStrings {
   static const String homeNeedsAttention = 'Needs Attention';
   static const String homeLost = 'Lost';
 
+  // --- NFC page ---
+  static const String nfcTitle = 'NFC Tag';
+  static const String nfcReadTag = 'Read Tag';
+  static const String nfcWriteTag = 'Write Tag';
+  static const String nfcScanTitle = 'Scan NFC Tag';
+  static const String nfcScanDescription =
+      'Bring your phone close to a PetCare NFC tag to read the pet information';
+  static const String nfcHoldNearTag = 'Hold your phone near the NFC tag';
+  static const String nfcReadyToWrite =
+      'Ready to write. Choose pet data and hold the tag near your phone.';
+  static const String nfcSelectPetToLink = 'Select pet to write:';
+  static const String nfcDataToWrite = 'Data to write';
+  static const String nfcBasicInfoOption = 'Pet Basic Info (Name, Breed)';
+  static const String nfcOwnerContactOption = 'Owner Contact (Phone, Email)';
+  static const String nfcEmergencyOption =
+      'Emergency Medical Info (Allergies, Vet contact)';
+  static const String nfcStartScanning = 'Start Scanning';
+  static const String nfcWriteToTag = 'Write to Tag';
+  static const String nfcStartWriting = 'Start Writing';
+  static const String nfcTestReadTag = 'Test / Read Tag';
+  static const String nfcWhatDoesReadingDo = 'What does reading do?';
+  static const String nfcReadingBenefitOne = "Shows the pet's name and photo";
+  static const String nfcReadingBenefitTwo = 'Displays owner contact info';
+  static const String nfcReadingBenefitThree = 'Shows emergency medical notes';
+  static const String nfcReadingBenefitFour = 'Allows calling the owner instantly';
+  static const String nfcScanning = 'Scanning...';
+    static const String nfcWriting = 'Writing...';
+  static const String nfcScanningHint = 'Hold your device near the NFC tag';
+  static const String nfcCancel = 'Cancel';
+  static const String nfcScanSuccess = 'Tag scanned successfully';
+    static const String nfcTagWrittenTitle = 'Tag Written!';
+    static const String nfcTagWrittenDescriptionSuffix =
+            "'s information has been successfully written to the NFC tag. Anyone who scans it can contact you instantly.";
+    static const String nfcStoredOnTagTitle = "What's stored on the tag:";
+    static const String nfcStoredPetLabel = 'Pet';
+    static const String nfcStoredOwnerLabel = 'Owner';
+    static const String nfcStoredPhoneLabel = 'Phone';
+    static const String nfcStoredMicrochipLabel = 'Microchip';
+    static const String nfcStoredMicrochipValue = 'XR123456789';
+    static const String nfcWriteAnother = 'Write Another';
+    static const String nfcDone = 'Done';
+  static const String nfcHealthyStatus = 'Healthy';
+  static const String nfcOwnerInformation = 'Owner Information';
+  static const String nfcCallOwnerNow = 'Call Owner Now';
+  static const String nfcSendSms = 'Send SMS';
+  static const String nfcShare = 'Share';
+  static const String nfcMedicalNotes = 'Medical Notes';
+  static const String nfcMedicalNotesValue =
+      'No known allergies. Microchip: XR123456789';
+  static const String nfcScanAnotherTag = 'Scan another tag';
+
   // --- Auth page ---
   static const String authAppName = 'PetCare';
   static const String authSubtitle = 'Your pet\'s health companion';
