@@ -5,7 +5,7 @@ import 'package:flutter_frontend/core/constants/app_strings.dart';
 import 'package:flutter_frontend/core/utils/context_extensions.dart';
 import 'package:flutter_frontend/presentation/pages/home/home_page.dart';
 import 'package:flutter_frontend/presentation/pages/records/widgets/record_list_item.dart';
-import 'package:flutter_frontend/presentation/pages/vaccine_detail/vaccine_detail_page.dart';
+import 'package:flutter_frontend/presentation/pages/records/detail/detail_page.dart';
 import 'package:flutter_frontend/shared/widgets/filter_toggle_bar.dart';
 import 'package:flutter_frontend/shared/widgets/petcare_bottom_nav_bar.dart';
 import 'package:flutter_frontend/shared/widgets/quick_actions_fab.dart';
@@ -98,10 +98,19 @@ class _RecordsPageState extends State<RecordsPage> {
     ),
   ];
 
-  void navigateToVaccineDetail() {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (context) => const VaccineDetailPage()));
+  void navigateToDetail(_RecordType type) {
+    if (type == _RecordType.vaccine) {
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (context) => const DetailPage(type: 'vaccine',)));
+      return;
+    } else if (type == _RecordType.event) {
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (context) => const DetailPage(type: 'event',)));
+      return;
+    }
+    return;
   }
 
   void _handleBottomNavTap(int index) {
@@ -127,6 +136,10 @@ class _RecordsPageState extends State<RecordsPage> {
     Navigator.of(context).pushNamed(Routes.addVaccine);
   }
 
+  void _goToAddEvent() {
+    Navigator.of(context).pushNamed(Routes.addEvent);
+  }
+
   @override
   Widget build(BuildContext context) {
     final selectedLabel = _filters[_selectedFilterIndex].label;
@@ -145,7 +158,7 @@ class _RecordsPageState extends State<RecordsPage> {
       floatingActionButton: QuickActionsFab(
         onAddPet: () {},
         onAddVaccine: _goToAddVaccine,
-        onAddEvent: () {},
+        onAddEvent: _goToAddEvent,
       ),
       body: SafeArea(
         child: Column(
@@ -189,7 +202,7 @@ class _RecordsPageState extends State<RecordsPage> {
                       icon: record.icon,
                       iconBackground: record.iconBackground,
                       iconColor: record.iconColor,
-                      onTap: navigateToVaccineDetail,
+                      onTap: () => navigateToDetail(record.type),
                     ),
                   const SizedBox(height: 12),
                 ],

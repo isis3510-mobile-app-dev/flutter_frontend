@@ -44,6 +44,10 @@ class _HomePageState extends State<HomePage> {
     Navigator.of(context).pushNamed(Routes.addVaccine);
   }
 
+  void _goToAddEvent() {
+    Navigator.of(context).pushNamed(Routes.addEvent);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -53,7 +57,7 @@ class _HomePageState extends State<HomePage> {
       floatingActionButton: QuickActionsFab(
         onAddPet: () {},
         onAddVaccine: _goToAddVaccine,
-        onAddEvent: () {},
+        onAddEvent: _goToAddEvent,
       ),
       bottomNavigationBar: PetcareBottomNavBar(
         currentIndex: _currentIndex,
