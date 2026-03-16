@@ -25,9 +25,9 @@ class UpcomingVaccineCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final backgroundColor = isDark
-        ? AppColors.surfaceDark
-        : AppColors.surface;
-    final textColor = isDark ? AppColors.onBackgroundDark : AppColors.onSurface;
+        ? AppColors.secondaryDark
+        : AppColors.secondary;
+    final textColor = isDark ? AppColors.onBackgroundDark : AppColors.onSecondary;
     final subtextColor = isDark ? AppColors.grey500 : AppColors.grey700;
 
     return GestureDetector(
