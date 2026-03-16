@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-
-import '../presentation/pages/add_vaccine/add_vaccine_page.dart';
+import 'package:flutter_frontend/presentation/pages/add_event/add_event_page.dart';
+import 'package:flutter_frontend/presentation/pages/add_vaccine/add_vaccine_page.dart';
+import 'package:flutter_frontend/presentation/pages/records/detail/detail_page.dart';
 import '../presentation/pages/auth/auth_page.dart';
 import '../presentation/pages/home/home_page.dart';
 import '../presentation/pages/pets/models/pet_ui_model.dart';
@@ -25,6 +26,9 @@ class Routes {
   static const String addPet = '/pets/add';
   static const String petDetail = '/pets/detail';
   static const String addVaccine = '/vaccines/add';
+  static const String vaccineDetail = 'vaccine/detail';
+  static const String addEvent = '/event/add';
+  static const String eventDetail = 'event/detail';
   static const String records = '/records';
   static const String profile = '/profile';
 
@@ -58,6 +62,14 @@ class Routes {
 
       case profile:
         return _buildRoute(const ProfilePage(), settings);
+      case addEvent:
+        return _buildRoute(const AddEventPage(), settings);
+
+      case vaccineDetail:
+        return _buildRoute(const DetailPage(type: 'vaccine'), settings);
+
+      case eventDetail:
+        return _buildRoute(const DetailPage(type: 'event'), settings);
 
       default:
         // Fallback for unknown routes
