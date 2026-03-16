@@ -8,6 +8,7 @@ import '../presentation/pages/pets/models/pet_ui_model.dart';
 import '../presentation/pages/pets/add_pet/add_pet_screen.dart';
 import '../presentation/pages/pets/pet_detail/pet_detail_screen.dart';
 import '../presentation/pages/pets/pets_page.dart';
+import '../presentation/pages/profile/profile_page.dart';
 import '../presentation/pages/records/records_page.dart';
 import '../presentation/pages/welcome/welcome_page.dart';
 
@@ -29,6 +30,7 @@ class Routes {
   static const String addEvent = '/event/add';
   static const String eventDetail = 'event/detail';
   static const String records = '/records';
+  static const String profile = '/profile';
 
   /// Maps route names to their corresponding page widgets.
   /// Called automatically by MaterialApp when navigating.
@@ -58,6 +60,8 @@ class Routes {
       case records:
         return _buildRoute(const RecordsPage(), settings);
 
+      case profile:
+        return _buildRoute(const ProfilePage(), settings);
       case addEvent:
         return _buildRoute(const AddEventPage(), settings);
 
@@ -93,6 +97,8 @@ class Routes {
       0 => home,
       1 => pets,
       2 => records,
+
+      4 => profile,
       _ => null,
     };
   }
