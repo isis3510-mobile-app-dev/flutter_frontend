@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/app/routes.dart';
 import 'package:flutter_frontend/core/constants/app_colors.dart';
-import 'package:flutter_frontend/core/constants/app_strings.dart';
-import 'package:flutter_frontend/core/utils/context_extensions.dart';
 import 'package:flutter_frontend/presentation/pages/home/home_page.dart';
-import 'package:flutter_frontend/presentation/pages/records/widgets/record_list_item.dart';
-import 'package:flutter_frontend/presentation/pages/records/detail/detail_page.dart';
-import 'package:flutter_frontend/shared/widgets/filter_toggle_bar.dart';
-import 'package:flutter_frontend/shared/widgets/petcare_bottom_nav_bar.dart';
-import 'package:flutter_frontend/shared/widgets/quick_actions_fab.dart';
+import '../../../app/routes.dart';
+import '../../../core/constants/app_strings.dart';
+import '../../../core/utils/context_extensions.dart';
+import '../../../shared/widgets/filter_toggle_bar.dart';
+import '../../../shared/widgets/petcare_bottom_nav_bar.dart';
+import '../../../shared/widgets/quick_actions_fab.dart';
+import '/detail/detail_page.dart';
+import 'widgets/vaccine_card.dart';
 
 class RecordsPage extends StatefulWidget {
   const RecordsPage({super.key});
@@ -19,17 +19,7 @@ class RecordsPage extends StatefulWidget {
 
 class _RecordsPageState extends State<RecordsPage> {
   int _selectedFilterIndex = 0;
-  int _currentIndex = 2;
-
-  void _replaceWithoutAnimation(Widget page) {
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        pageBuilder: (_, __, ___) => page,
-        transitionDuration: Duration.zero,
-        reverseTransitionDuration: Duration.zero,
-      ),
-    );
-  }
+  static const _currentIndex = 2;
 
   late final List<FilterOption> _filters = [
     const FilterOption(
@@ -113,23 +103,24 @@ class _RecordsPageState extends State<RecordsPage> {
     return;
   }
 
+  void _showUnavailableMessage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('This section is not available yet.')),
+    );
+  }
+
   void _handleBottomNavTap(int index) {
     if (index == _currentIndex) {
       return;
     }
 
-    if (index == 0) {
-      _replaceWithoutAnimation(const HomePage());
+    final routeName = Routes.bottomNavRouteForIndex(index);
+    if (routeName == null) {
+      _showUnavailableMessage();
       return;
     }
 
-    if (index == 2) {
-      return;
-    }
-
-    setState(() {
-      _currentIndex = index;
-    });
+    Navigator.of(context).pushReplacementNamed(routeName);
   }
 
   void _goToAddVaccine() {
@@ -138,6 +129,10 @@ class _RecordsPageState extends State<RecordsPage> {
 
   void _goToAddEvent() {
     Navigator.of(context).pushNamed(Routes.addEvent);
+  }
+  
+  void _goToAddPet() {
+    Navigator.of(context).pushNamed(Routes.addPet);
   }
 
   @override
@@ -156,7 +151,7 @@ class _RecordsPageState extends State<RecordsPage> {
     return Scaffold(
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: QuickActionsFab(
-        onAddPet: () {},
+        onAddPet: _goToAddPet,
         onAddVaccine: _goToAddVaccine,
         onAddEvent: _goToAddEvent,
       ),
