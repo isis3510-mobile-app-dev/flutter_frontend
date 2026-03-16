@@ -21,8 +21,10 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - .env
     - assets/images/
+    - assets/icons/app/
+    - assets/icons/eventsIcons/
     - assets/icons/featureIcons/
     - assets/icons/petRelated/
+    - assets/icons/socialIcons/
     - assets/icons/status/

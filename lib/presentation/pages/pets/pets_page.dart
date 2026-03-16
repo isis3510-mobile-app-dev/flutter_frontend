@@ -41,6 +41,34 @@ class _PetsPageState extends State<PetsPage> {
     _filtered = _applyFilters(_allPets, _activeFilter, query);
   });
 
+  void _showUnavailableMessage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('This section is not available yet.')),
+    );
+  }
+
+  void _handleBottomNavTap(int index) {
+    if (index == 1) {
+      return;
+    }
+
+    final routeName = Routes.bottomNavRouteForIndex(index);
+    if (routeName == null) {
+      _showUnavailableMessage();
+      return;
+    }
+
+    Navigator.of(context).pushReplacementNamed(routeName);
+  }
+
+  void _goToAddVaccine() {
+    Navigator.of(context).pushNamed(Routes.addVaccine);
+  }
+
+  void _goToAddEvent() {
+    _showUnavailableMessage();
+  }
+
   static List<PetUiModel> _applyFilters(
     List<PetUiModel> pets,
     PetFilter filter,
@@ -91,15 +119,12 @@ class _PetsPageState extends State<PetsPage> {
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: QuickActionsFab(
         onAddPet: () => Navigator.pushNamed(context, Routes.addPet),
-        onAddVaccine: () {},
-        onAddEvent: () {},
+        onAddVaccine: _goToAddVaccine,
+        onAddEvent: _goToAddEvent,
       ),
       bottomNavigationBar: PetcareBottomNavBar(
         currentIndex: 1,
-        onTap: (index) {
-          if (index == 1) return;
-          // TODO: navigate to the corresponding tab
-        },
+        onTap: _handleBottomNavTap,
       ),
     );
   }

@@ -17,6 +17,21 @@ abstract class AppStrings {
   static const String homeTitle = 'Home';
   static const String homeWelcome = 'Welcome back!';
 
+  // --- Auth page ---
+  static const String authAppName = 'PetCare';
+  static const String authSubtitle = 'Your pet\'s health companion';
+  static const String authSignIn = 'Sign In';
+  static const String authCreateAccount = 'Create Account';
+  static const String authFullName = 'Full Name';
+  static const String authFullNameHint = 'Sarah Johnson';
+  static const String authEmailAddress = 'Email Address';
+  static const String authEmailHint = 'you@example.com';
+  static const String authPassword = 'Password';
+  static const String authPasswordHint = 'Min. 8 characters';
+  static const String authForgotPassword = 'Forgot password?';
+  static const String authOrContinueWith = 'or continue with';
+  static const String authContinueWithGoogle = 'Continue with Google';
+
   // --- Error messages ---
   static const String errorGeneric = 'An unexpected error occurred.';
   static const String errorNoConnection = 'No internet connection.';
@@ -158,11 +173,15 @@ abstract class AppStrings {
   static const String petDetailMoreSemantics = 'More options';
 
   // --- Welcome pages ---
-  static const String welcomeFirstTitle = 'All your pet\'s health, in one place.';
-  static const String welcomeFirstDescription = 'Centralize vaccines, medications, records, and documents. Never miss a dose or appointment again';
+  static const String welcomeFirstTitle =
+      'All your pet\'s health, in one place.';
+  static const String welcomeFirstDescription =
+      'Centralize vaccines, medications, records, and documents. Never miss a dose or appointment again';
   static const String welcomeSecondTitle = 'Track vaccines & medications';
-  static const String welcomeSecondDescription = 'Timeline-based vaccine history, smart reminders for medications, and overdue alerts that keep you informed.';
+  static const String welcomeSecondDescription =
+      'Timeline-based vaccine history, smart reminders for medications, and overdue alerts that keep you informed.';
   static const String welcomeThirdTitle = 'NFC tag integration';
-  static const String welcomeThirdDescription = 'Write your pet\'s info to an NFC tag. Anyone who finds your pet can contact you instantly.';
+  static const String welcomeThirdDescription =
+      'Write your pet\'s info to an NFC tag. Anyone who finds your pet can contact you instantly.';
   static const String welcomeAlreadyHaveAccount = 'Already have an account?';
 }

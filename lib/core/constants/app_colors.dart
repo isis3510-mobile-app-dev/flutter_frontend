@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 /// Never hardcode colors inside widgets — always reference from here.
 /// This makes rebranding or theming changes straightforward.
 abstract class AppColors {
+  static const Color transparent = Colors.transparent;
+  static const Color shadowSoft = Color(0x1A000000);
+
   // --- Primary palette ---
   static const Color primary = Color(0xFF006A60);
   static const Color primaryVariant = Color(0xFF9FF2E2);
@@ -76,7 +79,7 @@ abstract class AppColors {
   static const Color quickActionIconBackgroundDark = Color(0xFF1D4F49);
   static const Color quickActionIconTint = Color(0xFF004D45);
   static const Color quickActionIconTintDark = Color(0xFF9FF2E2);
-  static const Color quickActionShadow = Color(0x1A000000);
+  static const Color quickActionShadow = shadowSoft;
   static const Color addPetBannerText = Color(0xFF00201C);
 
   // --- Pet status pills ---

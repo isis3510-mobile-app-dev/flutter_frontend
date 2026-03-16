@@ -10,21 +10,31 @@ abstract class AppDimensions {
   static const double spaceL = 24.0;
   static const double spaceXL = 32.0;
   static const double spaceXXL = 48.0;
+  static const double spaceXXXL = 64.0;
 
   // --- Border radius ---
   static const double radiusS = 4.0;
   static const double radiusM = 8.0;
   static const double radiusL = 16.0;
   static const double radiusXL = 24.0;
-  static const double radiusCircle = 100.0; // Use for fully rounded (pill/circle) shapes
+  static const double radiusCircle = 100.0;
 
   // --- Icon sizes ---
   static const double iconS = 16.0;
   static const double iconM = 24.0;
   static const double iconL = 32.0;
+  static const double iconXL = 48.0;
+  static const double iconXXL = 64.0;
+  static const double iconXXXL = 96.0;
+
+  // --- Strokes ---
+  static const double strokeThin = 1.0;
+  static const double strokeRegular = 1.5;
 
   // --- Component specific ---
   static const double buttonHeight = 48.0;
+  static const double buttonHeightL = 52.0;
+  static const double segmentedControlHeight = 48.0;
   static const double inputHeight = 56.0;
   static const double appBarHeight = 56.0;
   static const double cardElevation = 2.0;

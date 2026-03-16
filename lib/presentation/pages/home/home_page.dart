@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+
 import '../../../app/routes.dart';
 import '../../../core/constants/app_strings.dart';
-import '../records/records_page.dart';
 import '../../../shared/widgets/petcare_bottom_nav_bar.dart';
 import '../../../shared/widgets/quick_actions_fab.dart';
 
@@ -15,33 +15,34 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  int _currentIndex = 0;
+  static const _currentIndex = 0;
 
-  void _replaceWithoutAnimation(Widget page) {
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        pageBuilder: (_, __, ___) => page,
-        transitionDuration: Duration.zero,
-        reverseTransitionDuration: Duration.zero,
-      ),
+  void _showUnavailableMessage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('This section is not available yet.')),
     );
   }
 
   void _handleBottomNavTap(int index) {
-    if (index == 0) {
+    if (index == _currentIndex) {
       return;
     }
 
-    if (index == 2) {
-      _replaceWithoutAnimation(const RecordsPage());
+    final routeName = Routes.bottomNavRouteForIndex(index);
+    if (routeName == null) {
+      _showUnavailableMessage();
       return;
     }
 
-    setState(() => _currentIndex = index);
+    Navigator.of(context).pushReplacementNamed(routeName);
   }
 
   void _goToAddVaccine() {
     Navigator.of(context).pushNamed(Routes.addVaccine);
+  }
+
+  void _goToAddEvent() {
+    _showUnavailableMessage();
   }
 
   @override
@@ -53,18 +54,10 @@ class _HomePageState extends State<HomePage> {
       floatingActionButton: QuickActionsFab(
         onAddPet: () => Navigator.pushNamed(context, Routes.addPet),
         onAddVaccine: _goToAddVaccine,
-        onAddEvent: () {},
+        onAddEvent: _goToAddEvent,
       ),
       bottomNavigationBar: PetcareBottomNavBar(
         currentIndex: _currentIndex,
-        onTap: (index) {
-          if (index == 0) return;
-          if (index == 1) {
-            Navigator.pushNamed(context, Routes.pets);
-            return;
-          }
-          setState(() => _currentIndex = index);
-        },
         onTap: _handleBottomNavTap,
       ),
     );

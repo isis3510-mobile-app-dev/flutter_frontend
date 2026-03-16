@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../widgets/stepper.dart' as app_stepper;
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
@@ -8,7 +9,6 @@ import 'add_pet_form_types.dart';
 import 'steps/step_basic_info.dart';
 import 'steps/step_details.dart';
 import 'steps/step_medical.dart';
-import 'widgets/step_progress_indicator.dart';
 
 class AddPetScreen extends StatefulWidget {
   const AddPetScreen({super.key});
@@ -166,10 +166,14 @@ class _AddPetScreenState extends State<AddPetScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                StepProgressIndicator(
+                app_stepper.Stepper(
+                  steps: _stepLabels,
                   currentStep: _currentStep,
-                  totalSteps: 3,
-                  labels: _stepLabels,
+                  activeColor: AppColors.bottomNavActive,
+                  activeTextColor: AppColors.bottomNavActive,
+                  inactiveTextColor: AppColors.grey500,
+                  inactiveColor: AppColors.addPetStepInactiveCircle,
+                  lineColor: AppColors.grey300,
                 ),
                 const SizedBox(height: AppDimensions.spaceXL),
                 AnimatedSwitcher(
