@@ -65,6 +65,10 @@ class AuthService {
     await _googleSignIn.signOut();
   }
 
+  Future<void> sendPasswordResetEmail(String email) {
+    return _firebaseAuth.sendPasswordResetEmail(email: email);
+  }
+
   Future<String?> getIdToken({bool forceRefresh = false}) {
     final user = _firebaseAuth.currentUser;
     if (user == null) {

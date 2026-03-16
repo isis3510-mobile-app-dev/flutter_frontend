@@ -29,6 +29,8 @@ abstract class AppStrings {
   static const String authPassword = 'Password';
   static const String authPasswordHint = 'Min. 8 characters';
   static const String authForgotPassword = 'Forgot password?';
+    static const String authForgotPasswordEnterEmail = 'Enter your email first.';
+    static const String authForgotPasswordEmailSent = 'If an account exists for this email, we sent a password reset link.';
   static const String authOrContinueWith = 'or continue with';
   static const String authContinueWithGoogle = 'Continue with Google';
 
@@ -40,6 +42,7 @@ abstract class AppStrings {
     static const String authErrorWeakPassword = 'Password is too weak. Use at least 6 characters.';
     static const String authErrorAccountExistsDifferentCredential = 'An account already exists with this email.';
     static const String authErrorTooManyRequests = 'Too many attempts. Please try again later.';
+    static const String authErrorResetPassword = 'Could not send the password reset email. Please try again.';
 
   // --- Error messages ---
   static const String errorGeneric = 'An unexpected error occurred.';

@@ -191,7 +191,7 @@ class _AuthPageState extends State<AuthPage> {
       Align(
         alignment: Alignment.centerRight,
         child: TextButton(
-          onPressed: () {},
+          onPressed: _isLoading ? null : _handleForgotPassword,
           style: TextButton.styleFrom(
             padding: EdgeInsets.zero,
             minimumSize: Size.zero,
@@ -247,6 +247,58 @@ class _AuthPageState extends State<AuthPage> {
 
   Future<void> _handleGoogleSignIn() async {
     await _runAuthAction(_authService.signInWithGoogle);
+  }
+
+  Future<void> _handleForgotPassword() async {
+    final email = _emailController.text.trim();
+
+    if (email.isEmpty) {
+      setState(() {
+        _errorMessage = AppStrings.authForgotPasswordEnterEmail;
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await _authService.sendPasswordResetEmail(email);
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(AppStrings.authForgotPasswordEmailSent),
+        ),
+      );
+    } on FirebaseAuthException catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _errorMessage = _forgotPasswordErrorMessage(error);
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _errorMessage = AppStrings.authErrorResetPassword;
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   bool _validateInputs({required bool requireName}) {
@@ -310,6 +362,19 @@ class _AuthPageState extends State<AuthPage> {
         return AppStrings.authErrorTooManyRequests;
       default:
         return AppStrings.errorGeneric;
+    }
+  }
+
+  String _forgotPasswordErrorMessage(FirebaseAuthException error) {
+    switch (error.code) {
+      case 'invalid-email':
+        return AppStrings.authErrorInvalidEmail;
+      case 'network-request-failed':
+        return AppStrings.errorNoConnection;
+      case 'too-many-requests':
+        return AppStrings.authErrorTooManyRequests;
+      default:
+        return AppStrings.authErrorResetPassword;
     }
   }
 }
