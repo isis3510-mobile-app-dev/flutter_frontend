@@ -32,6 +32,10 @@ class Routes {
   static const String records = '/records';
   static const String profile = '/profile';
 
+  static const int recordsFilterAll = 0;
+  static const int recordsFilterVaccines = 1;
+  static const int recordsFilterEvents = 2;
+
   /// Maps route names to their corresponding page widgets.
   /// Called automatically by MaterialApp when navigating.
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
@@ -58,7 +62,7 @@ class Routes {
         return _buildRoute(const AddVaccinePage(), settings);
 
       case records:
-        return _buildRoute(const RecordsPage(), settings);
+        return _buildRecordsRoute(settings);
 
       case profile:
         return _buildRoute(const ProfilePage(), settings);
@@ -80,6 +84,20 @@ class Routes {
   /// Helper to build a consistent page transition for all routes.
   static MaterialPageRoute _buildRoute(Widget page, RouteSettings settings) {
     return MaterialPageRoute(builder: (_) => page, settings: settings);
+  }
+
+  static MaterialPageRoute _buildRecordsRoute(RouteSettings settings) {
+    final argument = settings.arguments;
+    final initialFilterIndex = argument is int &&
+            argument >= recordsFilterAll &&
+            argument <= recordsFilterEvents
+        ? argument
+        : recordsFilterAll;
+
+    return _buildRoute(
+      RecordsPage(initialFilterIndex: initialFilterIndex),
+      settings,
+    );
   }
 
   static MaterialPageRoute _buildPetDetailRoute(RouteSettings settings) {

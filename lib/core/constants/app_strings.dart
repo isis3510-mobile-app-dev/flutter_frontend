@@ -16,6 +16,19 @@ abstract class AppStrings {
   // --- Home page ---
   static const String homeTitle = 'Home';
   static const String homeWelcome = 'Welcome back!';
+  static const String homeGreeting = 'Hello,';
+  static const String homePetsSection = 'My Pets';
+  static const String homeSeeAll = 'See all';
+  static const String homeAddPet = 'Add Pet';
+  static const String homeOverdueVaccines = 'Overdue Vaccines';
+  static const String homeNextVaccine = 'NEXT VACCINE';
+  static const String homeActiveEvents = 'Active Events';
+  static const String homeViewAll = 'View all';
+  static const String homeReminderOn = 'Reminder on';
+  static const String homeUpcomingDaysLeft = 'd';
+  static const String homeHealthy = 'Healthy';
+  static const String homeNeedsAttention = 'Needs Attention';
+  static const String homeLost = 'Lost';
 
   // --- Auth page ---
   static const String authAppName = 'PetCare';
