@@ -10,14 +10,19 @@ import '../../../shared/widgets/quick_actions_fab.dart';
 import 'detail/detail_page.dart';
 
 class RecordsPage extends StatefulWidget {
-  const RecordsPage({super.key});
+  const RecordsPage({
+    super.key,
+    this.initialFilterIndex = Routes.recordsFilterAll,
+  });
+
+  final int initialFilterIndex;
 
   @override
   State<RecordsPage> createState() => _RecordsPageState();
 }
 
 class _RecordsPageState extends State<RecordsPage> {
-  int _selectedFilterIndex = 0;
+  late int _selectedFilterIndex;
   static const _currentIndex = 2;
 
   late final List<FilterOption> _filters = [
@@ -86,6 +91,15 @@ class _RecordsPageState extends State<RecordsPage> {
       iconColor: AppColors.positiveText,
     ),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedFilterIndex = widget.initialFilterIndex >= Routes.recordsFilterAll &&
+            widget.initialFilterIndex <= Routes.recordsFilterEvents
+        ? widget.initialFilterIndex
+        : Routes.recordsFilterAll;
+  }
 
   void navigateToDetail(_RecordType type) {
     if (type == _RecordType.vaccine) {
