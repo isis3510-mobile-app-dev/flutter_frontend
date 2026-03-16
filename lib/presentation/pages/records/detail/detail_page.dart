@@ -1,21 +1,45 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/app/routes.dart';
 import 'package:flutter_frontend/core/constants/app_colors.dart';
 import 'package:flutter_frontend/core/constants/app_strings.dart';
 import 'package:flutter_frontend/core/utils/context_extensions.dart';
-import 'package:flutter_frontend/presentation/pages/add_vaccine/add_vaccine_page.dart';
 import 'package:flutter_frontend/shared/widgets/full_width_button.dart';
 
-class VaccineDetailPage extends StatelessWidget {
-  const VaccineDetailPage({super.key});
+class DetailPage extends StatelessWidget {
+  const DetailPage({super.key, required this.type});
+
+  final String type;
 
   void navigateToEditPage(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => const AddVaccinePage()),
-    );
+    if (type == 'vaccine') {
+      Navigator.of(context).pushNamed(Routes.addVaccine);
+    } else if (type == 'event') {
+      Navigator.of(context).pushNamed(Routes.addEvent);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final (appbarIcon, appbarTitle, lastCardTitle, lastCardEmpty) = switch (type) {
+      'vaccine' => (
+          Icons.vaccines_outlined,
+          AppStrings.vaccineDetailsTitle,
+          AppStrings.vaccineAttachedDocumentTitle,
+          AppStrings.vaccineNoDocuments
+        ),
+      'event' => (
+          Icons.event_note_outlined,
+          AppStrings.eventDetailsTitle,
+          AppStrings.eventNotesTitle,
+          AppStrings.eventNoNotes
+        ),
+      _ => (
+          Icons.info_outline,
+          '',
+          '',
+          ''
+        ),
+    };
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -33,14 +57,14 @@ class VaccineDetailPage extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
-                Icon(Icons.vaccines_outlined), 
+                Icon(appbarIcon),
                 SizedBox(width: 8),
-                Text(AppStrings.vaccineDetailsTitle),
+                Text(appbarTitle),
               ]
             ),
             const SizedBox(height: 2),
             Text(
-              AppStrings.vaccineDetailsSubtitle,
+              AppStrings.detailsSubtitle,
               style: TextStyle(
                 fontSize: 12,
                 color: AppColors.grey100,
@@ -61,7 +85,7 @@ class VaccineDetailPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      AppStrings.vaccineNameBordetella,
+                      "Bordetella",
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
@@ -122,18 +146,18 @@ class VaccineDetailPage extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               _InfoCard(
-                title: AppStrings.vaccineProviderInfoTitle,
+                title: AppStrings.providerInfoTitle,
                 child: Column(
                   children: const [
                     _InfoRow(
                       icon: Icons.person_outline,
-                      label: AppStrings.vaccineVeterinarianLabel,
+                      label: AppStrings.veterinarianLabel,
                       value: AppStrings.vaccineVeterinarianValue,
                     ),
                     Divider(height: 24),
                     _InfoRow(
                       icon: Icons.location_on_outlined,
-                      label: AppStrings.vaccineClinicLabel,
+                      label: AppStrings.clinicLabel,
                       value: AppStrings.vaccineClinicValue,
                     ),
                   ],
@@ -141,9 +165,9 @@ class VaccineDetailPage extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               _InfoCard(
-                title: AppStrings.vaccineAttachedDocumentTitle,
-                child: const Text(
-                  AppStrings.vaccineNoDocuments,
+                title: lastCardTitle,
+                child: Text(
+                  lastCardEmpty,
                   style: TextStyle(
                     fontSize: 14,
                     color: AppColors.grey700,

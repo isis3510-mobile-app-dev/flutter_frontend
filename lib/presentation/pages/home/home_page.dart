@@ -42,7 +42,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _goToAddEvent() {
-    _showUnavailableMessage();
+    Navigator.of(context).pushNamed(Routes.addEvent);
   }
 
   @override

@@ -46,16 +46,36 @@ abstract class AppStrings {
   static const String semanticSkipButton = 'Skip';
   static const String semanticSignInButton = 'Sign in';
   static const String semanticAddVaccineButton = 'Add Vaccine';
+  static const String semanticAddEventButton = 'Add Event';
 
   // --- Page titles ---
   static const String addVaccineTitle = 'Add New Vaccine';
+  static const String addEventTitle = 'Add New Event';
   static const String healthRecordsTitle = 'Health Records';
   static const String recordsFilterAll = 'All';
   static const String recordsFilterVaccines = 'Vaccines';
   static const String recordsFilterEvents = 'Events';
   static const String recordsFilterSummary = 'Displaying';
+  static const String recordCheckup = 'Checkup';
+  static const String recordEmergency = 'Emergency';
+  static const String recordDental = 'Dental';
+  static const String recordPetMax = 'Max';
+  static const String recordPetLuna = 'Luna';
+  static const String recordClinicHappyPaws = 'Happy Paws Clinic';
+  static const String recordClinicCatCare = 'Cat Care Center';
+  static const String recordClinicCityEmergency = 'City Animal Emergency';
+  static const String recordClinicCityVet = 'City Vet Center';
+  static const String recordDateNov19 = 'Nov 19, 2024';
+  static const String recordDateOct14 = 'Oct 14, 2024';
+  static const String recordDateAug29 = 'Aug 29, 2024';
+  static const String recordDateJun4 = 'Jun 4, 2024';
+  static const String recordCost120 = '\$120';
+  static const String recordCost95 = '\$95';
+  static const String recordCost340 = '\$340';
+  static const String recordCost280 = '\$280';
   static const String vaccineDetailsTitle = 'Vaccine Details';
-  static const String vaccineDetailsSubtitle = 'Max • Dog';
+  static const String eventDetailsTitle = 'Event Details';
+  static const String detailsSubtitle = 'Max • Dog';
   static const String vaccineStatusCompleted = 'Completed';
   static const String vaccineNameBordetella = 'Bordetella';
   static const String vaccineDateGivenValue = 'Sep 19, 2024';
@@ -65,11 +85,13 @@ abstract class AppStrings {
   static const String vaccineTimelineTitle = 'Timeline';
   static const String vaccineDateGivenLabel = 'Date Given';
   static const String vaccineNextDueLabel = 'Next Due Date';
-  static const String vaccineProviderInfoTitle = 'Provider Information';
-  static const String vaccineVeterinarianLabel = 'Veterinarian';
-  static const String vaccineClinicLabel = 'Clinic';
+  static const String providerInfoTitle = 'Provider Information';
+  static const String veterinarianLabel = 'Veterinarian';
+  static const String clinicLabel = 'Clinic';
   static const String vaccineAttachedDocumentTitle = 'Attached Document';
   static const String vaccineNoDocuments = 'No documents attached';
+  static const String eventNotesTitle = 'Notes';
+  static const String eventNoNotes = 'No notes provided';
   static const String actionDelete = 'Delete';
   static const String actionEdit = 'Edit';
 
@@ -83,6 +105,9 @@ abstract class AppStrings {
   static const String labelNotes = 'Notes';
   static const String labelAdministeredBy = 'Administered By';
   static const String labelAdditionalFiles = 'Additional Files';
+  static const String labelEventName = 'Event Name';
+  static const String labelEventTime = 'Event Time';
+  static const String labelDescription = 'Description';
 
   // --- Form field hints ---
   static const String hintVaccineName = 'e.g. Rabies';
@@ -96,6 +121,9 @@ abstract class AppStrings {
   static const String hintAdministeredBy = 'e.g. Doctor Tatiana';
   static const String uploadDocuments = 'Upload Documents';
   static const String uploadHint = 'Tap to upload or take a photo';
+  static const String hintEventName = 'e.g. Vet Appointment';
+  static const String hintEventTime = 'e.g. 9:00 AM';
+  static const String hintEventDescription = 'Optional description of the event';
 
   // --- Validation messages ---
   static const String validationRequired = 'This field is required.';
