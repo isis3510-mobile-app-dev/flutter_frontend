@@ -26,5 +26,6 @@ flutter:
     - assets/icons/eventsIcons/
     - assets/icons/featureIcons/
     - assets/icons/petRelated/
+    - assets/icons/profile/
     - assets/icons/socialIcons/
     - assets/icons/status/

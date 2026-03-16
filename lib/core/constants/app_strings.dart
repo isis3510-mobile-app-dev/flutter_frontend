@@ -184,4 +184,20 @@ abstract class AppStrings {
   static const String welcomeThirdDescription =
       'Write your pet\'s info to an NFC tag. Anyone who finds your pet can contact you instantly.';
   static const String welcomeAlreadyHaveAccount = 'Already have an account?';
+
+  // --- Profile page ---
+  static const String profileSubtitleAccount = 'Account';
+  static const String profileEdit = 'Edit Profile';
+  static const String profileEmail = 'Email';
+  static const String profilePhone = 'Phone';
+  static const String profileSubtitlePreferences = 'Preferences';
+  static const String profileDarkMode = 'Dark Mode';
+  static const String profileNotifications = 'Notifications';
+  static const String profileNotificationsenabled = 'Enabled';
+  static const String profileNotificationdisabled = 'Disabled';
+  static const String profileOffline = 'Offline Mode';
+  static const String profileSubtitleSupport = 'Support';
+  static const String profileSignOut = 'Sign Out';
+
 }
+
