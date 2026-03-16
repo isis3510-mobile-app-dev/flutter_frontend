@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "767220545663",
+    "project_id": "pets-health-info",
+    "storage_bucket": "pets-health-info.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:767220545663:android:6faa1966ce70fa74e6e74a",
+        "android_client_info": {
+          "package_name": "com.example.petcare"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "767220545663-roqg64d7vrr7kp4ras6q34m95ea4248m.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.petcare",
+            "certificate_hash": "54f42214cb2e31feb7ed478273cddd09d9096411"
+          }
+        },
+        {
+          "client_id": "767220545663-8mojbslp1552dmn8a2s1ebqnk0c778s0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAHc4KWppT1uRCQ85EjXAWC5iBAB0hZM2s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "767220545663-8mojbslp1552dmn8a2s1ebqnk0c778s0.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
