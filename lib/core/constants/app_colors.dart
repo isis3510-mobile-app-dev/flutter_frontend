@@ -40,6 +40,7 @@ abstract class AppColors {
 
   // --- Dark theme overrides ---
   static const Color backgroundDark = Color(0xFF1C1B1F);
+  static const Color secondaryDark = Color(0xFF5D5B62);
   static const Color surfaceDark = Color(0xFF1C1B1F);
   static const Color onBackgroundDark = Color(0xFFE6E1E5);
   static const Color onSurfaceDark = Color(0xFFE6E1E5);
