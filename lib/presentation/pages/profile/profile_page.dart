@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/core/constants/app_colors.dart';
 import 'package:flutter_frontend/core/constants/app_dimensions.dart';
 import 'package:flutter_frontend/core/constants/app_strings.dart';
+import 'package:flutter_frontend/core/services/auth_service.dart';
 import 'package:flutter_frontend/app/routes.dart';
 import 'package:flutter_frontend/shared/widgets/petcare_bottom_nav_bar.dart';
 import 'package:flutter_frontend/shared/widgets/quick_actions_fab.dart';
@@ -18,6 +19,8 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  final AuthService _authService = AuthService();
+
   // Navigation
   static const _currentIndex = 4;
 
@@ -88,11 +91,24 @@ class _ProfilePageState extends State<ProfilePage> {
     // TODO: Implement offline mode logic
   }
 
-  void _handleSignOut() {
-    // TODO: Implement sign out logic
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Sign out functionality coming soon')),
-    );
+  Future<void> _handleSignOut() async {
+    try {
+      await _authService.signOut();
+
+      if (!mounted) {
+        return;
+      }
+
+      Navigator.of(context, rootNavigator: true).popUntil((route) => route.isFirst);
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not sign out. Please try again.')),
+      );
+    }
   }
 
   void _goToAddPet() {

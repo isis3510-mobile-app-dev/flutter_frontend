@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../presentation/pages/auth/auth_gate.dart';
 import '../core/theme/app_theme.dart';
 import 'routes.dart';
 
@@ -14,7 +15,7 @@ class App extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
-      initialRoute: Routes.auth, // Start with the first welcome page
+      home: const AuthGate(),
       onGenerateRoute: Routes.onGenerateRoute,
     );
   }

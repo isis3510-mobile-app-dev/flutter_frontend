@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_frontend/core/constants/app_assets.dart';
 import 'package:flutter_frontend/core/constants/app_colors.dart';
 import 'package:flutter_frontend/core/constants/app_dimensions.dart';
 import 'package:flutter_frontend/core/constants/app_strings.dart';
+import 'package:flutter_frontend/core/services/auth_service.dart';
 import 'package:flutter_frontend/core/utils/context_extensions.dart';
 import 'package:flutter_frontend/presentation/pages/auth/widgets/auth_text_field.dart';
 import 'package:flutter_frontend/presentation/pages/auth/widgets/auth_toggle.dart';
@@ -17,8 +19,23 @@ class AuthPage extends StatefulWidget {
 }
 
 class _AuthPageState extends State<AuthPage> {
+  final AuthService _authService = AuthService();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
+
   bool _isSignInMode = true;
   bool _isPasswordObscured = true;
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _nameController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -53,12 +70,22 @@ class _AuthPageState extends State<AuthPage> {
                         ..._buildSignInForm(context)
                       else
                         ..._buildCreateAccountForm(context),
+                      if (_errorMessage != null) ...[
+                        const SizedBox(height: AppDimensions.spaceM),
+                        Text(
+                          _errorMessage!,
+                          style: context.textTheme.bodyMedium?.copyWith(
+                            color: AppColors.error,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                       const SizedBox(height: AppDimensions.spaceL),
                       _ContinueWithDivider(text: AppStrings.authOrContinueWith),
                       const SizedBox(height: AppDimensions.spaceM),
                       GoogleSignInButton(
                         text: AppStrings.authContinueWithGoogle,
-                        onPressed: () {},
+                        onPressed: _isLoading ? null : _handleGoogleSignIn,
                       ),
                       const SizedBox(height: AppDimensions.spaceL),
                     ],
@@ -116,23 +143,30 @@ class _AuthPageState extends State<AuthPage> {
       AuthTextField(
         label: AppStrings.authFullName,
         hintText: AppStrings.authFullNameHint,
+        controller: _nameController,
       ),
       const SizedBox(height: AppDimensions.spaceM),
       AuthTextField(
         label: AppStrings.authEmailAddress,
         hintText: AppStrings.authEmailHint,
+        controller: _emailController,
         keyboardType: TextInputType.emailAddress,
       ),
       const SizedBox(height: AppDimensions.spaceM),
       AuthTextField(
         label: AppStrings.authPassword,
         hintText: AppStrings.authPasswordHint,
+        controller: _passwordController,
         isPassword: true,
         obscureText: _isPasswordObscured,
         onToggleVisibility: _togglePasswordVisibility,
       ),
       const SizedBox(height: AppDimensions.spaceL),
-      _PrimaryAuthButton(text: AppStrings.authCreateAccount, onPressed: () {}),
+      _PrimaryAuthButton(
+        text: AppStrings.authCreateAccount,
+        onPressed: _isLoading ? null : _handleSignUp,
+        isLoading: _isLoading,
+      ),
     ];
   }
 
@@ -141,12 +175,14 @@ class _AuthPageState extends State<AuthPage> {
       AuthTextField(
         label: AppStrings.authEmailAddress,
         hintText: AppStrings.authEmailHint,
+        controller: _emailController,
         keyboardType: TextInputType.emailAddress,
       ),
       const SizedBox(height: AppDimensions.spaceM),
       AuthTextField(
         label: AppStrings.authPassword,
         hintText: AppStrings.authPasswordHint,
+        controller: _passwordController,
         isPassword: true,
         obscureText: _isPasswordObscured,
         onToggleVisibility: _togglePasswordVisibility,
@@ -170,20 +206,124 @@ class _AuthPageState extends State<AuthPage> {
         ),
       ),
       const SizedBox(height: AppDimensions.spaceL),
-      _PrimaryAuthButton(text: AppStrings.authSignIn, onPressed: () {}),
+      _PrimaryAuthButton(
+        text: AppStrings.authSignIn,
+        onPressed: _isLoading ? null : _handleSignIn,
+        isLoading: _isLoading,
+      ),
     ];
   }
 
   void _togglePasswordVisibility() {
     setState(() => _isPasswordObscured = !_isPasswordObscured);
   }
+
+  Future<void> _handleSignIn() async {
+    if (!_validateInputs(requireName: false)) {
+      return;
+    }
+
+    await _runAuthAction(
+      () => _authService.signInWithEmail(
+        _emailController.text.trim(),
+        _passwordController.text,
+      ),
+    );
+  }
+
+  Future<void> _handleSignUp() async {
+    if (!_validateInputs(requireName: true)) {
+      return;
+    }
+
+    await _runAuthAction(
+      () => _authService.signUpWithEmail(
+        _emailController.text.trim(),
+        _passwordController.text,
+        name: _nameController.text.trim(),
+      ),
+    );
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    await _runAuthAction(_authService.signInWithGoogle);
+  }
+
+  bool _validateInputs({required bool requireName}) {
+    final hasName = _nameController.text.trim().isNotEmpty;
+    final hasEmail = _emailController.text.trim().isNotEmpty;
+    final hasPassword = _passwordController.text.isNotEmpty;
+
+    if ((requireName && !hasName) || !hasEmail || !hasPassword) {
+      setState(() {
+        _errorMessage = AppStrings.validationRequired;
+      });
+      return false;
+    }
+
+    return true;
+  }
+
+  Future<void> _runAuthAction(Future<void> Function() action) async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await action();
+    } on FirebaseAuthException catch (error) {
+      setState(() {
+        _errorMessage = _firebaseErrorMessage(error);
+      });
+    } catch (_) {
+      setState(() {
+        _errorMessage = AppStrings.errorGeneric;
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  String _firebaseErrorMessage(FirebaseAuthException error) {
+    switch (error.code) {
+      case 'invalid-email':
+        return 'The email address is not valid.';
+      case 'user-not-found':
+        return 'No account found with this email.';
+      case 'wrong-password':
+      case 'invalid-credential':
+        return 'Invalid email or password.';
+      case 'email-already-in-use':
+        return 'An account with this email already exists.';
+      case 'weak-password':
+        return 'Password is too weak. Use at least 6 characters.';
+      case 'network-request-failed':
+        return 'No internet connection.';
+      case 'account-exists-with-different-credential':
+        return 'An account already exists with this email.';
+      case 'too-many-requests':
+        return 'Too many attempts. Please try again later.';
+      default:
+        return AppStrings.errorGeneric;
+    }
+  }
 }
 
 class _PrimaryAuthButton extends StatelessWidget {
-  const _PrimaryAuthButton({required this.text, required this.onPressed});
+  const _PrimaryAuthButton({
+    required this.text,
+    required this.onPressed,
+    this.isLoading = false,
+  });
 
   final String text;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -199,12 +339,23 @@ class _PrimaryAuthButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppDimensions.radiusCircle),
           ),
         ),
-        child: Text(
-          text,
-          style: context.textTheme.titleMedium?.copyWith(
-            color: AppColors.onPrimary,
-          ),
-        ),
+        child: isLoading
+            ? const SizedBox(
+                width: AppDimensions.iconM,
+                height: AppDimensions.iconM,
+                child: CircularProgressIndicator(
+                  strokeWidth: AppDimensions.strokeThin,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    AppColors.onPrimary,
+                  ),
+                ),
+              )
+            : Text(
+                text,
+                style: context.textTheme.titleMedium?.copyWith(
+                  color: AppColors.onPrimary,
+                ),
+              ),
       ),
     );
   }
