@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/core/constants/app_colors.dart';
-import 'package:flutter_frontend/presentation/pages/home/home_page.dart';
+import 'package:flutter_frontend/presentation/pages/records/widgets/record_list_item.dart';
 import '../../../app/routes.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/utils/context_extensions.dart';
 import '../../../shared/widgets/filter_toggle_bar.dart';
 import '../../../shared/widgets/petcare_bottom_nav_bar.dart';
 import '../../../shared/widgets/quick_actions_fab.dart';
-import '/detail/detail_page.dart';
-import 'widgets/vaccine_card.dart';
+import 'detail/detail_page.dart';
 
 class RecordsPage extends StatefulWidget {
   const RecordsPage({super.key});

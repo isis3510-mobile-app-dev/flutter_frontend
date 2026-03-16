@@ -3,8 +3,6 @@ import 'package:flutter_frontend/app/routes.dart';
 import 'package:flutter_frontend/core/constants/app_colors.dart';
 import 'package:flutter_frontend/core/constants/app_strings.dart';
 import 'package:flutter_frontend/core/utils/context_extensions.dart';
-import 'package:flutter_frontend/presentation/pages/add_event/add_event_page.dart';
-import 'package:flutter_frontend/presentation/pages/add_vaccine/add_vaccine_page.dart';
 import 'package:flutter_frontend/shared/widgets/full_width_button.dart';
 
 class DetailPage extends StatelessWidget {

@@ -66,7 +66,7 @@ class _PetsPageState extends State<PetsPage> {
   }
 
   void _goToAddEvent() {
-    _showUnavailableMessage();
+    Navigator.of(context).pushNamed(Routes.addEvent);
   }
 
   static List<PetUiModel> _applyFilters(
