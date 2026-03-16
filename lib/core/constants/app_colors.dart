@@ -90,6 +90,10 @@ abstract class AppColors {
   static const Color petStatusLostText = Color(0xFFB3261E);
   static const Color petStatusLostBg = Color(0xFFFDECEC);
 
+  // --- NFC actions ---
+  static const Color nfcSmsActionBg = Color(0xFFDCEBFA);
+  static const Color nfcSmsActionFg = Color(0xFF2563C9);
+
   // --- Pet filters ---
   static const Color petFilterInactiveBorder = Color(0xFFBEC9C8);
 

@@ -13,5 +13,8 @@ abstract class AppAssets {
   static const String iconNfc = 'assets/icons/featureIcons/nfc.svg';
   static const String iconWarning = 'assets/icons/status/warningSecondary.svg';
   static const String iconVetCheck = 'assets/icons/eventsIcons/vetCheck.svg';
+
+  // --- Images ---
+  static const String imageDogPrimary = 'assets/images/perro.png';
 }
 
