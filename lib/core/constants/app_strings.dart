@@ -54,23 +54,24 @@ abstract class AppStrings {
   static const String nfcReadingBenefitOne = "Shows the pet's name and photo";
   static const String nfcReadingBenefitTwo = 'Displays owner contact info';
   static const String nfcReadingBenefitThree = 'Shows emergency medical notes';
-  static const String nfcReadingBenefitFour = 'Allows calling the owner instantly';
+  static const String nfcReadingBenefitFour =
+      'Allows calling the owner instantly';
   static const String nfcScanning = 'Scanning...';
-    static const String nfcWriting = 'Writing...';
+  static const String nfcWriting = 'Writing...';
   static const String nfcScanningHint = 'Hold your device near the NFC tag';
   static const String nfcCancel = 'Cancel';
   static const String nfcScanSuccess = 'Tag scanned successfully';
-    static const String nfcTagWrittenTitle = 'Tag Written!';
-    static const String nfcTagWrittenDescriptionSuffix =
-            "'s information has been successfully written to the NFC tag. Anyone who scans it can contact you instantly.";
-    static const String nfcStoredOnTagTitle = "What's stored on the tag:";
-    static const String nfcStoredPetLabel = 'Pet';
-    static const String nfcStoredOwnerLabel = 'Owner';
-    static const String nfcStoredPhoneLabel = 'Phone';
-    static const String nfcStoredMicrochipLabel = 'Microchip';
-    static const String nfcStoredMicrochipValue = 'XR123456789';
-    static const String nfcWriteAnother = 'Write Another';
-    static const String nfcDone = 'Done';
+  static const String nfcTagWrittenTitle = 'Tag Written!';
+  static const String nfcTagWrittenDescriptionSuffix =
+      "'s information has been successfully written to the NFC tag. Anyone who scans it can contact you instantly.";
+  static const String nfcStoredOnTagTitle = "What's stored on the tag:";
+  static const String nfcStoredPetLabel = 'Pet';
+  static const String nfcStoredOwnerLabel = 'Owner';
+  static const String nfcStoredPhoneLabel = 'Phone';
+  static const String nfcStoredMicrochipLabel = 'Microchip';
+  static const String nfcStoredMicrochipValue = 'XR123456789';
+  static const String nfcWriteAnother = 'Write Another';
+  static const String nfcDone = 'Done';
   static const String nfcHealthyStatus = 'Healthy';
   static const String nfcOwnerInformation = 'Owner Information';
   static const String nfcCallOwnerNow = 'Call Owner Now';
@@ -93,20 +94,27 @@ abstract class AppStrings {
   static const String authPassword = 'Password';
   static const String authPasswordHint = 'Min. 8 characters';
   static const String authForgotPassword = 'Forgot password?';
-    static const String authForgotPasswordEnterEmail = 'Enter your email first.';
-    static const String authForgotPasswordEmailSent = 'If an account exists for this email, we sent a password reset link.';
+  static const String authForgotPasswordEnterEmail = 'Enter your email first.';
+  static const String authForgotPasswordEmailSent =
+      'If an account exists for this email, we sent a password reset link.';
   static const String authOrContinueWith = 'or continue with';
   static const String authContinueWithGoogle = 'Continue with Google';
 
-    // --- Auth error messages ---
-    static const String authErrorInvalidEmail = 'The email address is not valid.';
-    static const String authErrorUserNotFound = 'No account found with this email.';
-    static const String authErrorWrongPassword = 'Invalid email or password.';
-    static const String authErrorEmailInUse = 'An account with this email already exists.';
-    static const String authErrorWeakPassword = 'Password is too weak. Use at least 6 characters.';
-    static const String authErrorAccountExistsDifferentCredential = 'An account already exists with this email.';
-    static const String authErrorTooManyRequests = 'Too many attempts. Please try again later.';
-    static const String authErrorResetPassword = 'Could not send the password reset email. Please try again.';
+  // --- Auth error messages ---
+  static const String authErrorInvalidEmail = 'The email address is not valid.';
+  static const String authErrorUserNotFound =
+      'No account found with this email.';
+  static const String authErrorWrongPassword = 'Invalid email or password.';
+  static const String authErrorEmailInUse =
+      'An account with this email already exists.';
+  static const String authErrorWeakPassword =
+      'Password is too weak. Use at least 6 characters.';
+  static const String authErrorAccountExistsDifferentCredential =
+      'An account already exists with this email.';
+  static const String authErrorTooManyRequests =
+      'Too many attempts. Please try again later.';
+  static const String authErrorResetPassword =
+      'Could not send the password reset email. Please try again.';
 
   // --- Error messages ---
   static const String errorGeneric = 'An unexpected error occurred.';
@@ -203,7 +211,8 @@ abstract class AppStrings {
   static const String uploadHint = 'Tap to upload or take a photo';
   static const String hintEventName = 'e.g. Vet Appointment';
   static const String hintEventTime = 'e.g. 9:00 AM';
-  static const String hintEventDescription = 'Optional description of the event';
+  static const String hintEventDescription =
+      'Optional description of the event';
 
   // --- Validation messages ---
   static const String validationRequired = 'This field is required.';
@@ -219,6 +228,7 @@ abstract class AppStrings {
   static const String petsEmpty = 'No pets yet';
   static const String petsEmptyFiltered = 'No pets match this filter';
   static const String petsRetry = 'Retry';
+  static const String petsLoadError = 'Could not load pets. Please try again.';
 
   // --- Add pet ---
   static const String addPetTitle = 'Add New Pet';
@@ -294,8 +304,10 @@ abstract class AppStrings {
   static const String welcomeAlreadyHaveAccount = 'Already have an account?';
 
   // --- Profile page ---
-  static const String profileSignOutError = 'Could not sign out. Please try again.';
-  static const String profileLoadError = 'Could not load profile. Please try again.';
+  static const String profileSignOutError =
+      'Could not sign out. Please try again.';
+  static const String profileLoadError =
+      'Could not load profile. Please try again.';
   static const String featureUnavailable = 'This section is not available yet.';
   static const String profileSubtitleAccount = 'Account';
   static const String profileEdit = 'Edit Profile';
@@ -307,6 +319,4 @@ abstract class AppStrings {
   static const String profileOffline = 'Offline Mode';
   static const String profileSubtitleSupport = 'Support';
   static const String profileSignOut = 'Sign Out';
-
 }
-
