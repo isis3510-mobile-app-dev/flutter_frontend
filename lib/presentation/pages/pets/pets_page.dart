@@ -3,9 +3,11 @@ import '../../../app/routes.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_strings.dart';
+import '../../../core/network/api_exception.dart';
+import '../../../core/services/pet_service.dart';
 import '../../../shared/widgets/petcare_bottom_nav_bar.dart';
 import '../../../shared/widgets/quick_actions_fab.dart';
-import 'data/pets_mock_data.dart';
+import 'models/pet_ui_mapper.dart';
 import 'models/pet_ui_model.dart';
 import 'widgets/pet_card.dart';
 import 'widgets/pet_count_pill.dart';
@@ -20,15 +22,60 @@ class PetsPage extends StatefulWidget {
 }
 
 class _PetsPageState extends State<PetsPage> {
-  final List<PetUiModel> _allPets = PetsMockData.all;
+  List<PetUiModel> _allPets = const [];
   List<PetUiModel> _filtered = [];
   PetFilter _activeFilter = PetFilter.all;
   String _searchQuery = '';
+  bool _isLoadingPets = false;
+  String? _loadErrorMessage;
 
   @override
   void initState() {
     super.initState();
-    _filtered = _applyFilters(_allPets, _activeFilter, _searchQuery);
+    _loadPets();
+  }
+
+  Future<void> _loadPets() async {
+    setState(() {
+      _isLoadingPets = true;
+      _loadErrorMessage = null;
+    });
+
+    try {
+      final pets = await PetService().getPets();
+      final mappedPets = pets
+          .map((pet) => pet.toUiModel())
+          .toList(growable: false);
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _allPets = mappedPets;
+        _filtered = _applyFilters(mappedPets, _activeFilter, _searchQuery);
+      });
+    } on ApiException catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _loadErrorMessage = error.message;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _loadErrorMessage = AppStrings.petsLoadError;
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingPets = false);
+      }
+    }
   }
 
   void _onFilterChanged(PetFilter filter) => setState(() {
@@ -130,6 +177,14 @@ class _PetsPageState extends State<PetsPage> {
   }
 
   Widget _buildBody() {
+    if (_isLoadingPets) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_loadErrorMessage != null) {
+      return _ErrorState(message: _loadErrorMessage!, onRetry: _loadPets);
+    }
+
     if (_filtered.isEmpty) {
       return _EmptyState(filter: _activeFilter);
     }
@@ -232,6 +287,45 @@ class _EmptyState extends StatelessWidget {
               style: Theme.of(
                 context,
               ).textTheme.titleMedium?.copyWith(color: AppColors.grey500),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ErrorState extends StatelessWidget {
+  const _ErrorState({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppDimensions.spaceXL),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.cloud_off_rounded,
+              size: 56,
+              color: AppColors.grey300,
+            ),
+            const SizedBox(height: AppDimensions.spaceM),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(color: AppColors.grey500),
+            ),
+            const SizedBox(height: AppDimensions.spaceM),
+            ElevatedButton(
+              onPressed: onRetry,
+              child: const Text(AppStrings.petsRetry),
             ),
           ],
         ),
