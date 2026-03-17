@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../core/constants/app_colors.dart';
@@ -65,6 +67,7 @@ class PetCard extends StatelessWidget {
               ),
               child: _PetCardBottomActions(
                 isDark: isDark,
+                petStatus: pet.status,
                 onVaccinesTap: onVaccinesTap,
                 onLostModeTap: onLostModeTap,
                 onNfcTap: onNfcTap,
@@ -94,7 +97,7 @@ class _PetCardTopSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _PetCardPhoto(
-          photoUrl: pet.photoUrl,
+          photoPath: pet.effectivePhotoPath,
           species: pet.species,
           isDark: isDark,
         ),
@@ -170,12 +173,12 @@ class _PetCardTopSection extends StatelessWidget {
 
 class _PetCardPhoto extends StatelessWidget {
   const _PetCardPhoto({
-    required this.photoUrl,
+    required this.photoPath,
     required this.species,
     required this.isDark,
   });
 
-  final String? photoUrl;
+  final String? photoPath;
   final String species;
   final bool isDark;
 
@@ -191,14 +194,30 @@ class _PetCardPhoto extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
       ),
       clipBehavior: Clip.antiAlias,
-      child: photoUrl != null
-          ? Image.network(
-              photoUrl!,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) =>
-                  _PetCardPhotoPlaceholder(isDark: isDark),
-            )
-          : _PetCardPhotoPlaceholder(isDark: isDark),
+      child: _buildPhoto(),
+    );
+  }
+
+  Widget _buildPhoto() {
+    final value = photoPath?.trim();
+    if (value == null || value.isEmpty) {
+      return _PetCardPhotoPlaceholder(isDark: isDark);
+    }
+
+    final uri = Uri.tryParse(value);
+    final isNetwork = uri != null && (uri.scheme == 'http' || uri.scheme == 'https');
+    if (isNetwork) {
+      return Image.network(
+        value,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => _PetCardPhotoPlaceholder(isDark: isDark),
+      );
+    }
+
+    return Image.file(
+      File(value),
+      fit: BoxFit.cover,
+      errorBuilder: (_, _, _) => _PetCardPhotoPlaceholder(isDark: isDark),
     );
   }
 }
@@ -402,12 +421,14 @@ class _PetCardMetaItem extends StatelessWidget {
 class _PetCardBottomActions extends StatelessWidget {
   const _PetCardBottomActions({
     required this.isDark,
+    required this.petStatus,
     required this.onVaccinesTap,
     required this.onLostModeTap,
     required this.onNfcTap,
   });
 
   final bool isDark;
+  final String petStatus;
   final VoidCallback onVaccinesTap;
   final VoidCallback onLostModeTap;
   final VoidCallback onNfcTap;
@@ -433,7 +454,7 @@ class _PetCardBottomActions extends StatelessWidget {
           Container(width: 1, color: dividerColor),
           Expanded(
             child: _PetCardActionItem(
-              label: 'Lost Mode',
+              label: petStatus == 'lost' ? 'Found' : 'Lost Mode',
               assetPath: _PetCardAssets.lostMode,
               color: isDark ? AppColors.onSurfaceDark : AppColors.grey700,
               onTap: onLostModeTap,

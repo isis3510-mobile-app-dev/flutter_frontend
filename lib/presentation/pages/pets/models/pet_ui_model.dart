@@ -13,6 +13,7 @@ class PetUiModel {
     required this.weight,
     required this.color,
     this.photoUrl,
+    this.localPhotoPath,
     required this.status,
     required this.isNfcSynced,
     required this.knownAllergies,
@@ -34,6 +35,7 @@ class PetUiModel {
   final double weight;
   final String color;
   final String? photoUrl;
+  final String? localPhotoPath;
 
   /// 'healthy' | 'needs attention' | 'lost'
   final String status;
@@ -66,4 +68,39 @@ class PetUiModel {
 
   /// Human-readable weight, e.g. "12.0 kg".
   String get weightLabel => '${weight.toStringAsFixed(1)} kg';
+
+  String? get effectivePhotoPath {
+    final local = localPhotoPath?.trim();
+    if (local != null && local.isNotEmpty) {
+      return local;
+    }
+
+    final remote = photoUrl?.trim();
+    if (remote != null && remote.isNotEmpty) {
+      return remote;
+    }
+
+    return null;
+  }
+
+  PetUiModel copyWith({String? localPhotoPath}) {
+    return PetUiModel(
+      id: id,
+      userIds: userIds,
+      name: name,
+      species: species,
+      breed: breed,
+      gender: gender,
+      birthDate: birthDate,
+      weight: weight,
+      color: color,
+      photoUrl: photoUrl,
+      localPhotoPath: localPhotoPath ?? this.localPhotoPath,
+      status: status,
+      isNfcSynced: isNfcSynced,
+      knownAllergies: knownAllergies,
+      defaultVet: defaultVet,
+      defaultClinic: defaultClinic,
+    );
+  }
 }

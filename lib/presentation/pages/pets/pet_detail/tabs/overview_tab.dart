@@ -7,9 +7,14 @@ import '../../../../../core/constants/app_strings.dart';
 import '../../models/pet_ui_model.dart';
 
 class OverviewTab extends StatelessWidget {
-  const OverviewTab({super.key, required this.pet});
+  const OverviewTab({
+    super.key,
+    required this.pet,
+    required this.onToggleLostMode,
+  });
 
   final PetUiModel pet;
+  final VoidCallback onToggleLostMode;
 
   static String _formatDate(DateTime date) {
     const months = [
@@ -32,10 +37,6 @@ class OverviewTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    final chipDisplay = pet.id.length >= 9
-        ? pet.id.substring(pet.id.length - 9).toUpperCase()
-        : pet.id.toUpperCase();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(
@@ -72,14 +73,19 @@ class OverviewTab extends StatelessWidget {
                 AppStrings.petDetailFieldGender,
                 pet.gender,
                 AppStrings.petDetailFieldMicrochip,
-                chipDisplay,
+                AppStrings.valueNotAvailable,
               ),
             ],
           ),
           const SizedBox(height: AppDimensions.spaceM),
           _HealthSummaryCard(isDark: isDark),
           const SizedBox(height: AppDimensions.spaceM),
-          _StatusRow(isNfcActive: pet.isNfcSynced, isDark: isDark),
+          _StatusRow(
+            isNfcActive: pet.isNfcSynced,
+            isLost: pet.status == 'lost',
+            isDark: isDark,
+            onToggleLostMode: onToggleLostMode,
+          ),
         ],
       ),
     );
@@ -220,7 +226,6 @@ class _HealthSummaryCard extends StatelessWidget {
     final bgColor = isDark
         ? AppColors.petDetailHealthSummaryBgDark
         : AppColors.petDetailHealthSummaryBg;
-    final dividerColor = AppColors.bottomNavActive.withValues(alpha: 0.2);
 
     return Container(
       decoration: BoxDecoration(
@@ -244,27 +249,13 @@ class _HealthSummaryCard extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: _SummaryTile(
-                  svgPath: 'assets/icons/featureIcons/records.svg',
-                  count: '2/4',
-                  label: 'Vaccines',
-                  isDark: isDark,
-                ),
-              ),
-              Container(width: 1, height: 56, color: dividerColor),
-              Expanded(
-                child: _SummaryTile(
-                  svgPath: 'assets/icons/featureIcons/calendar.svg',
-                  count: '2',
-                  label: 'Events',
-                  isDark: isDark,
-                ),
-              ),
-            ],
+          const SizedBox(height: 8),
+          Text(
+            'TODO: Health summary integration pending.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: isDark ? AppColors.onSurfaceDark : AppColors.grey700,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
@@ -272,57 +263,18 @@ class _HealthSummaryCard extends StatelessWidget {
   }
 }
 
-class _SummaryTile extends StatelessWidget {
-  const _SummaryTile({
-    required this.svgPath,
-    required this.count,
-    required this.label,
+class _StatusRow extends StatelessWidget {
+  const _StatusRow({
+    required this.isNfcActive,
+    required this.isLost,
     required this.isDark,
+    required this.onToggleLostMode,
   });
 
-  final String svgPath;
-  final String count;
-  final String label;
-  final bool isDark;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        SvgPicture.asset(
-          svgPath,
-          width: 26,
-          height: 26,
-          colorFilter: const ColorFilter.mode(
-            AppColors.bottomNavActive,
-            BlendMode.srcIn,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          count,
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: isDark ? AppColors.onSurfaceDark : AppColors.grey900,
-            fontWeight: FontWeight.w700,
-            fontSize: 20,
-          ),
-        ),
-        Text(
-          label,
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(color: AppColors.grey500),
-        ),
-      ],
-    );
-  }
-}
-
-class _StatusRow extends StatelessWidget {
-  const _StatusRow({required this.isNfcActive, required this.isDark});
-
   final bool isNfcActive;
+  final bool isLost;
   final bool isDark;
+  final VoidCallback onToggleLostMode;
 
   @override
   Widget build(BuildContext context) {
@@ -335,10 +287,11 @@ class _StatusRow extends StatelessWidget {
         Expanded(
           child: _StatusPill(
             icon: Icons.location_on_outlined,
-            label: 'Lost Mode',
-            isActive: true,
+            label: isLost ? 'Found' : 'Lost Mode',
+            isActive: isLost,
             borderColor: borderColor,
             isDark: isDark,
+            onTap: onToggleLostMode,
           ),
         ),
         const SizedBox(width: AppDimensions.spaceM),
@@ -364,6 +317,7 @@ class _StatusPill extends StatelessWidget {
     required this.isActive,
     required this.borderColor,
     required this.isDark,
+    this.onTap,
   });
 
   final IconData? icon;
@@ -372,6 +326,7 @@ class _StatusPill extends StatelessWidget {
   final bool isActive;
   final Color borderColor;
   final bool isDark;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -379,35 +334,39 @@ class _StatusPill extends StatelessWidget {
     final textColor = isDark ? AppColors.onSurfaceDark : AppColors.grey700;
     final bgColor = isDark ? AppColors.surfaceDark : Colors.white;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusL),
-        border: Border.all(color: borderColor),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          if (svgPath != null)
-            SvgPicture.asset(
-              svgPath!,
-              width: 16,
-              height: 16,
-              colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
-            )
-          else
-            Icon(icon, size: 18, color: iconColor),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              color: textColor,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+          border: Border.all(color: borderColor),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (svgPath != null)
+              SvgPicture.asset(
+                svgPath!,
+                width: 16,
+                height: 16,
+                colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
+              )
+            else
+              Icon(icon, size: 18, color: iconColor),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: textColor,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

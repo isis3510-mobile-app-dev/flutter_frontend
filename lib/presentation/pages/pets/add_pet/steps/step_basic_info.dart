@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../../../../../core/constants/app_dimensions.dart';
@@ -15,6 +17,7 @@ class StepBasicInfo extends StatelessWidget {
     required this.species,
     required this.onSpeciesSelected,
     required this.onPhotoTap,
+    this.imageFile,
   });
 
   final TextEditingController nameController;
@@ -22,6 +25,7 @@ class StepBasicInfo extends StatelessWidget {
   final PetSpecies? species;
   final ValueChanged<PetSpecies> onSpeciesSelected;
   final VoidCallback onPhotoTap;
+  final File? imageFile;
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +33,7 @@ class StepBasicInfo extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: AppDimensions.spaceM),
-        PetPhotoPicker(onTap: onPhotoTap),
+        PetPhotoPicker(onTap: onPhotoTap, imageFile: imageFile),
         const SizedBox(height: AppDimensions.spaceXXL),
         PetFormField(
           label: '${AppStrings.addPetNameLabel} *',
