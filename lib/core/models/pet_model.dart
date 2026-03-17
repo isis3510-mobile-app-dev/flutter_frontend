@@ -30,8 +30,8 @@ class PetVaccinationModel {
   });
 
   final String vaccineId;
-  final DateTime? dateGiven;
-  final DateTime? nextDueDate;
+  final DateTime dateGiven;
+  final DateTime nextDueDate;
   final String lotNumber;
   final String status;
   final String administeredBy;
@@ -141,12 +141,12 @@ Map<String, dynamic> _asStringDynamicMap(dynamic value) {
   return const <String, dynamic>{};
 }
 
-DateTime? _parseDate(dynamic value) {
+DateTime _parseDate(dynamic value) {
   if (value is! String || value.trim().isEmpty) {
-    return null;
+    return DateTime(0);
   }
 
-  return DateTime.tryParse(value);
+  return DateTime.tryParse(value) ?? DateTime(0);
 }
 
 double? _readDouble(dynamic value) {
