@@ -32,10 +32,15 @@ class AuthService {
       password: password,
     );
 
-    final displayName = name?.trim();
-    if (displayName != null && displayName.isNotEmpty) {
-      await credential.user?.updateDisplayName(displayName);
-      await credential.user?.reload();
+    final user = credential.user;
+    if (user != null && name != null && name.trim().isNotEmpty) {
+      try {
+        await user.updateProfile(displayName: name.trim());
+        // Force refresh token to ensure fresh credentials
+        await user.getIdToken(true);
+      } catch (_) {
+        // Profile update failed, but user was created - continue
+      }
     }
 
     return credential;

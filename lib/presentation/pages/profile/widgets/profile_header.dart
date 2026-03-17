@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/core/constants/app_colors.dart';
 import 'package:flutter_frontend/core/constants/app_dimensions.dart';
@@ -10,6 +12,7 @@ class ProfileHeader extends StatelessWidget {
   final String userName;
   final String userEmail;
   final int petCount;
+  final String? localPhotoPath;
   final VoidCallback? onEditTap;
 
   const ProfileHeader({
@@ -18,6 +21,7 @@ class ProfileHeader extends StatelessWidget {
     required this.userName,
     required this.userEmail,
     required this.petCount,
+    this.localPhotoPath,
     this.onEditTap,
   });
 
@@ -44,16 +48,24 @@ class ProfileHeader extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: AppColors.primaryVariant,
                       borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
+                      image: (localPhotoPath != null && localPhotoPath!.isNotEmpty)
+                          ? DecorationImage(
+                              image: FileImage(File(localPhotoPath!)),
+                              fit: BoxFit.cover,
+                            )
+                          : null,
                     ),
-                    child: Center(
-                      child: Text(
-                        initials,
-                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.bold,
+                    child: (localPhotoPath == null || localPhotoPath!.isEmpty)
+                        ? Center(
+                            child: Text(
+                              initials,
+                              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                             ),
-                      ),
-                    ),
+                          )
+                        : null,
                   ),
                   Positioned(
                     bottom: 0,

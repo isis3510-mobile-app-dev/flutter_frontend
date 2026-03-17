@@ -22,7 +22,7 @@ class ApiClient {
     } catch (_) {
       // dotenv not loaded (no .env file) — fall through to default
     }
-    return 'http://10.0.2.2:8000';
+    return 'https://twigless-sabrina-nonexaggeratory.ngrok-free.dev';
   }
 
   Future<http.Response> get(
