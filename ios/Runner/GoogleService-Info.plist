@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>767220545663-cg8otkc754qd5tlnlskvrfohlbtaomuu.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.767220545663-cg8otkc754qd5tlnlskvrfohlbtaomuu</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>767220545663-3phpv9hp0fa0htkr28a935s6h580rhma.apps.googleusercontent.com</string>
+	<key>API_KEY</key>
+	<string>AIzaSyCKB-KQv5Ir79Yq3dUpghSmkiezKSLeoYA</string>
+	<key>GCM_SENDER_ID</key>
+	<string>767220545663</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.example.flutterFrontend</string>
+	<key>PROJECT_ID</key>
+	<string>pets-health-info</string>
+	<key>STORAGE_BUCKET</key>
+	<string>pets-health-info.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:767220545663:ios:6bd372d4f56e387fe6e74a</string>
+</dict>
+</plist>

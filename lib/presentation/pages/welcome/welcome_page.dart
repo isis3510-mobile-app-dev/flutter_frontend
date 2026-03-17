@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/app/routes.dart';
 import 'package:flutter_frontend/core/constants/app_colors.dart';
 import 'package:flutter_frontend/core/constants/app_strings.dart';
 import 'package:flutter_frontend/core/utils/context_extensions.dart';
@@ -48,12 +49,15 @@ class _WelcomePageState extends State<WelcomePage> {
     if (_currentIndex < _steps.length - 1) {
       setState(() => _currentIndex++);
     } else {
-      // Navigate to home
+      Navigator.of(context).pushNamed(Routes.auth);
     }
   }
 
   void _back() => setState(() => _currentIndex--);
-  void _skip() { /* Navigate to home */ }
+
+  void _skip() {
+    Navigator.of(context).pushNamed(Routes.auth);
+  }
 
   @override
   Widget build(BuildContext context) {
