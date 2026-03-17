@@ -5,6 +5,7 @@ import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/services/pet_service.dart';
+import '../../../core/services/profile_photo_service.dart';
 import '../../../shared/widgets/petcare_bottom_nav_bar.dart';
 import '../../../shared/widgets/quick_actions_fab.dart';
 import 'models/pet_ui_mapper.dart';
@@ -22,6 +23,9 @@ class PetsPage extends StatefulWidget {
 }
 
 class _PetsPageState extends State<PetsPage> {
+  final PetService _petService = PetService();
+  final ProfilePhotoService _photoService = ProfilePhotoService();
+
   List<PetUiModel> _allPets = const [];
   List<PetUiModel> _filtered = [];
   PetFilter _activeFilter = PetFilter.all;
@@ -42,10 +46,16 @@ class _PetsPageState extends State<PetsPage> {
     });
 
     try {
-      final pets = await PetService().getPets();
-      final mappedPets = pets
+      final pets = await _petService.getPets();
+      final mappedPetsRaw = pets
           .map((pet) => pet.toUiModel())
           .toList(growable: false);
+      final mappedPets = await Future.wait(
+        mappedPetsRaw.map((pet) async {
+          final localPath = await _photoService.getPetPhotoPath(pet.id);
+          return pet.copyWith(localPhotoPath: localPath);
+        }),
+      );
 
       if (!mounted) {
         return;
@@ -112,8 +122,90 @@ class _PetsPageState extends State<PetsPage> {
     Navigator.of(context).pushNamed(Routes.addVaccine);
   }
 
+  Future<void> _goToAddPet() async {
+    await Navigator.pushNamed(context, Routes.addPet);
+    if (!mounted) {
+      return;
+    }
+    _loadPets();
+  }
+
   void _goToAddEvent() {
     Navigator.of(context).pushNamed(Routes.addEvent);
+  }
+
+  Future<bool> _confirmMarkAsLost(PetUiModel pet) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text(AppStrings.petLostConfirmTitle),
+          content: Text(
+            '${AppStrings.petLostConfirmMessage} (${pet.name})',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text(AppStrings.petLostConfirmCancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text(AppStrings.petLostConfirmAction),
+            ),
+          ],
+        );
+      },
+    );
+
+    return result ?? false;
+  }
+
+  Future<void> _toggleLostMode(PetUiModel pet) async {
+    final isLost = pet.status == 'lost';
+
+    if (!isLost) {
+      final confirmed = await _confirmMarkAsLost(pet);
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    try {
+      if (isLost) {
+        await _petService.markPetAsFound(pet.id);
+      } else {
+        await _petService.markPetAsLost(pet.id);
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isLost
+                ? '${pet.name} ${AppStrings.petMarkedAsFoundMessage}'
+                : '${pet.name} ${AppStrings.petMarkedAsLostMessage}',
+          ),
+        ),
+      );
+      await _loadPets();
+    } on ApiException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(AppStrings.petsLoadError)),
+      );
+    }
   }
 
   static List<PetUiModel> _applyFilters(
@@ -165,7 +257,7 @@ class _PetsPageState extends State<PetsPage> {
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: QuickActionsFab(
-        onAddPet: () => Navigator.pushNamed(context, Routes.addPet),
+        onAddPet: _goToAddPet,
         onAddVaccine: _goToAddVaccine,
         onAddEvent: _goToAddEvent,
       ),
@@ -204,7 +296,7 @@ class _PetsPageState extends State<PetsPage> {
           onTap: () =>
               Navigator.pushNamed(context, Routes.petDetail, arguments: pet),
           onVaccinesTap: () {},
-          onLostModeTap: () {},
+          onLostModeTap: () => _toggleLostMode(pet),
           onNfcTap: () {},
         );
       },

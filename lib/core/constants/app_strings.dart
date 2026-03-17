@@ -286,6 +286,13 @@ abstract class AppStrings {
   static const String petDetailStatusHealthy = 'Healthy';
   static const String petDetailStatusNeedsAttention = 'Needs Attention';
   static const String petDetailStatusLost = 'Lost';
+    static const String petLostConfirmTitle = 'Mark as lost?';
+    static const String petLostConfirmMessage =
+            'Are you sure you want to mark this pet as lost?';
+    static const String petLostConfirmCancel = 'Cancel';
+    static const String petLostConfirmAction = 'Mark Lost';
+    static const String petMarkedAsLostMessage = 'Pet marked as lost.';
+    static const String petMarkedAsFoundMessage = 'Pet marked as found.';
   static const String petDetailShareSemantics = 'Share pet';
   static const String petDetailEditSemantics = 'Edit pet';
   static const String petDetailMoreSemantics = 'More options';

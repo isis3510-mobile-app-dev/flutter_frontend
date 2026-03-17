@@ -43,6 +43,43 @@ class PetService {
     return PetModel.fromJson(json);
   }
 
+  Future<PetModel> createPet(Map<String, dynamic> data) async {
+    final response = await _apiClient.post(
+      petsPath,
+      body: jsonEncode(data),
+      headers: const {'Content-Type': 'application/json'},
+    );
+
+    final json = jsonDecode(response.body);
+    if (json is! Map<String, dynamic>) {
+      throw const ApiException(
+        type: ApiErrorType.unknown,
+        message: 'Unexpected create pet response from server.',
+      );
+    }
+
+    return PetModel.fromJson(json);
+  }
+
+  Future<void> updatePetStatus({
+    required String petId,
+    required String status,
+  }) async {
+    await _apiClient.put(
+      '$petsPath$petId/',
+      body: jsonEncode({'status': status}),
+      headers: const {'Content-Type': 'application/json'},
+    );
+  }
+
+  Future<void> markPetAsLost(String petId) async {
+    await updatePetStatus(petId: petId, status: 'lost');
+  }
+
+  Future<void> markPetAsFound(String petId) async {
+    await updatePetStatus(petId: petId, status: 'healthy');
+  }
+
   Map<String, dynamic> _asPetMap(dynamic item) {
     if (item is Map<String, dynamic>) {
       return item;

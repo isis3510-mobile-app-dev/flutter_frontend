@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -5,7 +7,12 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/models/pet_model.dart';
+import '../../../../core/network/api_exception.dart';
+import '../../../../core/services/pet_service.dart';
+import '../../../../core/services/profile_photo_service.dart';
 import '../../../../shared/widgets/quick_actions_fab.dart';
+import '../models/pet_ui_mapper.dart';
 import '../models/pet_ui_model.dart';
 import 'tabs/events_tab.dart';
 import 'tabs/overview_tab.dart';
@@ -23,11 +30,132 @@ class PetDetailScreen extends StatefulWidget {
 class _PetDetailScreenState extends State<PetDetailScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  final PetService _petService = PetService();
+  final ProfilePhotoService _photoService = ProfilePhotoService();
+
+  late PetUiModel _pet;
+  PetModel? _petDetails;
+  bool _isLoading = false;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
+    _pet = widget.pet;
     _tabController = TabController(length: 3, vsync: this);
+    _loadPetDetail();
+  }
+
+  Future<void> _loadPetDetail() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final detail = await _petService.getPetById(widget.pet.id);
+      final localPath = await _photoService.getPetPhotoPath(widget.pet.id);
+      final uiPet = detail.toUiModel().copyWith(localPhotoPath: localPath);
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _petDetails = detail;
+        _pet = uiPet;
+      });
+    } on ApiException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _errorMessage = error.message;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _errorMessage = AppStrings.petsLoadError;
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _toggleLostMode() async {
+    final isLost = _pet.status == 'lost';
+
+    if (!isLost) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text(AppStrings.petLostConfirmTitle),
+            content: Text(
+              '${AppStrings.petLostConfirmMessage} (${_pet.name})',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text(AppStrings.petLostConfirmCancel),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text(AppStrings.petLostConfirmAction),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (confirmed != true) {
+        return;
+      }
+    }
+
+    try {
+      if (isLost) {
+        await _petService.markPetAsFound(_pet.id);
+      } else {
+        await _petService.markPetAsLost(_pet.id);
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isLost
+                ? '${_pet.name} ${AppStrings.petMarkedAsFoundMessage}'
+                : '${_pet.name} ${AppStrings.petMarkedAsLostMessage}',
+          ),
+        ),
+      );
+
+      await _loadPetDetail();
+    } on ApiException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(AppStrings.petsLoadError)),
+      );
+    }
   }
 
   @override
@@ -44,34 +172,77 @@ class _PetDetailScreenState extends State<PetDetailScreen>
         backgroundColor: Theme.of(context).brightness == Brightness.dark
             ? AppColors.backgroundDark
             : AppColors.background,
-        body: Column(
-          children: [
-            _PetDetailHeader(
-              pet: widget.pet,
-              onBack: () => Navigator.pop(context),
-              onShare: () {},
-              onEdit: () {},
-              onMore: () {},
-            ),
-            _PetDetailTabBar(controller: _tabController),
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  OverviewTab(pet: widget.pet),
-                  VaccinesTab(pet: widget.pet),
-                  EventsTab(pet: widget.pet),
-                ],
-              ),
-            ),
-          ],
-        ),
+        body: _buildBody(),
         floatingActionButton: QuickActionsFab(
           onAddPet: () {},
           onAddVaccine: () {},
           onAddEvent: () {},
         ),
       ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppDimensions.spaceXL),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.cloud_off_rounded,
+                size: 56,
+                color: AppColors.grey300,
+              ),
+              const SizedBox(height: AppDimensions.spaceM),
+              Text(
+                _errorMessage!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.grey700),
+              ),
+              const SizedBox(height: AppDimensions.spaceM),
+              OutlinedButton(
+                onPressed: _loadPetDetail,
+                child: const Text(AppStrings.petsRetry),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        _PetDetailHeader(
+          pet: _pet,
+          onBack: () => Navigator.pop(context),
+          onShare: () {},
+          onEdit: () {},
+          onMore: () {},
+        ),
+        _PetDetailTabBar(controller: _tabController),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              OverviewTab(
+                pet: _pet,
+                onToggleLostMode: _toggleLostMode,
+              ),
+              VaccinesTab(
+                pet: _pet,
+                vaccinations: _petDetails?.vaccinations ?? const [],
+              ),
+              EventsTab(pet: _pet),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -135,7 +306,10 @@ class _PetDetailHeader extends StatelessWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      _PetPhoto(photoUrl: pet.photoUrl, species: pet.species),
+                      _PetPhoto(
+                        photoUrl: pet.effectivePhotoPath,
+                        species: pet.species,
+                      ),
                       const SizedBox(width: AppDimensions.spaceM),
                       Expanded(child: _PetInfo(pet: pet)),
                     ],
@@ -223,13 +397,30 @@ class _PetPhoto extends StatelessWidget {
         ),
       ),
       clipBehavior: Clip.antiAlias,
-      child: photoUrl != null
-          ? Image.network(
-              photoUrl!,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => _PhotoPlaceholder(species: species),
-            )
-          : _PhotoPlaceholder(species: species),
+      child: _buildPhoto(),
+    );
+  }
+
+  Widget _buildPhoto() {
+    final value = photoUrl?.trim();
+    if (value == null || value.isEmpty) {
+      return _PhotoPlaceholder(species: species);
+    }
+
+    final uri = Uri.tryParse(value);
+    final isNetwork = uri != null && (uri.scheme == 'http' || uri.scheme == 'https');
+    if (isNetwork) {
+      return Image.network(
+        value,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => _PhotoPlaceholder(species: species),
+      );
+    }
+
+    return Image.file(
+      File(value),
+      fit: BoxFit.cover,
+      errorBuilder: (_, _, _) => _PhotoPlaceholder(species: species),
     );
   }
 }

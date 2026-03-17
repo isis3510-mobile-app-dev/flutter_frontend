@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -6,9 +8,10 @@ import '../../../../../core/constants/app_dimensions.dart';
 import '../../../../../core/constants/app_strings.dart';
 
 class PetPhotoPicker extends StatelessWidget {
-  const PetPhotoPicker({super.key, this.onTap});
+  const PetPhotoPicker({super.key, this.onTap, this.imageFile});
 
   final VoidCallback? onTap;
+  final File? imageFile;
 
   @override
   Widget build(BuildContext context) {
@@ -35,28 +38,38 @@ class PetPhotoPicker extends StatelessWidget {
                   width: 1.6,
                 ),
               ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SvgPicture.asset(
-                    'assets/icons/featureIcons/camera.svg',
-                    width: 26,
-                    height: 26,
-                    colorFilter: const ColorFilter.mode(
-                      AppColors.addPetPhotoAccent,
-                      BlendMode.srcIn,
+              child: imageFile != null
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+                      child: Image.file(
+                        imageFile!,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: double.infinity,
+                      ),
+                    )
+                  : Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SvgPicture.asset(
+                          'assets/icons/featureIcons/camera.svg',
+                          width: 26,
+                          height: 26,
+                          colorFilter: const ColorFilter.mode(
+                            AppColors.addPetPhotoAccent,
+                            BlendMode.srcIn,
+                          ),
+                        ),
+                        const SizedBox(height: AppDimensions.spaceS),
+                        Text(
+                          AppStrings.addPetPhotoTitle,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppColors.addPetPhotoAccent,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: AppDimensions.spaceS),
-                  Text(
-                    AppStrings.addPetPhotoTitle,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.addPetPhotoAccent,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
             ),
           ),
           const SizedBox(height: AppDimensions.spaceS),
