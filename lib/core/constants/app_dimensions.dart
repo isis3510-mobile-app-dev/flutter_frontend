@@ -29,7 +29,14 @@ abstract class AppDimensions {
 
   // --- Strokes ---
   static const double strokeThin = 1.0;
+  static const double strokeMedium = 2.0;
   static const double strokeRegular = 1.5;
+
+  // --- List item icon size ---
+  static const double iconListItem = 40.0;
+
+  // --- Typography ---
+  static const double letterSpacingSection = 0.5;
 
   // --- Component specific ---
   static const double buttonHeight = 48.0;

@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/core/constants/app_assets.dart';
 import 'package:flutter_frontend/core/constants/app_colors.dart';
 import 'package:flutter_frontend/core/constants/app_dimensions.dart';
 import 'package:flutter_frontend/core/constants/app_strings.dart';
+import 'package:flutter_frontend/core/models/user_profile.dart';
+import 'package:flutter_frontend/core/network/api_exception.dart';
 import 'package:flutter_frontend/core/services/auth_service.dart';
+import 'package:flutter_frontend/core/services/user_service.dart';
 import 'package:flutter_frontend/app/routes.dart';
 import 'package:flutter_frontend/shared/widgets/petcare_bottom_nav_bar.dart';
 import 'package:flutter_frontend/shared/widgets/quick_actions_fab.dart';
@@ -12,7 +16,7 @@ import 'widgets/profile_toggle_item.dart';
 
 /// The User Profile Page displaying user information, preferences, and actions.
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({Key? key}) : super(key: key);
+  const ProfilePage({super.key});
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -24,11 +28,9 @@ class _ProfilePageState extends State<ProfilePage> {
   // Navigation
   static const _currentIndex = 4;
 
-  // Mock user data
-  final String _userName = 'Sarah Johnson';
-  final String _userEmail = 'sarah.johnson@email.com';
-  final String _userPhone = '+1 (555) 012-3456';
-  final int _petCount = 3;
+  // User profile
+  UserProfile? _profile;
+  bool _isLoadingProfile = false;
 
   // Preference states
   late bool _darkModeEnabled;
@@ -38,15 +40,37 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
-    // Initialize preferences with default values
     _darkModeEnabled = false;
     _notificationsEnabled = true;
     _offlineModeEnabled = false;
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    setState(() => _isLoadingProfile = true);
+    try {
+      final profile = await UserService().getCurrentUser();
+      if (mounted) setState(() => _profile = profile);
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.message)),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text(AppStrings.profileLoadError)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoadingProfile = false);
+    }
   }
 
   void _showUnavailableMessage() {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('This section is not available yet.')),
+      const SnackBar(content: Text(AppStrings.featureUnavailable)),
     );
   }
 
@@ -66,7 +90,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   void _handleEditProfile() {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Navigate to Edit Profile page')),
+      const SnackBar(content: Text(AppStrings.featureUnavailable)),
     );
   }
 
@@ -106,7 +130,7 @@ class _ProfilePageState extends State<ProfilePage> {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not sign out. Please try again.')),
+        const SnackBar(content: Text(AppStrings.profileSignOutError)),
       );
     }
   }
@@ -123,6 +147,25 @@ class _ProfilePageState extends State<ProfilePage> {
     _showUnavailableMessage();
   }
 
+  String _displayValue(String? value) {
+    final trimmed = value?.trim() ?? '';
+    return trimmed.isEmpty ? AppStrings.valueNotAvailable : trimmed;
+  }
+
+  String _displayInitials(UserProfile? profile) {
+    final rawInitials = profile?.initials.trim() ?? '';
+    if (rawInitials.isNotEmpty) {
+      return rawInitials;
+    }
+
+    final rawName = profile?.name.trim() ?? '';
+    if (rawName.isNotEmpty) {
+      return rawName.substring(0, 1).toUpperCase();
+    }
+
+    return '?';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -130,12 +173,13 @@ class _ProfilePageState extends State<ProfilePage> {
       body: SingleChildScrollView(
         child: Column(
           children: [
+            if (_isLoadingProfile) const LinearProgressIndicator(),
             // Profile Header
             ProfileHeader(
-              initials: 'SJ',
-              userName: _userName,
-              userEmail: _userEmail,
-              petCount: _petCount,
+              initials: _displayInitials(_profile),
+              userName: _displayValue(_profile?.name),
+              userEmail: _displayValue(_profile?.email),
+              petCount: _profile?.petCount ?? 0,
               onEditTap: _handleEditProfile,
             ),
             SizedBox(height: AppDimensions.spaceL),
@@ -154,7 +198,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: AppColors.onSurface,
                         fontWeight: FontWeight.w600,
-                        letterSpacing: 0.5,
+                        letterSpacing: AppDimensions.letterSpacingSection,
                       ),
                 ),
               ),
@@ -171,38 +215,38 @@ class _ProfilePageState extends State<ProfilePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   ProfileMenuItem(
-                    imageAssetPath: 'assets/icons/profile/profile.png',
+                    imageAssetPath: AppAssets.iconProfileUser,
                     title: AppStrings.profileEdit,
-                    subtitle: _userName,
+                    subtitle: _displayValue(_profile?.name),
                     onTap: _handleEditProfile,
                   ),
                   Divider(
-                    height: 1,
-                    indent: AppDimensions.pageHorizontalPadding + AppDimensions.iconL + 8 + AppDimensions.spaceL,
+                    height: AppDimensions.strokeThin,
+                    indent: AppDimensions.pageHorizontalPadding + AppDimensions.iconListItem + AppDimensions.spaceL,
                     color: AppColors.grey100,
                   ),
                   ProfileMenuItem(
-                    imageAssetPath: 'assets/icons/profile/mail.png',
+                    imageAssetPath: AppAssets.iconProfileMail,
                     title: AppStrings.profileEmail,
-                    subtitle: _userEmail,
+                    subtitle: _displayValue(_profile?.email),
                     onTap: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Email: sarah.johnson@email.com')),
+                        SnackBar(content: Text(_displayValue(_profile?.email))),
                       );
                     },
                   ),
                   Divider(
-                    height: 1,
-                    indent: AppDimensions.pageHorizontalPadding + AppDimensions.iconL + 8 + AppDimensions.spaceL,
+                    height: AppDimensions.strokeThin,
+                    indent: AppDimensions.pageHorizontalPadding + AppDimensions.iconListItem + AppDimensions.spaceL,
                     color: AppColors.grey100,
                   ),
                   ProfileMenuItem(
-                    imageAssetPath: 'assets/icons/profile/phone.png',
+                    imageAssetPath: AppAssets.iconProfilePhone,
                     title: AppStrings.profilePhone,
-                    subtitle: _userPhone,
+                    subtitle: _displayValue(_profile?.phone),
                     onTap: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Phone: +1 (555) 012-3456')),
+                        SnackBar(content: Text(_displayValue(_profile?.phone))),
                       );
                     },
                   ),
@@ -225,7 +269,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: AppColors.onSurface,
                         fontWeight: FontWeight.w600,
-                        letterSpacing: 0.5,
+                        letterSpacing: AppDimensions.letterSpacingSection,
                       ),
                 ),
               ),
@@ -242,30 +286,32 @@ class _ProfilePageState extends State<ProfilePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   ProfileToggleItem(
-                    imageAssetPath: 'assets/icons/profile/darkMode.png',
+                    imageAssetPath: AppAssets.iconProfileDarkMode,
                     title: AppStrings.profileDarkMode,
                     value: _darkModeEnabled,
                     onChanged: _handleDarkModeToggle,
                   ),
                   Divider(
-                    height: 1,
-                    indent: AppDimensions.pageHorizontalPadding + AppDimensions.iconL + 8 + AppDimensions.spaceL,
+                    height: AppDimensions.strokeThin,
+                    indent: AppDimensions.pageHorizontalPadding + AppDimensions.iconListItem + AppDimensions.spaceL,
                     color: AppColors.grey100,
                   ),
                   ProfileToggleItem(
-                    imageAssetPath: 'assets/icons/profile/notifications.png',
+                    imageAssetPath: AppAssets.iconProfileNotifications,
                     title: AppStrings.profileNotifications,
-                    subtitle: _notificationsEnabled ? AppStrings.profileNotificationsenabled : AppStrings.profileNotificationdisabled,
+                    subtitle: _notificationsEnabled
+                        ? AppStrings.stateEnabled
+                        : AppStrings.stateDisabled,
                     value: _notificationsEnabled,
                     onChanged: _handleNotificationsToggle,
                   ),
                   Divider(
-                    height: 1,
-                    indent: AppDimensions.pageHorizontalPadding + AppDimensions.iconL + 8 + AppDimensions.spaceL,
+                    height: AppDimensions.strokeThin,
+                    indent: AppDimensions.pageHorizontalPadding + AppDimensions.iconListItem + AppDimensions.spaceL,
                     color: AppColors.grey100,
                   ),
                   ProfileToggleItem(
-                    imageAssetPath: 'assets/icons/profile/offline.png',
+                    imageAssetPath: AppAssets.iconProfileOffline,
                     title: AppStrings.profileOffline,
                     value: _offlineModeEnabled,
                     onChanged: _handleOfflineModeToggle,
@@ -289,7 +335,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: AppColors.onSurface,
                         fontWeight: FontWeight.w600,
-                        letterSpacing: 0.5,
+                        letterSpacing: AppDimensions.letterSpacingSection,
                       ),
                 ),
               ),
@@ -306,7 +352,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   ProfileMenuItem(
-                    imageAssetPath: 'assets/icons/profile/signOut.png',
+                    imageAssetPath: AppAssets.iconProfileSignOut,
                     title: AppStrings.profileSignOut,
                     onTap: _handleSignOut,
                     isDestructive: true,

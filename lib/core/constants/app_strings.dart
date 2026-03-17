@@ -111,6 +111,10 @@ abstract class AppStrings {
   // --- Error messages ---
   static const String errorGeneric = 'An unexpected error occurred.';
   static const String errorNoConnection = 'No internet connection.';
+  static const String valueNotAvailable = 'Not available';
+  static const String stateEnabled = 'Enabled';
+  static const String stateDisabled = 'Disabled';
+  static const String nounPets = 'pets';
 
   // --- Accessibility labels ---
   static const String semanticBackButton = 'Back';
@@ -290,6 +294,9 @@ abstract class AppStrings {
   static const String welcomeAlreadyHaveAccount = 'Already have an account?';
 
   // --- Profile page ---
+  static const String profileSignOutError = 'Could not sign out. Please try again.';
+  static const String profileLoadError = 'Could not load profile. Please try again.';
+  static const String featureUnavailable = 'This section is not available yet.';
   static const String profileSubtitleAccount = 'Account';
   static const String profileEdit = 'Edit Profile';
   static const String profileEmail = 'Email';
@@ -297,8 +304,6 @@ abstract class AppStrings {
   static const String profileSubtitlePreferences = 'Preferences';
   static const String profileDarkMode = 'Dark Mode';
   static const String profileNotifications = 'Notifications';
-  static const String profileNotificationsenabled = 'Enabled';
-  static const String profileNotificationdisabled = 'Disabled';
   static const String profileOffline = 'Offline Mode';
   static const String profileSubtitleSupport = 'Support';
   static const String profileSignOut = 'Sign Out';

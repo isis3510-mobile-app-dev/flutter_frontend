@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/core/constants/app_colors.dart';
 import 'package:flutter_frontend/core/constants/app_dimensions.dart';
+import 'package:flutter_frontend/core/constants/app_strings.dart';
 
 /// The profile header component displaying the user's avatar, name, and role.
 /// Located at the top of the profile page.
@@ -12,19 +13,17 @@ class ProfileHeader extends StatelessWidget {
   final VoidCallback? onEditTap;
 
   const ProfileHeader({
-    Key? key,
+    super.key,
     required this.initials,
     required this.userName,
     required this.userEmail,
     required this.petCount,
     this.onEditTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final headerBgColor =
-        isDarkMode ? AppColors.petDetailHeaderBg : Color(0xFF004D40);
+    final headerBgColor = AppColors.petDetailHeaderBg;
 
     return Container(
       color: headerBgColor,
@@ -67,7 +66,7 @@ class ProfileHeader extends StatelessWidget {
                         shape: BoxShape.circle,
                         border: Border.all(
                           color: headerBgColor,
-                          width: 2,
+                          width: AppDimensions.strokeMedium,
                         ),
                       ),
                       child: Icon(
@@ -115,7 +114,7 @@ class ProfileHeader extends StatelessWidget {
                         borderRadius: BorderRadius.circular(AppDimensions.radiusL),
                       ),
                       child: Text(
-                        '$petCount pets',
+                        '$petCount ${AppStrings.nounPets}',
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
                               color: AppColors.primary,
                               fontWeight: FontWeight.w600,
