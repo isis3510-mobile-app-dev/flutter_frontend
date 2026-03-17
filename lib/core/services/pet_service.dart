@@ -12,11 +12,12 @@ class PetService {
   factory PetService() => _instance;
 
   static const String petsPath = '/api/pets/';
+  static const String myPetsPath = '/api/pets/mine';
 
   final ApiClient _apiClient = ApiClient();
 
   Future<List<PetModel>> getPets() async {
-    final response = await _apiClient.get(petsPath);
+    final response = await _apiClient.get(myPetsPath);
     final json = jsonDecode(response.body);
 
     if (json is! List<dynamic>) {
