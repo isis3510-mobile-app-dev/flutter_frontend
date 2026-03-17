@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/pages/add_event/add_event_page.dart';
 import 'package:flutter_frontend/presentation/pages/add_vaccine/add_vaccine_page.dart';
 import 'package:flutter_frontend/presentation/pages/nfc/nfc_page.dart';
+import 'package:flutter_frontend/core/models/user_profile.dart';
 import 'package:flutter_frontend/presentation/pages/records/detail/detail_page.dart';
 import '../presentation/pages/auth/auth_page.dart';
 import '../presentation/pages/home/home_page.dart';
@@ -9,6 +10,7 @@ import '../presentation/pages/pets/models/pet_ui_model.dart';
 import '../presentation/pages/pets/add_pet/add_pet_screen.dart';
 import '../presentation/pages/pets/pet_detail/pet_detail_screen.dart';
 import '../presentation/pages/pets/pets_page.dart';
+import '../presentation/pages/profile/edit_profile_page.dart';
 import '../presentation/pages/profile/profile_page.dart';
 import '../presentation/pages/records/records_page.dart';
 import '../presentation/pages/welcome/welcome_page.dart';
@@ -33,6 +35,7 @@ class Routes {
   static const String nfc = '/nfc';
   static const String records = '/records';
   static const String profile = '/profile';
+  static const String profileEdit = '/profile/edit';
 
   static const int recordsFilterAll = 0;
   static const int recordsFilterVaccines = 1;
@@ -71,6 +74,8 @@ class Routes {
 
       case profile:
         return _buildRoute(const ProfilePage(), settings);
+      case profileEdit:
+        return _buildEditProfileRoute(settings);
       case addEvent:
         return _buildRoute(const AddEventPage(), settings);
 
@@ -113,6 +118,16 @@ class Routes {
     }
 
     return _buildRoute(PetDetailScreen(pet: pet), settings);
+  }
+
+  static MaterialPageRoute _buildEditProfileRoute(RouteSettings settings) {
+    final profile = settings.arguments;
+
+    if (profile is! UserProfile) {
+      return _buildRoute(const ProfilePage(), settings);
+    }
+
+    return _buildRoute(EditProfilePage(profile: profile), settings);
   }
 
   static String? bottomNavRouteForIndex(int index) {

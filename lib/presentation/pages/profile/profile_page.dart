@@ -6,6 +6,7 @@ import 'package:flutter_frontend/core/constants/app_strings.dart';
 import 'package:flutter_frontend/core/models/user_profile.dart';
 import 'package:flutter_frontend/core/network/api_exception.dart';
 import 'package:flutter_frontend/core/services/auth_service.dart';
+import 'package:flutter_frontend/core/services/profile_photo_service.dart';
 import 'package:flutter_frontend/core/services/user_service.dart';
 import 'package:flutter_frontend/app/routes.dart';
 import 'package:flutter_frontend/shared/widgets/petcare_bottom_nav_bar.dart';
@@ -24,12 +25,15 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   final AuthService _authService = AuthService();
+  final ProfilePhotoService _photoService = ProfilePhotoService();
+  final UserService _userService = UserService();
 
   // Navigation
   static const _currentIndex = 4;
 
   // User profile
   UserProfile? _profile;
+  String? _localPhotoPath;
   bool _isLoadingProfile = false;
 
   // Preference states
@@ -49,8 +53,15 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _loadProfile() async {
     setState(() => _isLoadingProfile = true);
     try {
-      final profile = await UserService().getCurrentUser();
-      if (mounted) setState(() => _profile = profile);
+      final profile = await _userService.getCurrentUser();
+      final photoPath = await _photoService.getLocalPhotoPath();
+      
+      if (mounted) {
+        setState(() {
+          _profile = profile;
+          _localPhotoPath = photoPath;
+        });
+      }
     } on ApiException catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -88,10 +99,27 @@ class _ProfilePageState extends State<ProfilePage> {
     Navigator.of(context).pushReplacementNamed(routeName);
   }
 
-  void _handleEditProfile() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text(AppStrings.featureUnavailable)),
+  Future<void> _handleEditProfile() async {
+    final profile = _profile;
+    if (profile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(AppStrings.profileLoadError)),
+      );
+      return;
+    }
+
+    final shouldReload = await Navigator.of(context).pushNamed(
+      Routes.profileEdit,
+      arguments: profile,
     );
+
+    if (!mounted) {
+      return;
+    }
+
+    if (shouldReload == true) {
+      await _loadProfile();
+    }
   }
 
   void _handleDarkModeToggle(bool value) {
@@ -166,6 +194,192 @@ class _ProfilePageState extends State<ProfilePage> {
     return '?';
   }
 
+  String? _emailValidator(String? value) {
+    final trimmed = value?.trim() ?? '';
+    if (trimmed.isEmpty) {
+      return AppStrings.validationRequired;
+    }
+
+    final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+    if (!emailRegex.hasMatch(trimmed)) {
+      return AppStrings.authErrorInvalidEmail;
+    }
+
+    return null;
+  }
+
+  String? _phoneValidator(String? value) {
+    final trimmed = value?.trim() ?? '';
+    if (trimmed.isEmpty) {
+      return AppStrings.validationRequired;
+    }
+    return null;
+  }
+
+  Future<String?> _showSingleFieldEditor({
+    required String title,
+    required String initialValue,
+    required TextInputType keyboardType,
+    required String? Function(String?) validator,
+  }) async {
+    final controller = TextEditingController(text: initialValue);
+    String? errorText;
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (_, setDialogState) {
+            void saveIfValid() {
+              final value = controller.text.trim();
+              final validationError = validator(value);
+              if (validationError != null) {
+                setDialogState(() => errorText = validationError);
+                return;
+              }
+
+              Navigator.of(dialogContext).pop(value);
+            }
+
+            return AlertDialog(
+              title: Text(title),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextField(
+                    controller: controller,
+                    keyboardType: keyboardType,
+                    autofocus: true,
+                    onChanged: (_) {
+                      if (errorText != null) {
+                        setDialogState(() => errorText = null);
+                      }
+                    },
+                    decoration: InputDecoration(
+                      hintText: title,
+                      errorText: errorText,
+                      filled: true,
+                      fillColor: AppColors.secondary,
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: AppDimensions.spaceM),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: saveIfValid,
+                      child: const Text(AppStrings.semanticSaveButton),
+                    ),
+                  ),
+                  Center(
+                    child: TextButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(),
+                      child: const Text(AppStrings.nfcCancel),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      controller.dispose();
+    });
+    return result;
+  }
+
+  Future<void> _updateContactData({String? email, String? phone}) async {
+    final currentProfile = _profile;
+    if (currentProfile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(AppStrings.profileLoadError)),
+      );
+      return;
+    }
+
+    setState(() => _isLoadingProfile = true);
+    try {
+      final updated = await _userService.updateCurrentUser(
+        name: currentProfile.name,
+        email: email ?? currentProfile.email,
+        phone: phone ?? currentProfile.phone,
+        address: currentProfile.address,
+        profilePhoto: currentProfile.profilePhoto,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() => _profile = updated);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(AppStrings.profileSaveSuccess)),
+      );
+    } on ApiException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(AppStrings.profileSaveError)),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingProfile = false);
+      }
+    }
+  }
+
+  Future<void> _handleQuickEditEmail() async {
+    final currentProfile = _profile;
+    if (currentProfile == null) {
+      return;
+    }
+
+    final updatedEmail = await _showSingleFieldEditor(
+      title: AppStrings.profileEmail,
+      initialValue: currentProfile.email,
+      keyboardType: TextInputType.emailAddress,
+      validator: _emailValidator,
+    );
+
+    if (updatedEmail == null || updatedEmail == currentProfile.email.trim()) {
+      return;
+    }
+
+    await _updateContactData(email: updatedEmail);
+  }
+
+  Future<void> _handleQuickEditPhone() async {
+    final currentProfile = _profile;
+    if (currentProfile == null) {
+      return;
+    }
+
+    final updatedPhone = await _showSingleFieldEditor(
+      title: AppStrings.profilePhone,
+      initialValue: currentProfile.phone,
+      keyboardType: TextInputType.phone,
+      validator: _phoneValidator,
+    );
+
+    if (updatedPhone == null || updatedPhone == currentProfile.phone.trim()) {
+      return;
+    }
+
+    await _updateContactData(phone: updatedPhone);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -180,6 +394,7 @@ class _ProfilePageState extends State<ProfilePage> {
               userName: _displayValue(_profile?.name),
               userEmail: _displayValue(_profile?.email),
               petCount: _profile?.petCount ?? 0,
+              localPhotoPath: _localPhotoPath,
               onEditTap: _handleEditProfile,
             ),
             SizedBox(height: AppDimensions.spaceL),
@@ -229,11 +444,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     imageAssetPath: AppAssets.iconProfileMail,
                     title: AppStrings.profileEmail,
                     subtitle: _displayValue(_profile?.email),
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(_displayValue(_profile?.email))),
-                      );
-                    },
+                    onTap: _handleQuickEditEmail,
                   ),
                   Divider(
                     height: AppDimensions.strokeThin,
@@ -244,11 +455,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     imageAssetPath: AppAssets.iconProfilePhone,
                     title: AppStrings.profilePhone,
                     subtitle: _displayValue(_profile?.phone),
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(_displayValue(_profile?.phone))),
-                      );
-                    },
+                    onTap: _handleQuickEditPhone,
                   ),
                 ],
               ),

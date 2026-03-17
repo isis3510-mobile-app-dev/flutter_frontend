@@ -307,6 +307,26 @@ abstract class AppStrings {
   static const String profileOffline = 'Offline Mode';
   static const String profileSubtitleSupport = 'Support';
   static const String profileSignOut = 'Sign Out';
+  static const String profileEditTitle = 'Edit Profile';
+  static const String profileAddress = 'Address';
+  static const String profilePhoto = 'Profile Photo';
+  static const String profilePhotoUrl = 'Profile Photo URL';
+  static const String profileSelectFromGallery = 'Select from gallery';
+  static const String profileChangePhoto = 'Change photo';
+  static const String profileRemovePhoto = 'Remove photo';
+  static const String profilePhotoPickError =
+      'Could not open photo gallery. Please try again.';
+  static const String profilePhotoUploadError =
+      'Could not upload your photo. Please try again.';
+  static const String profilePhotoUploading = 'Uploading photo...';
+  static const String profileSaveChanges = 'Save Changes';
+  static const String profileSaveSuccess = 'Profile updated successfully.';
+  static const String profileSaveError =
+      'Could not update profile. Please try again.';
+  static const String profileReadOnlyGroupInfo =
+      'Pets and family group are read-only in this section.';
+  static const String profilePetsCount = 'Pets linked';
+  static const String profileFamilyGroupCount = 'Family group linked';
 
 }
 

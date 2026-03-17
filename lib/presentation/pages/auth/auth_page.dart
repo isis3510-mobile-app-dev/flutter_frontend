@@ -5,6 +5,7 @@ import 'package:flutter_frontend/core/constants/app_assets.dart';
 import 'package:flutter_frontend/core/constants/app_colors.dart';
 import 'package:flutter_frontend/core/constants/app_dimensions.dart';
 import 'package:flutter_frontend/core/constants/app_strings.dart';
+import 'package:flutter_frontend/core/network/api_exception.dart';
 import 'package:flutter_frontend/core/services/auth_service.dart';
 import 'package:flutter_frontend/core/utils/context_extensions.dart';
 import 'package:flutter_frontend/presentation/pages/auth/widgets/auth_text_field.dart';
@@ -237,11 +238,13 @@ class _AuthPageState extends State<AuthPage> {
     }
 
     await _runAuthAction(
-      () => _authService.signUpWithEmail(
-        _emailController.text.trim(),
-        _passwordController.text,
-        name: _nameController.text.trim(),
-      ),
+      () async {
+        await _authService.signUpWithEmail(
+          _emailController.text.trim(),
+          _passwordController.text,
+          name: _nameController.text.trim(),
+        );
+      },
     );
   }
 
@@ -324,6 +327,10 @@ class _AuthPageState extends State<AuthPage> {
 
     try {
       await action();
+    } on ApiException catch (error) {
+      setState(() {
+        _errorMessage = error.message;
+      });
     } on FirebaseAuthException catch (error) {
       setState(() {
         _errorMessage = _firebaseErrorMessage(error);
