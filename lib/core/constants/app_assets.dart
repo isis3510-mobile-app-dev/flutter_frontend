@@ -14,6 +14,15 @@ abstract class AppAssets {
   static const String iconWarning = 'assets/icons/status/warningSecondary.svg';
   static const String iconVetCheck = 'assets/icons/eventsIcons/vetCheck.svg';
 
+  // --- Profile icons ---
+  static const String iconProfileUser = 'assets/icons/profile/profile.png';
+  static const String iconProfileMail = 'assets/icons/profile/mail.png';
+  static const String iconProfilePhone = 'assets/icons/profile/phone.png';
+  static const String iconProfileDarkMode = 'assets/icons/profile/darkMode.png';
+  static const String iconProfileNotifications = 'assets/icons/profile/notifications.png';
+  static const String iconProfileOffline = 'assets/icons/profile/offline.png';
+  static const String iconProfileSignOut = 'assets/icons/profile/signOut.png';
+
   // --- Images ---
   static const String imageDogPrimary = 'assets/images/perro.png';
 }

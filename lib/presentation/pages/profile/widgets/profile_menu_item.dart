@@ -13,14 +13,14 @@ class ProfileMenuItem extends StatelessWidget {
   final bool isDestructive;
 
   const ProfileMenuItem({
-    Key? key,
+    super.key,
     this.icon,
     this.imageAssetPath,
     required this.title,
     this.subtitle,
     this.onTap,
     this.isDestructive = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -41,14 +41,14 @@ class ProfileMenuItem extends StatelessWidget {
               if (imageAssetPath != null)
                 Image.asset(
                   imageAssetPath!,
-                  width: AppDimensions.iconL + 8,
-                  height: AppDimensions.iconL + 8,
+                  width: AppDimensions.iconListItem,
+                  height: AppDimensions.iconListItem,
                 )
               else if (icon != null)
                 Icon(
                   icon,
                   color: AppColors.primary,
-                  size: AppDimensions.iconL + 8,
+                  size: AppDimensions.iconListItem,
                 ),
               SizedBox(width: AppDimensions.spaceL),
               // Title and subtitle
@@ -70,7 +70,6 @@ class ProfileMenuItem extends StatelessWidget {
                           subtitle!,
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                 color: AppColors.grey500,
-                                fontSize: 12,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,

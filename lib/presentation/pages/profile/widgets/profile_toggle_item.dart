@@ -13,14 +13,14 @@ class ProfileToggleItem extends StatelessWidget {
   final ValueChanged<bool> onChanged;
 
   const ProfileToggleItem({
-    Key? key,
+    super.key,
     this.icon,
     this.imageAssetPath,
     required this.title,
     this.subtitle,
     required this.value,
     required this.onChanged,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -37,14 +37,14 @@ class ProfileToggleItem extends StatelessWidget {
           if (imageAssetPath != null)
             Image.asset(
               imageAssetPath!,
-              width: AppDimensions.iconL + 8,
-              height: AppDimensions.iconL + 8,
+              width: AppDimensions.iconListItem,
+              height: AppDimensions.iconListItem,
             )
           else if (icon != null)
             Icon(
               icon,
               color: defaultIconColor,
-              size: AppDimensions.iconL + 8,
+              size: AppDimensions.iconListItem,
             ),
           SizedBox(width: AppDimensions.spaceL),
           // Title and subtitle
@@ -66,7 +66,6 @@ class ProfileToggleItem extends StatelessWidget {
                       subtitle!,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: AppColors.grey500,
-                            fontSize: 12,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -79,7 +78,7 @@ class ProfileToggleItem extends StatelessWidget {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeColor: AppColors.primary,
+            activeThumbColor: AppColors.primary,
           ),
         ],
       ),

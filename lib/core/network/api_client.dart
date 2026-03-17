@@ -15,10 +15,15 @@ class ApiClient {
   final AuthService _authService;
   final http.Client _client;
 
-  String get _baseUrl =>
-      dotenv.env['API_BASE_URL']?.trim().isNotEmpty == true
-          ? dotenv.env['API_BASE_URL']!.trim()
-          : 'http://10.0.2.2:8000';
+  String get _baseUrl {
+    try {
+      final url = dotenv.env['API_BASE_URL']?.trim();
+      if (url != null && url.isNotEmpty) return url;
+    } catch (_) {
+      // dotenv not loaded (no .env file) — fall through to default
+    }
+    return 'http://10.0.2.2:8000';
+  }
 
   Future<http.Response> get(
     String path, {
