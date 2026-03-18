@@ -1,5 +1,6 @@
 class AddVaccineArgs {
   const AddVaccineArgs({
+    this.vaccinationId,
     this.vaccineId,
     this.vaccineName,
     this.dateGiven,
@@ -8,6 +9,7 @@ class AddVaccineArgs {
     this.administeredBy,
   });
 
+  final String? vaccinationId;
   final String? vaccineId;
   final String? vaccineName;
   final DateTime? dateGiven;
