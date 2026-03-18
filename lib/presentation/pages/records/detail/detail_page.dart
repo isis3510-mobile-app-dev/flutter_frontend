@@ -4,11 +4,12 @@ import 'package:flutter_frontend/core/constants/app_colors.dart';
 import 'package:flutter_frontend/core/constants/app_strings.dart';
 import 'package:flutter_frontend/core/models/pet_model.dart';
 import 'package:flutter_frontend/core/services/pet_service.dart';
+import 'package:flutter_frontend/core/services/vaccine_service.dart';
 import 'package:flutter_frontend/core/utils/context_extensions.dart';
 import 'package:flutter_frontend/presentation/pages/add_vaccine/add_vaccine_args.dart';
 import 'package:flutter_frontend/shared/widgets/full_width_button.dart';
 
-class DetailPage extends StatelessWidget {
+class DetailPage extends StatefulWidget {
   const DetailPage({
     super.key,
     required this.type,
@@ -22,8 +23,55 @@ class DetailPage extends StatelessWidget {
   final PetModel? pet;
   final String? vaccineName;
 
+  @override
+  State<DetailPage> createState() => _DetailPageState();
+}
+
+class _DetailPageState extends State<DetailPage> {
+  final PetService _petService = PetService();
+  final VaccineService _vaccineService = VaccineService();
+
+  PetVaccinationModel? _vaccination;
+  PetModel? _pet;
+  String? _vaccineName;
+
+  @override
+  void initState() {
+    super.initState();
+    _vaccination = widget.vaccination;
+    _pet = widget.pet;
+    _vaccineName = widget.vaccineName;
+  }
+
+  Future<void> _refreshVaccination() async {
+    if (widget.type != 'vaccine' ||
+        _pet == null ||
+        _vaccination == null ||
+        _vaccination!.id.trim().isEmpty) {
+      return;
+    }
+
+    try {
+      final updatedVaccination = await _petService.getVaccination(
+        petId: _pet!.id,
+        vaccinationId: _vaccination!.id,
+      );
+      final updatedVaccineInfo = await _vaccineService.getVaccineById(
+        updatedVaccination.vaccineId,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _vaccination = updatedVaccination;
+        _vaccineName = updatedVaccineInfo.name;
+      });
+    } catch (_) {
+      // Keep existing data if refresh fails.
+    }
+  }
+
   Future<void> _confirmAndDelete(BuildContext context) async {
-    if (vaccination == null || pet == null) {
+    if (_vaccination == null || _pet == null) {
       return;
     }
 
@@ -56,8 +104,8 @@ class DetailPage extends StatelessWidget {
 
     try {
       await PetService().deleteVaccination(
-        petId: pet!.id,
-        vaccinationId: vaccination!.id,
+        petId: _pet!.id,
+        vaccinationId: _vaccination!.id,
       );
 
       if (!context.mounted) return;
@@ -73,28 +121,32 @@ class DetailPage extends StatelessWidget {
     }
   }
 
-  void navigateToEditPage(BuildContext context) {
-    if (type == 'vaccine') {
-      Navigator.of(context).pushNamed(
+  Future<void> navigateToEditPage(BuildContext context) async {
+    if (widget.type == 'vaccine') {
+      final result = await Navigator.of(context).pushNamed(
         Routes.addVaccine,
         arguments: AddVaccineArgs(
-          vaccinationId: vaccination?.id,
-          vaccineId: vaccination?.vaccineId,
-          vaccineName: vaccineName,
-          dateGiven: vaccination?.dateGiven,
-          petId: pet?.id,
-          petName: pet?.name,
-          administeredBy: vaccination?.administeredBy,
+          vaccinationId: _vaccination?.id,
+          vaccineId: _vaccination?.vaccineId,
+          vaccineName: _vaccineName,
+          dateGiven: _vaccination?.dateGiven,
+          petId: _pet?.id,
+          petName: _pet?.name,
+          administeredBy: _vaccination?.administeredBy,
         ),
       );
-    } else if (type == 'event') {
+      if (result == true) {
+        await _refreshVaccination();
+      }
+    } else if (widget.type == 'event') {
       Navigator.of(context).pushNamed(Routes.addEvent);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final (appbarIcon, appbarTitle, lastCardTitle, lastCardEmpty) = switch (type) {
+    final (appbarIcon, appbarTitle, lastCardTitle, lastCardEmpty) =
+        switch (widget.type) {
       'vaccine' => (
           Icons.vaccines_outlined,
           AppStrings.vaccineDetailsTitle,
@@ -115,35 +167,35 @@ class DetailPage extends StatelessWidget {
         ),
     };
     
-    final displayPetName = pet?.name.trim().isNotEmpty == true
-        ? pet!.name.trim()
+    final displayPetName = _pet?.name.trim().isNotEmpty == true
+        ? _pet!.name.trim()
         : AppStrings.valueNotAvailable;
-    final displayPetSpecies = pet?.species.trim().isNotEmpty == true
-        ? pet!.species.trim()
+    final displayPetSpecies = _pet?.species.trim().isNotEmpty == true
+        ? _pet!.species.trim()
         : '';
     final displaySubtitle = displayPetSpecies.isNotEmpty
         ? '$displayPetName - $displayPetSpecies'
         : displayPetName;
 
-    final displayVaccineName = vaccineName?.trim().isNotEmpty == true
-        ? vaccineName!.trim()
+    final displayVaccineName = _vaccineName?.trim().isNotEmpty == true
+        ? _vaccineName!.trim()
         : AppStrings.valueNotAvailable;
-    final displayStatus = vaccination?.status.trim().isNotEmpty == true
-        ? vaccination!.status.trim()
+    final displayStatus = _vaccination?.status.trim().isNotEmpty == true
+        ? _vaccination!.status.trim()
         : AppStrings.vaccineStatusCompleted;
-    final displayDateGiven = vaccination?.dateGiven != null
-        ? _formatDate(vaccination!.dateGiven)
+    final displayDateGiven = _vaccination?.dateGiven != null
+        ? _formatDate(_vaccination!.dateGiven)
         : AppStrings.valueNotAvailable;
-    final displayNextDue = vaccination?.nextDueDate != null
-        ? _formatDate(vaccination!.nextDueDate!)
+    final displayNextDue = _vaccination?.nextDueDate != null
+        ? _formatDate(_vaccination!.nextDueDate)
         : AppStrings.hintNotProvided;
-    final displayVet = vaccination?.administeredBy.trim().isNotEmpty == true
-        ? vaccination!.administeredBy.trim()
-        : pet?.defaultVet.trim().isNotEmpty == true
-            ? pet!.defaultVet.trim()
+    final displayVet = _vaccination?.administeredBy.trim().isNotEmpty == true
+        ? _vaccination!.administeredBy.trim()
+        : _pet?.defaultVet.trim().isNotEmpty == true
+            ? _pet!.defaultVet.trim()
             : AppStrings.valueNotAvailable;
-    final displayClinic = vaccination?.clinicName.trim().isNotEmpty == true
-        ? vaccination!.clinicName.trim()
+    final displayClinic = _vaccination?.clinicName.trim().isNotEmpty == true
+        ? _vaccination!.clinicName.trim()
         : AppStrings.valueNotAvailable;
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -195,7 +247,7 @@ class DetailPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (type == 'vaccine')
+                    if (widget.type == 'vaccine')
                       Text(
                         displayVaccineName,
                         style: TextStyle(
