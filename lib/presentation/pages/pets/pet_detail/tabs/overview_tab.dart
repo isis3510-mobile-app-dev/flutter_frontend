@@ -12,12 +12,14 @@ class OverviewTab extends StatelessWidget {
     super.key,
     required this.pet,
     required this.petDetails,
+    required this.eventCount,
     required this.onToggleLostMode,
     required this.onToggleNfc,
   });
 
   final PetUiModel pet;
   final PetModel? petDetails;
+  final int eventCount;
   final VoidCallback onToggleLostMode;
   final VoidCallback onToggleNfc;
 
@@ -87,6 +89,7 @@ class OverviewTab extends StatelessWidget {
             isDark: isDark,
             pet: pet,
             petDetails: petDetails,
+            eventCount: eventCount,
           ),
           const SizedBox(height: AppDimensions.spaceM),
           _StatusRow(
@@ -231,11 +234,13 @@ class _HealthSummaryCard extends StatelessWidget {
     required this.isDark,
     required this.pet,
     required this.petDetails,
+    required this.eventCount,
   });
 
   final bool isDark;
   final PetUiModel pet;
   final PetModel? petDetails;
+  final int eventCount;
 
   @override
   Widget build(BuildContext context) {
@@ -249,14 +254,9 @@ class _HealthSummaryCard extends StatelessWidget {
         .where((v) => v.nextDueDate.isAfter(DateTime.now()))
         .toList(growable: false)
       ..sort((a, b) => a.nextDueDate.compareTo(b.nextDueDate));
-    final nextDue = upcoming.isEmpty ? null : upcoming.first;
-
-    final allergy = pet.knownAllergies.trim().isEmpty
-        ? AppStrings.valueNotAvailable
-        : pet.knownAllergies;
-    final vetName = pet.defaultVet.trim().isEmpty
-        ? AppStrings.valueNotAvailable
-        : pet.defaultVet;
+    final completedVaccines = vaccinations.length - upcoming.length;
+    final vaccineMetric = totalVaccines == 0 ? '0/0' : '$completedVaccines/$totalVaccines';
+    final summaryTitleColor = isDark ? AppColors.onSurfaceDark : AppColors.grey900;
 
     return Container(
       decoration: BoxDecoration(
@@ -265,9 +265,9 @@ class _HealthSummaryCard extends StatelessWidget {
       ),
       padding: const EdgeInsets.fromLTRB(
         AppDimensions.pageHorizontalPadding,
-        12,
-        AppDimensions.pageHorizontalPadding,
         AppDimensions.spaceM,
+        AppDimensions.pageHorizontalPadding,
+        AppDimensions.pageHorizontalPadding,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -275,56 +275,97 @@ class _HealthSummaryCard extends StatelessWidget {
           Text(
             AppStrings.petDetailSectionHealthSummary.toUpperCase(),
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppColors.bottomNavActive,
-              letterSpacing: 0.8,
+              color: summaryTitleColor,
+              letterSpacing: 0.4,
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppDimensions.spaceM),
+          Row(
+            children: [
+              Expanded(
+                child: _HealthMetricTile(
+                  isDark: isDark,
+                  icon: Icons.vaccines_outlined,
+                  value: vaccineMetric,
+                  label: 'Vaccines',
+                ),
+              ),
+              const SizedBox(width: AppDimensions.spaceM),
+              Expanded(
+                child: _HealthMetricTile(
+                  isDark: isDark,
+                  icon: Icons.event_note_outlined,
+                  value: '$eventCount',
+                  label: 'Events',
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HealthMetricTile extends StatelessWidget {
+  const _HealthMetricTile({
+    required this.isDark,
+    required this.icon,
+    required this.value,
+    required this.label,
+  });
+
+  final bool isDark;
+  final IconData icon;
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final tileColor = isDark
+        ? AppColors.surfaceDark.withValues(alpha: 0.55)
+        : Colors.white.withValues(alpha: 0.75);
+    final iconColor = AppColors.bottomNavActive;
+    final valueColor = isDark ? AppColors.onSurfaceDark : AppColors.bottomNavActive;
+    final labelColor = isDark ? AppColors.onSurfaceDark : AppColors.grey900;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppDimensions.spaceM,
+        vertical: AppDimensions.spaceM,
+      ),
+      decoration: BoxDecoration(
+        color: tileColor,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 22,
+            color: iconColor,
+          ),
+          const SizedBox(height: AppDimensions.spaceS),
           Text(
-            'Vaccines recorded: $totalVaccines',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: isDark ? AppColors.onSurfaceDark : AppColors.grey700,
-              fontWeight: FontWeight.w500,
+            value,
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              color: valueColor,
+              fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Text(
-            nextDue != null
-                ? 'Next due: ${_formatShortDate(nextDue.nextDueDate)}'
-                : 'Next due: ${AppStrings.valueNotAvailable}',
+            label,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: isDark ? AppColors.onSurfaceDark : AppColors.grey700,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Known allergies: $allergy',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: isDark ? AppColors.onSurfaceDark : AppColors.grey700,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Default vet: $vetName',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: isDark ? AppColors.onSurfaceDark : AppColors.grey700,
+              color: labelColor,
               fontWeight: FontWeight.w500,
             ),
           ),
         ],
       ),
     );
-  }
-
-  String _formatShortDate(DateTime date) {
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
-    return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
 }
 
