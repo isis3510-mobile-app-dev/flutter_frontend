@@ -70,8 +70,8 @@ class _FilterChip extends StatelessWidget {
           borderRadius: BorderRadius.circular(999),
           border: isActive
               ? null
-              : const Border.fromBorderSide(
-                  BorderSide(color: AppColors.petFilterInactiveBorder),
+              : Border.fromBorderSide(
+                  BorderSide(color: isDark ? AppColors.petFilterInactiveBorderDark : AppColors.petFilterInactiveBorder),
                 ),
         ),
         child: Text(

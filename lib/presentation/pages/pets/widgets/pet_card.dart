@@ -125,7 +125,7 @@ class _PetCardTopSection extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  _PetCardStatusBadge(status: pet.status),
+                  _PetCardStatusBadge(status: pet.status, isDark: isDark),
                 ],
               ),
               const SizedBox(height: 9),
@@ -246,20 +246,21 @@ class _PetCardPhotoPlaceholder extends StatelessWidget {
 }
 
 class _PetCardStatusBadge extends StatelessWidget {
-  const _PetCardStatusBadge({required this.status});
+  const _PetCardStatusBadge({required this.status, required this.isDark});
 
   final String status;
+  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
     final backgroundColor = switch (status) {
-      'healthy' => AppColors.petStatusHealthyBg,
-      'lost' => AppColors.petStatusLostBg,
+      'healthy' => isDark? AppColors.positiveBackgroundDark : AppColors.positiveBackground,
+      'lost' => isDark? AppColors.negativeBackgroundDark : AppColors.negativeBackground,
       _ => AppColors.petStatusAttentionBg,
     };
     final textColor = switch (status) {
-      'healthy' => AppColors.petStatusHealthyText,
-      'lost' => AppColors.petStatusLostText,
+      'healthy' => isDark? AppColors.positiveTextDark : AppColors.positiveText,
+      'lost' => isDark? AppColors.negativeTextDark : AppColors.negativeText,
       _ => AppColors.petStatusAttentionText,
     };
     final label = switch (status) {

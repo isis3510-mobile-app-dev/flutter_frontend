@@ -37,6 +37,7 @@ class _RecordsPageState extends State<RecordsPage> {
   final VaccineService _vaccineService = VaccineService();
   final EventService _eventService = EventService();
 
+
   bool _isLoading = false;
 
   late final List<FilterOption> _filters = [
@@ -358,6 +359,8 @@ class _RecordsPageState extends State<RecordsPage> {
       }
       return true;
     }).toList();
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,

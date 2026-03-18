@@ -29,6 +29,8 @@ class AddFlowScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       appBar: AppBar(title: Text(title)),
       body: SafeArea(
@@ -61,7 +63,7 @@ class AddFlowScaffold extends StatelessWidget {
                   child: FullWidthButton(
                     text: backButtonText,
                     onPressed: onBackPressed,
-                    backgroundColor: AppColors.surface,
+                    backgroundColor: isDark ? AppColors.surfaceDark : AppColors.surface,
                     borderColor: AppColors.primary,
                     textColor: AppColors.primary,
                   ),
@@ -71,6 +73,9 @@ class AddFlowScaffold extends StatelessWidget {
                 child: FullWidthButton(
                   text: primaryButtonText,
                   onPressed: onPrimaryPressed,
+                  backgroundColor: AppColors.primary,
+                  borderColor: AppColors.primary,
+                  textColor: AppColors.onPrimary,
                 ),
               ),
             ],

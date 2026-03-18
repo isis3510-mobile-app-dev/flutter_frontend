@@ -11,6 +11,7 @@ class ProfileToggleItem extends StatelessWidget {
   final String? subtitle;
   final bool value;
   final ValueChanged<bool> onChanged;
+  final bool isDark;
 
   const ProfileToggleItem({
     super.key,
@@ -20,6 +21,7 @@ class ProfileToggleItem extends StatelessWidget {
     this.subtitle,
     required this.value,
     required this.onChanged,
+    required this.isDark,
   });
 
   @override
@@ -55,7 +57,7 @@ class ProfileToggleItem extends StatelessWidget {
                 Text(
                   title,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.onBackground,
+                        color: isDark? AppColors.onSurfaceDark: AppColors.onSurface,
                         fontWeight: FontWeight.w500,
                       ),
                 ),
@@ -76,6 +78,7 @@ class ProfileToggleItem extends StatelessWidget {
           ),
           // Material 3 Switch
           Switch(
+            inactiveThumbColor: isDark? AppColors.grey300 : AppColors.grey700,
             value: value,
             onChanged: onChanged,
             activeThumbColor: AppColors.primary,
