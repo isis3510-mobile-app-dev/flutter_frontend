@@ -77,17 +77,20 @@ class _RecordsPageState extends State<RecordsPage> {
           .toList(growable: false);
 
       final pets = <PetModel>[];
+      final petVaccinations = <String, List<PetVaccinationModel>>{};
       for (final petId in petIds) {
         try {
           final pet = await _petService.getPetById(petId);
           pets.add(pet);
+          final vaccinations = await _petService.getVaccinations(pet.id);
+          petVaccinations[pet.id] = vaccinations;
         } catch (_) {
           // Skip missing/invalid pet ids to keep records page working.
         }
       }
 
-      final vaccineIds = pets
-        .expand((pet) => pet.vaccinations)
+      final vaccineIds = petVaccinations.values
+        .expand((vaccinations) => vaccinations)
         .map((vaccine) => vaccine.vaccineId)
         .toSet()
         .toList(growable: false);
@@ -123,6 +126,7 @@ class _RecordsPageState extends State<RecordsPage> {
 
       setState(() {
         _records = combinedRecords;
+
       });
     } on ApiException catch (error) {
       if (!mounted) return;
@@ -139,7 +143,11 @@ class _RecordsPageState extends State<RecordsPage> {
     }
   }
 
-  List<_RecordEntry> _buildVaccineRecords(List<PetModel> pets, Map<String, String> vaccineInfoMap) {
+  List<_RecordEntry> _buildVaccineRecords(
+    List<PetModel> pets,
+    Map<String, List<PetVaccinationModel>> petVaccinations,
+    Map<String, String> vaccineInfoMap,
+  ) {
     final records = <_RecordEntry>[];
     for (final pet in pets) {
       for (final vaccine in pet.vaccinations) {

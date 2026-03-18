@@ -109,10 +109,11 @@ class PetService {
 
   Future<void> updateVaccination({
     required String petId,
+    required String vaccinationId,
     required Map<String, dynamic> data,
   }) async {
     await _apiClient.put(
-      '$petsPath$petId/vaccinations/',
+      '$petsPath$petId/vaccinations/$vaccinationId/',
       body: data,
     );
   }
@@ -129,12 +130,28 @@ class PetService {
 
   Future<void> deleteVaccination({
     required String petId,
-    required Map<String, dynamic> data,
+    required String vaccinationId,
   }) async {
     await _apiClient.delete(
-      '$petsPath$petId/vaccinations/',
-      body: data,
+      '$petsPath$petId/vaccinations/$vaccinationId/',
     );
+  }
+
+  Future<List<PetVaccinationModel>> getVaccinations(String petId) async {
+    final response = await _apiClient.get('$petsPath$petId/vaccinations/');
+    final json = jsonDecode(response.body);
+
+    if (json is! List<dynamic>) {
+      throw const ApiException(
+        type: ApiErrorType.unknown,
+        message: 'Unexpected vaccinations response from server.',
+      );
+    }
+
+    return json
+        .map(_asPetMap)
+        .map(PetVaccinationModel.fromJson)
+        .toList(growable: false);
   }
 
   Future<void> markPetAsLost(String petId) async {

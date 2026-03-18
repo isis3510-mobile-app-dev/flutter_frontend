@@ -75,14 +75,9 @@ class DetailPage extends StatelessWidget {
     }
 
     try {
-      final payload = <String, dynamic>{
-        'vaccineId': vaccination!.vaccineId,
-        'dateGiven': _formatDateForApi(vaccination!.dateGiven),
-      };
-
       await PetService().deleteVaccination(
         petId: pet!.id,
-        data: payload,
+        vaccinationId: vaccination!.id,
       );
 
       if (!context.mounted) {
@@ -162,6 +157,7 @@ class DetailPage extends StatelessWidget {
       final result = await Navigator.of(context).pushNamed(
         Routes.addVaccine,
         arguments: AddVaccineArgs(
+          vaccinationId: vaccination?.id,
           vaccineId: vaccination?.vaccineId,
           vaccineName: vaccineName,
           dateGiven: vaccination?.dateGiven,

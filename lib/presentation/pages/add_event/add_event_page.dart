@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/core/constants/app_colors.dart';
 import 'package:flutter_frontend/core/constants/app_strings.dart';
 import 'package:flutter_frontend/core/models/pet_model.dart';
 import 'package:flutter_frontend/core/network/api_exception.dart';
@@ -9,6 +8,11 @@ import 'package:flutter_frontend/core/services/user_service.dart';
 import 'package:flutter_frontend/presentation/widgets/stepper.dart' as app_stepper;
 import 'package:flutter_frontend/shared/widgets/form_field.dart';
 import 'package:flutter_frontend/shared/widgets/full_width_button.dart';
+import 'package:flutter_frontend/presentation/pages/add_flow/utils/date_input.dart';
+import 'package:flutter_frontend/presentation/pages/add_flow/widgets/add_flow_scaffold.dart';
+import 'package:flutter_frontend/presentation/pages/add_event/widgets/add_event_step_basic.dart';
+import 'package:flutter_frontend/presentation/pages/add_event/widgets/add_event_step_details.dart';
+import 'package:flutter_frontend/presentation/pages/add_event/widgets/add_event_step_overview.dart';
 
 import 'add_event_args.dart';
 
@@ -309,7 +313,20 @@ class _AddEventPageState extends State<AddEventPage> {
       return;
     }
 
-    _dateController.text = _formatDateForInput(pickedDate);
+    _dateController.text = formatDateForInput(pickedDate);
+  }
+
+  void _continue() {
+    final isValid = _formKey.currentState?.validate() ?? false;
+    if (!isValid) {
+      return;
+    }
+
+    setState(() {
+      if (_step < 2) {
+        _step++;
+      }
+    });
   }
 
   Future<void> _pickTime() async {
@@ -577,6 +594,22 @@ class _AddEventPageState extends State<AddEventPage> {
           ),
         ),
       ),
+    return AddFlowScaffold(
+      title: AppStrings.addEventTitle,
+      formKey: _formKey,
+      steps: const [
+        AppStrings.stepBasicInfo,
+        AppStrings.stepDetails,
+        AppStrings.stepOverview,
+      ],
+      currentStep: _step,
+      stepContent: _buildStepContent(),
+      primaryButtonText: _step == 2
+          ? AppStrings.semanticAddEventButton
+          : AppStrings.semanticContinueButton,
+      onPrimaryPressed: _step == 2 ? _submit : _continue,
+      onBackPressed: _back,
+      backButtonText: AppStrings.semanticBackButton,
     );
   }
 
@@ -678,6 +711,13 @@ class _AddEventPageState extends State<AddEventPage> {
               }
               return null;
             },
+          AddEventStepBasic(
+            eventController: _eventController,
+            dateController: _dateController,
+            timeController: _timeController,
+            petNameController: _petNameController,
+            onPickDate: _pickDate,
+            onPickTime: _pickTime,
           ),
         ];
       case 1:
@@ -784,6 +824,8 @@ class _AddEventPageState extends State<AddEventPage> {
                 color: AppColors.grey700,
               ),
             ),
+          AddEventStepDetails(
+            descriptionController: _descriptionController,
           ),
         ];
       case 2:
@@ -843,6 +885,12 @@ class _AddEventPageState extends State<AddEventPage> {
             hintText: AppStrings.hintNotProvided,
             controller: _descriptionController,
             readOnly: true,
+          AddEventStepOverview(
+            eventController: _eventController,
+            dateController: _dateController,
+            timeController: _timeController,
+            petNameController: _petNameController,
+            descriptionController: _descriptionController,
           ),
         ];
     }

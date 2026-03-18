@@ -26,6 +26,7 @@ class PetDocumentModel {
 
 class PetVaccinationModel {
   const PetVaccinationModel({
+    required this.id,
     required this.vaccineId,
     required this.dateGiven,
     required this.nextDueDate,
@@ -36,6 +37,7 @@ class PetVaccinationModel {
     required this.attachedDocuments,
   });
 
+  final String id;
   final String vaccineId;
   final DateTime dateGiven;
   final DateTime nextDueDate;
@@ -51,10 +53,11 @@ class PetVaccinationModel {
             as List<dynamic>?;
 
     return PetVaccinationModel(
-      vaccineId: _readString(json['vaccineId'] ?? json['vaccine_id']),
-      dateGiven: _parseDate(json['dateGiven'] ?? json['date_given']),
-      nextDueDate: _parseDate(json['nextDueDate'] ?? json['next_due_date']),
-      lotNumber: _readString(json['lotNumber'] ?? json['lot_number']),
+      id: _readString(json['id']),
+      vaccineId: _readString(json['vaccineId']),
+      dateGiven: _parseDate(json['dateGiven']),
+      nextDueDate: _parseDate(json['nextDueDate']),
+      lotNumber: _readString(json['lotNumber']),
       status: _readString(json['status']),
       administeredBy: _readString(
         json['administeredBy'] ?? json['administered_by'],
