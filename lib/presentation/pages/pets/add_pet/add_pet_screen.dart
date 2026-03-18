@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../widgets/stepper.dart' as app_stepper;
@@ -11,13 +9,16 @@ import '../../../../core/network/api_exception.dart';
 import '../../../../core/services/pet_service.dart';
 import '../../../../core/services/profile_photo_service.dart';
 import '../../../../core/utils/context_extensions.dart';
+import '../models/pet_ui_model.dart';
 import 'add_pet_form_types.dart';
 import 'steps/step_basic_info.dart';
 import 'steps/step_details.dart';
 import 'steps/step_medical.dart';
 
 class AddPetScreen extends StatefulWidget {
-  const AddPetScreen({super.key});
+  const AddPetScreen({super.key, this.editingPet});
+
+  final PetUiModel? editingPet;
 
   @override
   State<AddPetScreen> createState() => _AddPetScreenState();
@@ -40,14 +41,22 @@ class _AddPetScreenState extends State<AddPetScreen> {
   int _currentStep = 0;
   PetSpecies? _species;
   PetGender? _gender;
-  String? _localPetPhotoPath;
+  String? _petPhotoPath;
   bool _isCreatingPet = false;
+
+  bool get _isEditMode => widget.editingPet != null;
 
   static const _stepLabels = [
     AppStrings.addPetStepBasicInfo,
     AppStrings.addPetStepDetails,
     AppStrings.addPetStepMedical,
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadInitialValues();
+  }
 
   @override
   void dispose() {
@@ -60,6 +69,71 @@ class _AddPetScreenState extends State<AddPetScreen> {
     _clinicController.dispose();
     _allergiesController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadInitialValues() async {
+    final editingPet = widget.editingPet;
+    if (editingPet == null) {
+      return;
+    }
+
+    _nameController.text = _normalizeInitialText(editingPet.name);
+    _breedController.text = _normalizeInitialText(editingPet.breed);
+    _dateOfBirthController.text =
+        '${editingPet.birthDate.day.toString().padLeft(2, '0')}/${editingPet.birthDate.month.toString().padLeft(2, '0')}/${editingPet.birthDate.year.toString().padLeft(4, '0')}';
+    _weightController.text =
+      editingPet.weight == editingPet.weight.roundToDouble()
+        ? editingPet.weight.toInt().toString()
+        : editingPet.weight.toStringAsFixed(1);
+    _colorController.text = _normalizeInitialText(editingPet.color);
+    _veterinarianController.text = _normalizeInitialText(editingPet.defaultVet);
+    _clinicController.text = _normalizeInitialText(editingPet.defaultClinic);
+    _allergiesController.text = _normalizeInitialText(
+      editingPet.knownAllergies,
+    );
+    _species = _speciesFromValue(editingPet.species);
+    _gender = _genderFromValue(editingPet.gender);
+
+    final localPath = await _photoService.getPetPhotoPath(editingPet.id);
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _petPhotoPath = localPath ?? editingPet.effectivePhotoPath;
+    });
+  }
+
+  String _normalizeInitialText(String value) {
+    return value == AppStrings.valueNotAvailable ? '' : value;
+  }
+
+  PetSpecies _speciesFromValue(String value) {
+    return value.toLowerCase().trim() == 'cat'
+        ? PetSpecies.cat
+        : PetSpecies.dog;
+  }
+
+  PetGender _genderFromValue(String value) {
+    return value.toLowerCase().trim() == 'female'
+        ? PetGender.female
+        : PetGender.male;
+  }
+
+  Map<String, dynamic> _buildPetPayload(DateTime birthDate) {
+    return {
+      'name': _nameController.text.trim(),
+      'species': _species == PetSpecies.cat ? 'cat' : 'dog',
+      'breed': _breedController.text.trim(),
+      'gender': _gender == PetGender.female ? 'female' : 'male',
+      'birthDate':
+          '${birthDate.year.toString().padLeft(4, '0')}-${birthDate.month.toString().padLeft(2, '0')}-${birthDate.day.toString().padLeft(2, '0')}',
+      'weight': double.tryParse(_weightController.text.trim()) ?? 0,
+      'color': _colorController.text.trim(),
+      'knownAllergies': _allergiesController.text.trim(),
+      'defaultVet': _veterinarianController.text.trim(),
+      'defaultClinic': _clinicController.text.trim(),
+    };
   }
 
   Future<void> _pickDateOfBirth() async {
@@ -128,6 +202,10 @@ class _AddPetScreenState extends State<AddPetScreen> {
   }
 
   Future<void> _submit() async {
+    if (_isCreatingPet) {
+      return;
+    }
+
     if (!_validateCurrentStep()) {
       return;
     }
@@ -143,24 +221,22 @@ class _AddPetScreenState extends State<AddPetScreen> {
     });
 
     try {
-      final createdPet = await PetService().createPet({
-        'name': _nameController.text.trim(),
-        'species': _species == PetSpecies.cat ? 'cat' : 'dog',
-        'breed': _breedController.text.trim(),
-        'gender': _gender == PetGender.female ? 'female' : 'male',
-        'birthDate':
-            '${birthDate.year.toString().padLeft(4, '0')}-${birthDate.month.toString().padLeft(2, '0')}-${birthDate.day.toString().padLeft(2, '0')}',
-        'weight': double.tryParse(_weightController.text.trim()) ?? 0,
-        'color': _colorController.text.trim(),
-        'knownAllergies': _allergiesController.text.trim(),
-        'defaultVet': _veterinarianController.text.trim(),
-        'defaultClinic': _clinicController.text.trim(),
-      });
+      final petService = PetService();
+      final payload = _buildPetPayload(birthDate);
+      final savedPet = _isEditMode
+          ? await petService.updatePet(
+              petId: widget.editingPet!.id,
+              data: payload,
+            )
+          : await petService.createPet(payload);
 
-      if (_localPetPhotoPath != null && _localPetPhotoPath!.isNotEmpty) {
+      if (_petPhotoPath != null &&
+          _petPhotoPath!.isNotEmpty &&
+          !(_petPhotoPath!.startsWith('http://') ||
+              _petPhotoPath!.startsWith('https://'))) {
         await _photoService.savePetPhotoPath(
-          petId: createdPet.id,
-          filePath: _localPetPhotoPath!,
+          petId: savedPet.id,
+          filePath: _petPhotoPath!,
         );
       }
 
@@ -168,7 +244,11 @@ class _AddPetScreenState extends State<AddPetScreen> {
         return;
       }
 
-      context.showSnackBar(AppStrings.addPetSavedMessage);
+      context.showSnackBar(
+        _isEditMode
+            ? AppStrings.editPetSavedMessage
+            : AppStrings.addPetSavedMessage,
+      );
       context.pop(true);
     } on ApiException catch (error) {
       if (!mounted) {
@@ -216,7 +296,7 @@ class _AddPetScreenState extends State<AddPetScreen> {
       }
 
       setState(() {
-        _localPetPhotoPath = photoPath;
+        _petPhotoPath = photoPath;
       });
     } catch (_) {
       if (!mounted) {
@@ -265,7 +345,9 @@ class _AddPetScreenState extends State<AddPetScreen> {
           onPressed: _isCreatingPet ? null : _goBack,
           tooltip: AppStrings.semanticBackButton,
         ),
-        title: const Text(AppStrings.addPetTitle),
+        title: Text(
+          _isEditMode ? AppStrings.editPetTitle : AppStrings.addPetTitle,
+        ),
       ),
       body: SafeArea(
         child: Form(
@@ -351,7 +433,9 @@ class _AddPetScreenState extends State<AddPetScreen> {
                       )
                     : Text(
                         _currentStep == 2
-                            ? AppStrings.semanticAddPetButton
+                        ? (_isEditMode
+                            ? AppStrings.actionEdit
+                            : AppStrings.semanticAddPetButton)
                             : AppStrings.semanticContinueButton,
                       ),
               ),
@@ -375,8 +459,7 @@ class _AddPetScreenState extends State<AddPetScreen> {
             });
           },
           onPhotoTap: _pickPhotoFromGallery,
-          imageFile:
-              _localPetPhotoPath == null ? null : File(_localPetPhotoPath!),
+          imagePath: _petPhotoPath,
         );
       case 1:
         return StepDetails(

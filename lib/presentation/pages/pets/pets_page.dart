@@ -293,8 +293,19 @@ class _PetsPageState extends State<PetsPage> {
         final pet = _filtered[index];
         return PetCard(
           pet: pet,
-          onTap: () =>
-              Navigator.pushNamed(context, Routes.petDetail, arguments: pet),
+          onTap: () async {
+            final changed = await Navigator.pushNamed(
+              context,
+              Routes.petDetail,
+              arguments: pet,
+            );
+
+            if (!mounted || changed != true) {
+              return;
+            }
+
+            await _loadPets();
+          },
           onVaccinesTap: () {},
           onLostModeTap: () => _toggleLostMode(pet),
           onNfcTap: () {},

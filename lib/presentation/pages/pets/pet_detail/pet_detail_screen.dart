@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../../app/routes.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_strings.dart';
@@ -17,6 +18,8 @@ import '../models/pet_ui_model.dart';
 import 'tabs/events_tab.dart';
 import 'tabs/overview_tab.dart';
 import 'tabs/vaccines_tab.dart';
+
+enum _PetAction { edit, delete }
 
 class PetDetailScreen extends StatefulWidget {
   const PetDetailScreen({super.key, required this.pet});
@@ -36,6 +39,7 @@ class _PetDetailScreenState extends State<PetDetailScreen>
   late PetUiModel _pet;
   PetModel? _petDetails;
   bool _isLoading = false;
+  bool _hasMutatedPet = false;
   String? _errorMessage;
 
   @override
@@ -140,7 +144,122 @@ class _PetDetailScreenState extends State<PetDetailScreen>
         ),
       );
 
+      _hasMutatedPet = true;
       await _loadPetDetail();
+    } on ApiException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(AppStrings.petsLoadError)),
+      );
+    }
+  }
+
+  void _goBack() {
+    Navigator.pop(context, _hasMutatedPet ? true : null);
+  }
+
+  Future<void> _openEditPet() async {
+    final wasUpdated = await Navigator.pushNamed(
+      context,
+      Routes.addPet,
+      arguments: _pet,
+    );
+
+    if (wasUpdated == true) {
+      _hasMutatedPet = true;
+      await _loadPetDetail();
+    }
+  }
+
+  Future<void> _showPetActionsMenu() async {
+    final action = await showModalBottomSheet<_PetAction>(
+      context: context,
+      showDragHandle: true,
+      builder: (bottomSheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.edit_outlined),
+                title: const Text(AppStrings.petDetailMenuEdit),
+                onTap: () => Navigator.pop(bottomSheetContext, _PetAction.edit),
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: AppColors.error),
+                title: const Text(
+                  AppStrings.petDetailMenuDelete,
+                  style: TextStyle(color: AppColors.error),
+                ),
+                onTap: () => Navigator.pop(bottomSheetContext, _PetAction.delete),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (!mounted || action == null) {
+      return;
+    }
+
+    if (action == _PetAction.edit) {
+      await _openEditPet();
+      return;
+    }
+
+    await _confirmAndDeletePet();
+  }
+
+  Future<void> _confirmAndDeletePet() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text(AppStrings.petDeleteConfirmTitle),
+          content: Text(
+            '${AppStrings.petDeleteConfirmMessage} (${_pet.name})',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text(AppStrings.petLostConfirmCancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+              child: const Text(AppStrings.petDeleteConfirmAction),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    try {
+      await _petService.deletePet(_pet.id);
+      await _photoService.clearPetPhotoPath(_pet.id);
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(AppStrings.petDeletedMessage)),
+      );
+      Navigator.pop(context, true);
     } on ApiException catch (error) {
       if (!mounted) {
         return;
@@ -220,10 +339,10 @@ class _PetDetailScreenState extends State<PetDetailScreen>
       children: [
         _PetDetailHeader(
           pet: _pet,
-          onBack: () => Navigator.pop(context),
+          onBack: _goBack,
           onShare: () {},
-          onEdit: () {},
-          onMore: () {},
+          onEdit: _openEditPet,
+          onMore: _showPetActionsMenu,
         ),
         _PetDetailTabBar(controller: _tabController),
         Expanded(
