@@ -5,6 +5,8 @@ import '../../../../../core/constants/app_colors.dart';
 import '../../../../../core/constants/app_dimensions.dart';
 import '../../../../../core/constants/app_strings.dart';
 import '../../../../../core/models/pet_model.dart';
+import '../../../../../core/network/api_exception.dart';
+import '../../../../../core/services/pet_service.dart';
 import '../../../../../core/services/vaccine_service.dart';
 import '../../models/pet_ui_model.dart';
 
@@ -30,6 +32,8 @@ class VaccineUiModel {
   final VaccineStatusType status;
   final String administeredBy;
   final String clinicName;
+
+  String get uniqueKey => '${vaccineId}_${dateGiven.millisecondsSinceEpoch}';
 
   String get statusLabel {
     return switch (status) {
@@ -77,7 +81,10 @@ class VaccinesTab extends StatefulWidget {
 
 class _VaccinesTabState extends State<VaccinesTab> {
   final VaccineService _vaccineService = VaccineService();
+  final PetService _petService = PetService();
   Map<String, String> _vaccineNames = const <String, String>{};
+  final Map<String, VaccineStatusType> _statusOverrides = <String, VaccineStatusType>{};
+  final Set<String> _updatingStatuses = <String>{};
 
   @override
   void initState() {
@@ -151,15 +158,12 @@ class _VaccinesTabState extends State<VaccinesTab> {
     final sourceStatus = model.status.trim().toLowerCase();
     final now = DateTime.now();
 
-    if (sourceStatus == 'overdue' || sourceStatus == 'late' || sourceStatus == 'expired') {
-      return VaccineStatusType.overdue;
+    if (sourceStatus == 'completed' || sourceStatus == 'done' || sourceStatus == 'applied') {
+      return VaccineStatusType.completed;
     }
 
-    if (sourceStatus == 'completed' || sourceStatus == 'done' || sourceStatus == 'applied') {
-      if (model.nextDueDate.isBefore(now)) {
-        return VaccineStatusType.overdue;
-      }
-      return VaccineStatusType.completed;
+    if (sourceStatus == 'overdue' || sourceStatus == 'late' || sourceStatus == 'expired') {
+      return VaccineStatusType.overdue;
     }
 
     if (sourceStatus == 'upcoming' || sourceStatus == 'pending' || sourceStatus == 'scheduled') {
@@ -177,6 +181,140 @@ class _VaccinesTabState extends State<VaccinesTab> {
     return VaccineStatusType.completed;
   }
 
+  String _formatDateForApi(DateTime date) {
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return '${date.year}-$month-$day';
+  }
+
+  String _statusToApiValue(VaccineStatusType status) {
+    return switch (status) {
+      VaccineStatusType.completed => 'completed',
+      VaccineStatusType.upcoming => 'upcoming',
+      VaccineStatusType.overdue => 'overdue',
+    };
+  }
+
+  String _statusLabel(VaccineStatusType status) {
+    return switch (status) {
+      VaccineStatusType.completed => 'Completed',
+      VaccineStatusType.upcoming => 'Upcoming',
+      VaccineStatusType.overdue => 'Overdue',
+    };
+  }
+
+  Future<void> _showStatusPicker(VaccineUiModel vaccine) async {
+    final key = vaccine.uniqueKey;
+    if (_updatingStatuses.contains(key)) {
+      return;
+    }
+
+    final selected = await showModalBottomSheet<VaccineStatusType>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: Text(
+                  vaccine.vaccineName,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                subtitle: const Text('Select new status'),
+              ),
+              for (final status in VaccineStatusType.values)
+                ListTile(
+                  title: Text(_statusLabel(status)),
+                  trailing: status == vaccine.status
+                      ? const Icon(Icons.check, color: AppColors.primary)
+                      : null,
+                  onTap: () => Navigator.of(context).pop(status),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (selected == null || selected == vaccine.status) {
+      return;
+    }
+
+    await _updateVaccineStatus(vaccine, selected);
+  }
+
+  Future<void> _updateVaccineStatus(
+    VaccineUiModel vaccine,
+    VaccineStatusType newStatus,
+  ) async {
+    final key = vaccine.uniqueKey;
+    if (_updatingStatuses.contains(key)) {
+      return;
+    }
+
+    setState(() {
+      _updatingStatuses.add(key);
+    });
+
+    try {
+      final payload = <String, dynamic>{
+        'vaccineId': vaccine.vaccineId,
+        'dateGiven': _formatDateForApi(vaccine.dateGiven),
+        'status': _statusToApiValue(newStatus),
+      };
+      if (vaccine.nextDueDate.year > 1) {
+        payload['nextDueDate'] = _formatDateForApi(vaccine.nextDueDate);
+      }
+      final administeredBy = vaccine.administeredBy.trim();
+      if (administeredBy.isNotEmpty) {
+        payload['administeredBy'] = administeredBy;
+      }
+      final lotNumber = vaccine.lotNumber.trim();
+      if (lotNumber.isNotEmpty) {
+        payload['lotNumber'] = lotNumber;
+      }
+
+      await _petService.updateVaccination(
+        petId: widget.pet.id,
+        data: payload,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _statusOverrides[key] = newStatus;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Vaccine status updated to ${_statusLabel(newStatus).toLowerCase()}.')),
+      );
+    } on ApiException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(AppStrings.errorGeneric)),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _updatingStatuses.remove(key);
+        });
+      }
+    }
+  }
+
   String _formatDate(DateTime date) {
     if (date.year < 2) {
       return AppStrings.valueNotAvailable;
@@ -189,12 +327,12 @@ class _VaccinesTabState extends State<VaccinesTab> {
   }
 
   List<VaccineUiModel> _mapVaccines(List<PetVaccinationModel> raw) {
-    return raw.map((item) {
+    final mapped = raw.map((item) {
       final candidate = item.vaccineId.trim();
       final name = _vaccineNames[candidate]?.trim();
       final resolvedName =
           name != null && name.isNotEmpty ? name : candidate;
-      return VaccineUiModel(
+      final vaccine = VaccineUiModel(
         vaccineId: item.vaccineId,
         vaccineName:
             resolvedName.isEmpty ? AppStrings.valueNotAvailable : resolvedName,
@@ -205,7 +343,26 @@ class _VaccinesTabState extends State<VaccinesTab> {
         administeredBy: item.administeredBy,
         clinicName: item.clinicName,
       );
+
+      final override = _statusOverrides[vaccine.uniqueKey];
+      if (override == null) {
+        return vaccine;
+      }
+
+      return VaccineUiModel(
+        vaccineId: vaccine.vaccineId,
+        vaccineName: vaccine.vaccineName,
+        dateGiven: vaccine.dateGiven,
+        nextDueDate: vaccine.nextDueDate,
+        lotNumber: vaccine.lotNumber,
+        status: override,
+        administeredBy: vaccine.administeredBy,
+        clinicName: vaccine.clinicName,
+      );
     }).toList(growable: false);
+
+    mapped.sort((a, b) => b.dateGiven.compareTo(a.dateGiven));
+    return mapped;
   }
 
   @override
@@ -308,6 +465,8 @@ class _VaccinesTabState extends State<VaccinesTab> {
                 isFirst: index == 0,
                 isLast: index == uiVaccines.length - 1,
                 dateFormatter: _formatDate,
+                isUpdatingStatus: _updatingStatuses.contains(item.uniqueKey),
+                onTap: () => _showStatusPicker(item),
               );
             },
           ),
@@ -451,12 +610,16 @@ class VaccineTimelineItem extends StatelessWidget {
     required this.isFirst,
     required this.isLast,
     required this.dateFormatter,
+    required this.onTap,
+    this.isUpdatingStatus = false,
   });
 
   final VaccineUiModel vaccine;
   final bool isFirst;
   final bool isLast;
   final String Function(DateTime) dateFormatter;
+  final VoidCallback onTap;
+  final bool isUpdatingStatus;
 
   @override
   Widget build(BuildContext context) {
@@ -498,6 +661,8 @@ class VaccineTimelineItem extends StatelessWidget {
                   child: VaccineCard(
                     vaccine: vaccine,
                     dateFormatter: dateFormatter,
+                    onTap: onTap,
+                    isUpdatingStatus: isUpdatingStatus,
                   ),
                 ),
               ),
@@ -540,10 +705,14 @@ class VaccineCard extends StatelessWidget {
     super.key,
     required this.vaccine,
     required this.dateFormatter,
+    required this.onTap,
+    this.isUpdatingStatus = false,
   });
 
   final VaccineUiModel vaccine;
   final String Function(DateTime) dateFormatter;
+  final VoidCallback onTap;
+  final bool isUpdatingStatus;
 
   Color get _badgeColor {
     return switch (vaccine.status) {
@@ -573,90 +742,106 @@ class VaccineCard extends StatelessWidget {
       ),
     ];
 
-    return Container(
-      decoration: BoxDecoration(
-        color: cardColor,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
         borderRadius: BorderRadius.circular(AppDimensions.radiusL),
-        boxShadow: shadow,
-        border: Border.all(
-          color: isDark ? AppColors.grey700 : AppColors.grey300,
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppDimensions.spaceM),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+        onTap: isUpdatingStatus ? null : onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+            boxShadow: shadow,
+            border: Border.all(
+              color: isDark ? AppColors.grey700 : AppColors.grey300,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(AppDimensions.spaceM),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Text(
-                    vaccine.vaccineName,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.onSurface,
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        vaccine.vaccineName,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.onSurface,
+                        ),
+                      ),
                     ),
-                  ),
+                    if (isUpdatingStatus)
+                      const Padding(
+                        padding: EdgeInsets.only(right: 8),
+                        child: SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppDimensions.spaceXS,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _badgeColor,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        vaccine.statusLabel,
+                        style: TextStyle(
+                          color: _badgeTextColor,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppDimensions.spaceXS,
-                    vertical: 4,
+                const SizedBox(height: AppDimensions.spaceXS),
+                Text(
+                  vaccine.doctorClinic,
+                  style: TextStyle(
+                    color: isDark ? AppColors.onSurfaceDark : AppColors.grey700,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
                   ),
-                  decoration: BoxDecoration(
-                    color: _badgeColor,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    vaccine.statusLabel,
-                    style: TextStyle(
-                      color: _badgeTextColor,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: AppDimensions.spaceS),
+                Row(
+                  children: [
+                    _MetaDataColumn(
+                      label: 'Date given',
+                      value: vaccine.dateGiven.year > 1
+                          ? dateFormatter(vaccine.dateGiven)
+                          : AppStrings.valueNotAvailable,
                     ),
-                  ),
+                    const SizedBox(width: AppDimensions.spaceS),
+                    _MetaDataColumn(
+                      label: 'Next due',
+                      value: vaccine.nextDueDate.year > 1
+                          ? dateFormatter(vaccine.nextDueDate)
+                          : AppStrings.valueNotAvailable,
+                    ),
+                    if (vaccine.lotNumber.trim().isNotEmpty) ...[
+                      const SizedBox(width: AppDimensions.spaceS),
+                      _MetaDataColumn(
+                        label: 'Lot #',
+                        value: vaccine.lotNumber,
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),
-            const SizedBox(height: AppDimensions.spaceXS),
-            Text(
-              vaccine.doctorClinic,
-              style: TextStyle(
-                color: isDark ? AppColors.onSurfaceDark : AppColors.grey700,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: AppDimensions.spaceS),
-            Row(
-              children: [
-                _MetaDataColumn(
-                  label: 'Date given',
-                  value: vaccine.dateGiven.year > 1
-                      ? dateFormatter(vaccine.dateGiven)
-                      : AppStrings.valueNotAvailable,
-                ),
-                const SizedBox(width: AppDimensions.spaceS),
-                _MetaDataColumn(
-                  label: 'Next due',
-                  value: vaccine.nextDueDate.year > 1
-                      ? dateFormatter(vaccine.nextDueDate)
-                      : AppStrings.valueNotAvailable,
-                ),
-                if (vaccine.lotNumber.trim().isNotEmpty) ...[
-                  const SizedBox(width: AppDimensions.spaceS),
-                  _MetaDataColumn(
-                    label: 'Lot #',
-                    value: vaccine.lotNumber,
-                  ),
-                ],
-              ],
-            ),
-          ],
+          ),
         ),
       ),
     );
