@@ -29,6 +29,11 @@ class UpcomingVaccineCard extends StatelessWidget {
         : AppColors.secondary;
     final textColor = isDark ? AppColors.onBackgroundDark : AppColors.onSecondary;
     final subtextColor = isDark ? AppColors.grey500 : AppColors.grey700;
+    final timeLabel = switch (daysUntil) {
+      < 0 => '${daysUntil.abs()}d',
+      0 => 'Today',
+      _ => '${daysUntil}d',
+    };
 
     return GestureDetector(
       onTap: onTap,
@@ -124,7 +129,7 @@ class UpcomingVaccineCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppDimensions.radiusM),
                 ),
                 child: Text(
-                  '-${daysUntil}d',
+                  timeLabel,
                   style: TextStyle(
                     color: isDark? AppColors.timeTextDark : AppColors.timeText,
                     fontSize: 12,
