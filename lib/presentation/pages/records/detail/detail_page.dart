@@ -352,6 +352,7 @@ String _formatDateForApi(DateTime date) {
   return '${date.year}-$month-$day';
 }
 class _InfoCard extends StatelessWidget {
+  // ignore: unused_element_parameter
   const _InfoCard({this.title, required this.child, this.backgroundColor = AppColors.secondary});
 
   final String? title;
