@@ -133,6 +133,8 @@ class _RecordsPageState extends State<RecordsPage> {
             iconBackground: AppColors.primaryVariant,
             iconColor: AppColors.primary,
             sortDate: vaccine.dateGiven,
+            vaccination: vaccine,
+            pet: pet,
           ),
         );
       }
@@ -170,13 +172,22 @@ class _RecordsPageState extends State<RecordsPage> {
     return '${pet.name} - $displayVet';
   }
 
-  void navigateToDetail(_RecordType type) {
-    if (type == _RecordType.vaccine) {
+  void navigateToDetail(_RecordEntry record) {
+    if (record.type == _RecordType.vaccine) {
       Navigator.of(
         context,
-      ).push(MaterialPageRoute(builder: (context) => const DetailPage(type: 'vaccine',)));
+      ).push(
+        MaterialPageRoute(
+          builder: (context) => DetailPage(
+            type: 'vaccine',
+            vaccination: record.vaccination,
+            pet: record.pet,
+            vaccineName: record.title,
+          )
+        )
+      );
       return;
-    } else if (type == _RecordType.event) {
+    } else if (record.type == _RecordType.event) {
       Navigator.of(
         context,
       ).push(MaterialPageRoute(builder: (context) => const DetailPage(type: 'event',)));
@@ -280,7 +291,7 @@ class _RecordsPageState extends State<RecordsPage> {
                       icon: record.icon,
                       iconBackground: record.iconBackground,
                       iconColor: record.iconColor,
-                      onTap: () => navigateToDetail(record.type),
+                      onTap: () => navigateToDetail(record),
                     ),
                   const SizedBox(height: 12),
                 ],
@@ -309,6 +320,8 @@ class _RecordEntry {
     required this.iconBackground,
     required this.iconColor,
     required this.sortDate,
+    required this.vaccination,
+    required this.pet,
   });
 
   final _RecordType type;
@@ -319,4 +332,6 @@ class _RecordEntry {
   final Color iconBackground;
   final Color iconColor;
   final DateTime sortDate;
+  final PetVaccinationModel vaccination;
+  final PetModel pet;
 }

@@ -26,6 +26,7 @@ class PetVaccinationModel {
     required this.lotNumber,
     required this.status,
     required this.administeredBy,
+    required this.clinicName,
     required this.attachedDocuments,
   });
 
@@ -35,6 +36,7 @@ class PetVaccinationModel {
   final String lotNumber;
   final String status;
   final String administeredBy;
+  final String clinicName;
   final List<PetDocumentModel> attachedDocuments;
 
   factory PetVaccinationModel.fromJson(Map<String, dynamic> json) {
@@ -47,6 +49,7 @@ class PetVaccinationModel {
       lotNumber: _readString(json['lotNumber']),
       status: _readString(json['status']),
       administeredBy: _readString(json['administeredBy']),
+      clinicName: _readString(json['clinicName']),
       attachedDocuments: attachedDocumentsJson == null
           ? const []
           : attachedDocumentsJson

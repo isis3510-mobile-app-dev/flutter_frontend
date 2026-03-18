@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/pages/add_event/add_event_page.dart';
+import 'package:flutter_frontend/presentation/pages/add_vaccine/add_vaccine_args.dart';
 import 'package:flutter_frontend/presentation/pages/add_vaccine/add_vaccine_page.dart';
 import 'package:flutter_frontend/presentation/pages/nfc/nfc_page.dart';
 import 'package:flutter_frontend/core/models/user_profile.dart';
@@ -64,6 +65,10 @@ class Routes {
         return _buildPetDetailRoute(settings);
 
       case addVaccine:
+        final args = settings.arguments;
+        if (args is AddVaccineArgs) {
+          return _buildRoute(AddVaccinePage(prefill: args), settings);
+        }
         return _buildRoute(const AddVaccinePage(), settings);
 
       case nfc:

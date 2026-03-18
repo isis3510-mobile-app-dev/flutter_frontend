@@ -2,17 +2,38 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/app/routes.dart';
 import 'package:flutter_frontend/core/constants/app_colors.dart';
 import 'package:flutter_frontend/core/constants/app_strings.dart';
+import 'package:flutter_frontend/core/models/pet_model.dart';
 import 'package:flutter_frontend/core/utils/context_extensions.dart';
+import 'package:flutter_frontend/presentation/pages/add_vaccine/add_vaccine_args.dart';
 import 'package:flutter_frontend/shared/widgets/full_width_button.dart';
 
 class DetailPage extends StatelessWidget {
-  const DetailPage({super.key, required this.type});
+  const DetailPage({
+    super.key,
+    required this.type,
+    this.vaccination,
+    this.pet,
+    this.vaccineName
+  });
 
   final String type;
+  final PetVaccinationModel? vaccination;
+  final PetModel? pet;
+  final String? vaccineName;
 
   void navigateToEditPage(BuildContext context) {
     if (type == 'vaccine') {
-      Navigator.of(context).pushNamed(Routes.addVaccine);
+      Navigator.of(context).pushNamed(
+        Routes.addVaccine,
+        arguments: AddVaccineArgs(
+          vaccineId: vaccination?.vaccineId,
+          vaccineName: vaccineName,
+          dateGiven: vaccination?.dateGiven,
+          petId: pet?.id,
+          petName: pet?.name,
+          administeredBy: vaccination?.administeredBy,
+        ),
+      );
     } else if (type == 'event') {
       Navigator.of(context).pushNamed(Routes.addEvent);
     }
@@ -40,6 +61,38 @@ class DetailPage extends StatelessWidget {
           ''
         ),
     };
+    
+    final displayPetName = pet?.name.trim().isNotEmpty == true
+        ? pet!.name.trim()
+        : AppStrings.valueNotAvailable;
+    final displayPetSpecies = pet?.species.trim().isNotEmpty == true
+        ? pet!.species.trim()
+        : '';
+    final displaySubtitle = displayPetSpecies.isNotEmpty
+        ? '$displayPetName - $displayPetSpecies'
+        : displayPetName;
+
+    final displayVaccineName = vaccineName?.trim().isNotEmpty == true
+        ? vaccineName!.trim()
+        : AppStrings.valueNotAvailable;
+    final displayStatus = vaccination?.status.trim().isNotEmpty == true
+        ? vaccination!.status.trim()
+        : AppStrings.vaccineStatusCompleted;
+    final displayDateGiven = vaccination?.dateGiven != null
+        ? _formatDate(vaccination!.dateGiven)
+        : AppStrings.valueNotAvailable;
+    final displayNextDue = vaccination?.nextDueDate != null
+        ? _formatDate(vaccination!.nextDueDate!)
+        : AppStrings.hintNotProvided;
+    final displayVet = vaccination?.administeredBy.trim().isNotEmpty == true
+        ? vaccination!.administeredBy.trim()
+        : pet?.defaultVet.trim().isNotEmpty == true
+            ? pet!.defaultVet.trim()
+            : AppStrings.valueNotAvailable;
+    final displayClinic = vaccination?.clinicName.trim().isNotEmpty == true
+        ? vaccination!.clinicName.trim()
+        : AppStrings.valueNotAvailable;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -64,7 +117,7 @@ class DetailPage extends StatelessWidget {
             ),
             const SizedBox(height: 2),
             Text(
-              AppStrings.detailsSubtitle,
+              displaySubtitle,
               style: TextStyle(
                 fontSize: 12,
                 color: AppColors.grey100,
@@ -84,14 +137,15 @@ class DetailPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      "Bordetella",
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.onSurface,
+                    if (type == 'vaccine')
+                      Text(
+                        displayVaccineName,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.onSurface,
+                        ),
                       ),
-                    ),
                     const SizedBox(height: 12),
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -102,17 +156,17 @@ class DetailPage extends StatelessWidget {
                         color: AppColors.positiveBackground,
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.check,
                             size: 16,
                             color: AppColors.positiveText,
                           ),
-                          SizedBox(width: 6),
+                          const SizedBox(width: 6),
                           Text(
-                            AppStrings.vaccineStatusCompleted,
+                            displayStatus,
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -129,17 +183,17 @@ class DetailPage extends StatelessWidget {
               _InfoCard(
                 title: AppStrings.vaccineTimelineTitle,
                 child: Column(
-                  children: const [
+                  children: [
                     _InfoRow(
                       icon: Icons.calendar_today_outlined,
                       label: AppStrings.vaccineDateGivenLabel,
-                      value: AppStrings.vaccineDateGivenValue,
+                      value: displayDateGiven,
                     ),
-                    Divider(height: 24),
+                    const Divider(height: 24),
                     _InfoRow(
                       icon: Icons.calendar_month_outlined,
                       label: AppStrings.vaccineNextDueLabel,
-                      value: AppStrings.vaccineNextDueValue,
+                      value: displayNextDue,
                     ),
                   ],
                 ),
@@ -148,17 +202,17 @@ class DetailPage extends StatelessWidget {
               _InfoCard(
                 title: AppStrings.providerInfoTitle,
                 child: Column(
-                  children: const [
+                  children: [
                     _InfoRow(
                       icon: Icons.person_outline,
                       label: AppStrings.veterinarianLabel,
-                      value: AppStrings.vaccineVeterinarianValue,
+                      value: displayVet,
                     ),
-                    Divider(height: 24),
+                    const Divider(height: 24),
                     _InfoRow(
                       icon: Icons.location_on_outlined,
                       label: AppStrings.clinicLabel,
-                      value: AppStrings.vaccineClinicValue,
+                      value: displayClinic,
                     ),
                   ],
                 ),
@@ -216,6 +270,24 @@ class DetailPage extends StatelessWidget {
   }
 }
 
+String _formatDate(DateTime date) {
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  final month = months[date.month - 1];
+  return '$month ${date.day}, ${date.year}';
+}
 class _InfoCard extends StatelessWidget {
   const _InfoCard({this.title, required this.child, this.backgroundColor = AppColors.secondary});
 

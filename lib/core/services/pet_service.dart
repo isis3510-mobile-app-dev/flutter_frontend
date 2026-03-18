@@ -39,7 +39,6 @@ class PetService {
         message: 'Unexpected pet detail response from server.',
       );
     }
-
     return PetModel.fromJson(json);
   }
 
@@ -69,6 +68,16 @@ class PetService {
       '$petsPath$petId/',
       body: jsonEncode({'status': status}),
       headers: const {'Content-Type': 'application/json'},
+    );
+  }
+
+  Future<void> addVaccination({
+    required String petId,
+    required Map<String, dynamic> data,
+  }) async {
+    await _apiClient.post(
+      '$petsPath$petId/vaccinations/',
+      body: data,
     );
   }
 
