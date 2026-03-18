@@ -367,56 +367,57 @@ class _RecordsPageState extends State<RecordsPage> {
         onAddEvent: _goToAddEvent,
       ),
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (_isLoading) const LinearProgressIndicator(),
-            Padding(
-              padding: const EdgeInsets.only(top: 18.0, left: 16.0),
-              child: Text(
-                AppStrings.healthRecordsTitle,
-                style: context.textTheme.headlineMedium,
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(18.0),
-              child: FilterToggleBar(
-                selectedIndex: _selectedFilterIndex,
-                onSelected: (index) {
-                  setState(() {
-                    _selectedFilterIndex = index;
-                  });
-                },
-                filters: _filters,
-              ),
-            ),
-            Expanded(
-              child: ListView(
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.only(top: 18.0, left: 16.0),
                     child: Text(
-                      selectedLabel,
-                      style: context.textTheme.titleMedium,
+                      AppStrings.healthRecordsTitle,
+                      style: context.textTheme.headlineMedium,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  for (final record in filteredRecords)
-                    RecordListItem(
-                      title: record.title,
-                      subtitle: record.subtitle,
-                      meta: record.meta,
-                      icon: record.icon,
-                      iconBackground: record.iconBackground,
-                      iconColor: record.iconColor,
-                      onTap: () => navigateToDetail(record),
+                  Padding(
+                    padding: const EdgeInsets.all(18.0),
+                    child: FilterToggleBar(
+                      selectedIndex: _selectedFilterIndex,
+                      onSelected: (index) {
+                        setState(() {
+                          _selectedFilterIndex = index;
+                        });
+                      },
+                      filters: _filters,
                     ),
-                  const SizedBox(height: 12),
+                  ),
+                  Expanded(
+                    child: ListView(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Text(
+                            selectedLabel,
+                            style: context.textTheme.titleMedium,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        for (final record in filteredRecords)
+                          RecordListItem(
+                            title: record.title,
+                            subtitle: record.subtitle,
+                            meta: record.meta,
+                            icon: record.icon,
+                            iconBackground: record.iconBackground,
+                            iconColor: record.iconColor,
+                            onTap: () => navigateToDetail(record),
+                          ),
+                        const SizedBox(height: 12),
+                      ],
+                    ),
+                  ),
                 ],
               ),
-            ),
-          ],
-        ),
       ),
       bottomNavigationBar: PetcareBottomNavBar(
         currentIndex: _currentIndex,

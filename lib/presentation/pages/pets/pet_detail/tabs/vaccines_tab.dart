@@ -406,7 +406,9 @@ class _VaccinesTabState extends State<VaccinesTab> {
                     Text(
                       'Add your first vaccine in records to track your pet health.',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.grey500,
+                            color: isDark
+                                ? AppColors.onSurfaceDark.withValues(alpha: 0.72)
+                                : AppColors.grey500,
                           ),
                       textAlign: TextAlign.center,
                     ),
@@ -739,6 +741,7 @@ class VaccineCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardColor = isDark ? AppColors.surfaceDark : Colors.white;
+    final titleColor = isDark ? AppColors.onSurfaceDark : AppColors.onSurface;
     final shadow = [
       BoxShadow(
         color: Colors.black.withValues(alpha: 0.05),
@@ -772,10 +775,10 @@ class VaccineCard extends StatelessWidget {
                     Expanded(
                       child: Text(
                         vaccine.vaccineName,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.onSurface,
+                          color: titleColor,
                         ),
                       ),
                     ),
@@ -864,24 +867,27 @@ class _MetaDataColumn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10,
-              color: AppColors.grey500,
+              color: isDark
+                  ? AppColors.onSurfaceDark.withValues(alpha: 0.64)
+                  : AppColors.grey500,
               fontWeight: FontWeight.w500,
             ),
           ),
           const SizedBox(height: AppDimensions.spaceXS),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
-              color: AppColors.onSurface,
+              color: isDark ? AppColors.onSurfaceDark : AppColors.onSurface,
               fontWeight: FontWeight.w600,
             ),
           ),

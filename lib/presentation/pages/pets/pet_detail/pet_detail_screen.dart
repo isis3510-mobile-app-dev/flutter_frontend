@@ -26,9 +26,14 @@ import 'tabs/vaccines_tab.dart';
 enum _PetAction { edit, delete }
 
 class PetDetailScreen extends StatefulWidget {
-  const PetDetailScreen({super.key, required this.pet});
+  const PetDetailScreen({
+    super.key,
+    required this.pet,
+    this.initialTabIndex = 0,
+  });
 
   final PetUiModel pet;
+  final int initialTabIndex;
 
   @override
   State<PetDetailScreen> createState() => _PetDetailScreenState();
@@ -75,7 +80,11 @@ class _PetDetailScreenState extends State<PetDetailScreen>
   void initState() {
     super.initState();
     _pet = widget.pet;
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(
+      length: 3,
+      vsync: this,
+      initialIndex: widget.initialTabIndex.clamp(0, 2),
+    );
     _loadPetDetail();
   }
 
@@ -880,7 +889,7 @@ class _PetDetailTabBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return ColoredBox(
-      color: isDark ? AppColors.surfaceDark : Colors.white,
+      color: isDark ? AppColors.petDetailInfoBackgroundDark : Colors.white,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -892,27 +901,32 @@ class _PetDetailTabBar extends StatelessWidget {
                   label: AppStrings.petDetailTabOverview,
                   svgPath: 'assets/icons/featureIcons/overview.svg',
                   isActive: controller.index == 0,
+                  isDark: isDark,
                   onTap: () => controller.animateTo(0),
                 ),
                 _Tab(
                   label: AppStrings.petDetailTabVaccines,
                   svgPath: 'assets/icons/featureIcons/vaccines.svg',
                   isActive: controller.index == 1,
+                  isDark: isDark,
                   onTap: () => controller.animateTo(1),
                 ),
                 _Tab(
                   label: AppStrings.petDetailTabEvents,
                   svgPath: 'assets/icons/featureIcons/calendar.svg',
                   isActive: controller.index == 2,
+                  isDark: isDark,
                   onTap: () => controller.animateTo(2),
                 ),
               ],
             ),
           ),
-          const Divider(
+          Divider(
             height: 1,
             thickness: 1,
-            color: AppColors.petFilterInactiveBorder,
+            color: isDark
+                ? AppColors.bottomNavTopBorderDark
+                : AppColors.petFilterInactiveBorder,
           ),
         ],
       ),
@@ -925,19 +939,25 @@ class _Tab extends StatelessWidget {
     required this.label,
     required this.svgPath,
     required this.isActive,
+    required this.isDark,
     required this.onTap,
   });
 
   final String label;
   final String svgPath;
   final bool isActive;
+  final bool isDark;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final color = isActive
-        ? AppColors.bottomNavActive
+    final activeColor = isDark
+        ? AppColors.addPetPhotoBackground
+        : AppColors.bottomNavActive;
+    final inactiveColor = isDark
+        ? AppColors.bottomNavInactiveDark
         : AppColors.bottomNavInactive;
+    final color = isActive ? activeColor : inactiveColor;
     return Expanded(
       child: InkWell(
         onTap: onTap,
@@ -969,7 +989,7 @@ class _Tab extends StatelessWidget {
             ),
             Container(
               height: 2.5,
-              color: isActive ? AppColors.bottomNavActive : Colors.transparent,
+              color: isActive ? activeColor : Colors.transparent,
             ),
           ],
         ),

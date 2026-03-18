@@ -7,8 +7,10 @@ import '../../../core/constants/app_assets.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_strings.dart';
+import '../../../core/network/api_exception.dart';
+import '../../../core/services/pet_service.dart';
 import '../../../shared/widgets/petcare_bottom_nav_bar.dart';
-import '../pets/data/pets_mock_data.dart';
+import '../pets/models/pet_ui_mapper.dart';
 import '../pets/models/pet_ui_model.dart';
 import 'widgets/nfc_data_toggle.dart';
 import 'widgets/nfc_header_graphic.dart';
@@ -29,8 +31,12 @@ class NfcPage extends StatefulWidget {
 class _NfcPageState extends State<NfcPage> {
 	static const _currentBottomIndex = 0;
 
-	late final List<PetUiModel> _pets;
-	late String _selectedPetId;
+	final PetService _petService = PetService();
+
+	List<PetUiModel> _pets = const [];
+	String? _selectedPetId;
+	bool _isLoadingPets = false;
+	String? _loadErrorMessage;
 
 	_NfcMode _mode = _NfcMode.read;
 	_NfcViewState _viewState = _NfcViewState.setup;
@@ -43,11 +49,7 @@ class _NfcPageState extends State<NfcPage> {
 	@override
 	void initState() {
 		super.initState();
-		_pets = PetsMockData.all;
-		_selectedPetId = widget.initialPetId != null &&
-			_pets.any((pet) => pet.id == widget.initialPetId)
-			? widget.initialPetId!
-			: _pets.first.id;
+		_loadPets();
 	}
 
 	@override
@@ -60,6 +62,57 @@ class _NfcPageState extends State<NfcPage> {
 		ScaffoldMessenger.of(context).showSnackBar(
 			const SnackBar(content: Text('This section is not available yet.')),
 		);
+	}
+
+	Future<void> _loadPets() async {
+		setState(() {
+			_isLoadingPets = true;
+			_loadErrorMessage = null;
+		});
+
+		try {
+			final pets = await _petService.getPets();
+			final mappedPets = pets
+				.map((pet) => pet.toUiModel())
+				.toList(growable: false);
+
+			if (!mounted) {
+				return;
+			}
+
+			setState(() {
+				_pets = mappedPets;
+				if (mappedPets.isEmpty) {
+					_selectedPetId = null;
+				} else if (widget.initialPetId != null &&
+						mappedPets.any((pet) => pet.id == widget.initialPetId)) {
+					_selectedPetId = widget.initialPetId;
+				} else if (_selectedPetId == null ||
+						!mappedPets.any((pet) => pet.id == _selectedPetId)) {
+					_selectedPetId = mappedPets.first.id;
+				}
+			});
+		} on ApiException catch (error) {
+			if (!mounted) {
+				return;
+			}
+			setState(() {
+				_loadErrorMessage = error.message;
+			});
+		} catch (_) {
+			if (!mounted) {
+				return;
+			}
+			setState(() {
+				_loadErrorMessage = AppStrings.petsLoadError;
+			});
+		} finally {
+			if (mounted) {
+				setState(() {
+					_isLoadingPets = false;
+				});
+			}
+		}
 	}
 
 	void _handleBottomNavTap(int index) {
@@ -142,28 +195,80 @@ class _NfcPageState extends State<NfcPage> {
 						_NfcTopBar(
 							onBack: () => Navigator.of(context).pop(),
 						),
-						Expanded(
-							child: SingleChildScrollView(
-								padding: const EdgeInsets.symmetric(
-									horizontal: AppDimensions.pageHorizontalPadding,
-								),
-								child: Padding(
-									padding: const EdgeInsets.only(
-										bottom: AppDimensions.spaceXL,
-									),
-									child: AnimatedSwitcher(
-										duration: const Duration(milliseconds: 250),
-										child: _buildStateContent(),
-									),
-								),
-							),
-						),
+						Expanded(child: _buildBody()),
 					],
 				),
 			),
 			bottomNavigationBar: PetcareBottomNavBar(
 				currentIndex: _currentBottomIndex,
 				onTap: _handleBottomNavTap,
+			),
+		);
+	}
+
+	Widget _buildBody() {
+		if (_isLoadingPets) {
+			return const Center(child: CircularProgressIndicator());
+		}
+
+		if (_loadErrorMessage != null) {
+			return Center(
+				child: Padding(
+					padding: const EdgeInsets.all(AppDimensions.spaceXL),
+					child: Column(
+						mainAxisSize: MainAxisSize.min,
+						children: [
+							const Icon(
+								Icons.cloud_off_rounded,
+								size: 56,
+								color: AppColors.grey300,
+							),
+							const SizedBox(height: AppDimensions.spaceM),
+							Text(
+								_loadErrorMessage!,
+								textAlign: TextAlign.center,
+								style: const TextStyle(color: AppColors.grey700),
+							),
+							const SizedBox(height: AppDimensions.spaceM),
+							OutlinedButton(
+								onPressed: _loadPets,
+								child: const Text(AppStrings.petsRetry),
+							),
+						],
+					),
+				),
+			);
+		}
+
+		if (_pets.isEmpty || _selectedPetId == null) {
+			return const Center(
+				child: Padding(
+					padding: EdgeInsets.all(AppDimensions.spaceXL),
+					child: Text(
+						'No pets available for NFC setup.',
+						textAlign: TextAlign.center,
+						style: TextStyle(
+							color: AppColors.grey700,
+							fontSize: 14,
+							fontWeight: FontWeight.w500,
+						),
+					),
+				),
+			);
+		}
+
+		return SingleChildScrollView(
+			padding: const EdgeInsets.symmetric(
+				horizontal: AppDimensions.pageHorizontalPadding,
+			),
+			child: Padding(
+				padding: const EdgeInsets.only(
+					bottom: AppDimensions.spaceXL,
+				),
+				child: AnimatedSwitcher(
+					duration: const Duration(milliseconds: 250),
+					child: _buildStateContent(),
+				),
 			),
 		);
 	}

@@ -339,6 +339,7 @@ class _EventsErrorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
         color: AppColors.error.withValues(alpha: 0.08),
@@ -361,8 +362,8 @@ class _EventsErrorCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             message,
-            style: const TextStyle(
-              color: AppColors.grey700,
+            style: TextStyle(
+              color: isDark ? AppColors.onSurfaceDark : AppColors.grey700,
               fontSize: 13,
               height: 1.4,
             ),
