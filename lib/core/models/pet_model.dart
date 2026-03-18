@@ -11,9 +11,15 @@ class PetDocumentModel {
 
   factory PetDocumentModel.fromJson(Map<String, dynamic> json) {
     return PetDocumentModel(
-      documentId: _readString(json['documentId']),
-      fileName: _readString(json['fileName']),
-      fileUri: _readString(json['fileUri']),
+      documentId: _readString(
+        json['documentId'] ?? json['document_id'] ?? json['id'],
+      ),
+      fileName: _readString(
+        json['fileName'] ?? json['file_name'] ?? json['name'],
+      ),
+      fileUri: _readString(
+        json['fileUri'] ?? json['file_uri'] ?? json['url'],
+      ),
     );
   }
 }
@@ -42,7 +48,9 @@ class PetVaccinationModel {
   final List<PetDocumentModel> attachedDocuments;
 
   factory PetVaccinationModel.fromJson(Map<String, dynamic> json) {
-    final attachedDocumentsJson = json['attachedDocuments'] as List<dynamic>?;
+    final attachedDocumentsJson =
+        (json['attachedDocuments'] ?? json['attached_documents'])
+            as List<dynamic>?;
 
     return PetVaccinationModel(
       id: _readString(json['id']),
@@ -51,8 +59,10 @@ class PetVaccinationModel {
       nextDueDate: _parseDate(json['nextDueDate']),
       lotNumber: _readString(json['lotNumber']),
       status: _readString(json['status']),
-      administeredBy: _readString(json['administeredBy']),
-      clinicName: _readString(json['clinicName']),
+      administeredBy: _readString(
+        json['administeredBy'] ?? json['administered_by'],
+      ),
+      clinicName: _readString(json['clinicName'] ?? json['clinic_name']),
       attachedDocuments: attachedDocumentsJson == null
           ? const []
           : attachedDocumentsJson

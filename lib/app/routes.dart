@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/presentation/pages/add_event/add_event_args.dart';
 import 'package:flutter_frontend/presentation/pages/add_event/add_event_page.dart';
 import 'package:flutter_frontend/presentation/pages/add_vaccine/add_vaccine_args.dart';
 import 'package:flutter_frontend/presentation/pages/add_vaccine/add_vaccine_page.dart';
@@ -92,6 +93,10 @@ class Routes {
       case profileEdit:
         return _buildEditProfileRoute(settings);
       case addEvent:
+        final args = settings.arguments;
+        if (args is AddEventArgs) {
+          return _buildRoute(AddEventPage(prefill: args), settings);
+        }
         return _buildRoute(const AddEventPage(), settings);
 
       case vaccineDetail:

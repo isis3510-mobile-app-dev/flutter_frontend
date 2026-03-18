@@ -49,6 +49,8 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
 
   int _step = 0;
 
+  bool get _isEditing => widget.prefill != null;
+
   @override
   void initState() {
     super.initState();
@@ -344,9 +346,12 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
   }
 
   Future<void> _pickDate() async {
+    final initialDate =
+        _parseDateInput(_dateController.text.trim()) ?? DateTime.now();
+
     final pickedDate = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: initialDate,
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
@@ -416,19 +421,31 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
     setState(() => _isSubmitting = true);
 
     try {
+      final selectedPetId = _selectedPetId?.trim() ?? '';
+      final selectedVaccineId =
+          (_selectedVaccineId ?? _originalVaccineId)?.trim() ?? '';
+
+      if (selectedPetId.isEmpty || selectedVaccineId.isEmpty) {
+        throw const FormatException('Missing vaccine or pet selection.');
+      }
+
       final vaccine = _vaccines.firstWhere(
-        (item) => item.id == _selectedVaccineId,
+        (item) => item.id == selectedVaccineId,
         orElse: () => const VaccineModel(id: '', schema: '', name: ''),
       );
       final intervalDays = vaccine.intervalDays;
+      final originalDateGiven = _originalDateGiven ?? dateGiven;
+      final isDateChanged = !_isSameCalendarDay(originalDateGiven, dateGiven);
       final nextDueDate = intervalDays > 0
           ? dateGiven.add(Duration(days: intervalDays))
           : null;
 
       final payload = <String, dynamic>{
-        'vaccineId': _selectedVaccineId,
-        'dateGiven': formatDateForApi(dateGiven),
-        'nextDueDate': nextDueDate == null ? null : formatDateForApi(nextDueDate),
+        'vaccineId': selectedVaccineId,
+        'dateGiven': _formatDateForApi(
+          _isEditing ? originalDateGiven : dateGiven,
+        ),
+        'nextDueDate': nextDueDate == null ? null : _formatDateForApi(nextDueDate),
         'lotNumber': '',
         'status': 'completed',
         'administeredBy': _administeredByController.text.trim(),
@@ -436,19 +453,18 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
         'attachedDocuments': const [],
       };
 
-      if (widget.prefill == null) {
+      if (_isEditing && isDateChanged) {
+        payload['newDateGiven'] = _formatDateForApi(dateGiven);
+      }
+
+      if (!_isEditing) {
         await _petService.addVaccination(
-          petId: _selectedPetId!,
+          petId: selectedPetId,
           data: payload,
         );
       } else {
-        if (_editingVaccinationId == null ||
-            _editingVaccinationId!.trim().isEmpty) {
-          throw Exception('Missing vaccination id for update.');
-        }
-        await _petService.updateVaccination(
-          petId: _selectedPetId!,
-          vaccinationId: _editingVaccinationId!,
+        await _petService.updateVaccinationByVaccineId(
+          petId: selectedPetId,
           data: payload,
         );
       }
@@ -458,7 +474,7 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            widget.prefill == null
+            !_isEditing
                 ? 'Vaccine saved successfully.'
                 : 'Vaccine updated successfully.',
           ),
@@ -478,6 +494,69 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
 
   @override
   Widget build(BuildContext context) {
+    final stepContent = _buildStepContent();
+    final showBackButton = _step > 0;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(_isEditing ? 'Edit Vaccine' : AppStrings.addVaccineTitle),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                app_stepper.Stepper(
+                  steps: [
+                    AppStrings.stepBasicInfo,
+                    AppStrings.stepDetails,
+                    AppStrings.stepOverview
+                  ],
+                  currentStep: _step,
+                ),
+                const SizedBox(height: 28),
+                ...stepContent,
+              ],
+            ),
+          ),
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        minimum: const EdgeInsets.only(left: 24, right: 24, bottom: 60),
+        child: Padding(
+          padding: const EdgeInsets.only(top: 24),
+          child: Row(
+            children: [
+              if (showBackButton)
+                Flexible(
+                  flex: 4,
+                  child: FullWidthButton(
+                    text: AppStrings.semanticBackButton,
+                    onPressed: _back,
+                    backgroundColor: AppColors.surface,
+                    borderColor: AppColors.primary,
+                    textColor: AppColors.primary,
+                  ),
+                ),
+              if (showBackButton) const SizedBox(width: 12),
+              Flexible(
+                flex: showBackButton ? 6 : 1,
+                child: FullWidthButton(
+                  text: _step == 2
+                      ? (!_isEditing
+                          ? AppStrings.semanticAddVaccineButton
+                          : AppStrings.semanticUpdateVaccineButton)
+                      : AppStrings.semanticContinueButton,
+                  onPressed: _step == 2 ? _submit : _continue,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     return AddFlowScaffold(
       title: AppStrings.addVaccineTitle,
       formKey: _formKey,
@@ -503,6 +582,15 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
     switch (_step) {
       case 0:
         return [
+          _AppDropdownField(
+            label: '${AppStrings.labelVaccineName} *',
+            hintText: _isLoadingVaccines
+                ? 'Loading vaccines...'
+                : AppStrings.hintVaccineName,
+            value: _selectedVaccineName,
+            items: _vaccineNameOptions,
+            enabled: !_isLoadingVaccines && !_isEditing,
+            onChanged: (value) {
           AddVaccineStepBasic(
             isLoadingVaccines: _isLoadingVaccines,
             isLoadingPets: _isLoadingPets,
@@ -521,6 +609,40 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
                 _productController.text = '';
               });
             },
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return AppStrings.validationRequired;
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 18),
+          AppFormField(
+            label: '${AppStrings.labelDate} *',
+            hintText: AppStrings.hintDate,
+            icon: Icons.calendar_today_outlined,
+            controller: _dateController,
+            readOnly: true,
+            onTap: _pickDate,
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return AppStrings.validationInvalidDate;
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 18),
+          _AppDropdownField(
+            label: AppStrings.labelProductName,
+            hintText: _selectedVaccineName == null
+                ? 'Select a vaccine first'
+                : _productOptions.isEmpty
+                    ? 'No products available'
+                    : AppStrings.hintProductName,
+            value: _selectedProductName,
+            items: _productOptions,
+            enabled: _selectedVaccineName != null && _productOptions.isNotEmpty && !_isEditing,
+            onChanged: (value) {
             onProductChanged: (value) {
               setState(() {
                 _selectedProductName = value;
@@ -540,6 +662,26 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
                 }
               });
             },
+            validator: (value) {
+              if (_productOptions.isEmpty) {
+                return null;
+              }
+              if (value == null || value.trim().isEmpty) {
+                return AppStrings.validationRequired;
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 18),
+          _AppDropdownField(
+            label: AppStrings.labelPetName,
+            hintText: _isLoadingPets
+                ? 'Loading pets...'
+                : AppStrings.hintPetName,
+            value: _selectedPetName,
+            items: _petNameOptions,
+            enabled: !_isLoadingPets && _petNameOptions.isNotEmpty && !_isEditing,
+            onChanged: (value) {
             onPetChanged: (value) {
               setState(() {
                 _selectedPetName = value;
@@ -598,3 +740,110 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
   }
 }
 
+String _formatDateForInput(DateTime date) {
+  final day = date.day.toString().padLeft(2, '0');
+  final month = date.month.toString().padLeft(2, '0');
+  final year = date.year.toString();
+  return '$day/$month/$year';
+}
+
+String _formatDateForApi(DateTime date) {
+  // Format as ISO8601 with Z suffix: 2026-03-18T00:00:00Z
+  return '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}T00:00:00Z';
+}
+
+DateTime? _parseDateInput(String value) {
+  final parts = value.split('/');
+  if (parts.length != 3) {
+    return null;
+  }
+  final day = int.tryParse(parts[0]);
+  final month = int.tryParse(parts[1]);
+  final year = int.tryParse(parts[2]);
+  if (day == null || month == null || year == null) {
+    return null;
+  }
+  try {
+    return DateTime(year, month, day);
+  } catch (_) {
+    return null;
+  }
+}
+
+bool _isSameCalendarDay(DateTime a, DateTime b) {
+  return a.year == b.year && a.month == b.month && a.day == b.day;
+}
+
+class _AppDropdownField extends StatelessWidget {
+  const _AppDropdownField({
+    required this.label,
+    required this.hintText,
+    required this.items,
+    this.value,
+    this.onChanged,
+    this.validator,
+    this.enabled = true,
+  });
+
+  final String label;
+  final String hintText;
+  final List<String> items;
+  final String? value;
+  final ValueChanged<String?>? onChanged;
+  final FormFieldValidator<String>? validator;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 6),
+        DropdownButtonFormField<String>(
+          initialValue: value,
+          onChanged: enabled ? onChanged : null,
+          validator: validator,
+          icon: const Padding(
+            padding: EdgeInsets.only(right: 10),
+            child: Icon(Icons.arrow_drop_down),
+          ),
+          items: items
+              .map(
+                (item) => DropdownMenuItem<String>(
+                  value: item,
+                  child: Text(item),
+                ),
+              )
+              .toList(growable: false),
+          decoration: InputDecoration(
+            hintText: hintText,
+            hintStyle: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(color: AppColors.grey500),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 18,
+              vertical: 18,
+            ),
+            enabledBorder: _dropdownBorder,
+            focusedBorder: _dropdownBorder,
+            disabledBorder: _dropdownBorder,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+const OutlineInputBorder _dropdownBorder = OutlineInputBorder(
+  borderRadius: BorderRadius.all(Radius.circular(18)),
+  borderSide: BorderSide(
+    color: AppColors.grey500,
+    width: 1.5,
+  ),
+);
