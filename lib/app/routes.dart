@@ -58,7 +58,7 @@ class Routes {
         return _buildRoute(const PetsPage(), settings);
 
       case addPet:
-        return _buildRoute(const AddPetScreen(), settings);
+        return _buildAddPetRoute(settings);
 
       case petDetail:
         return _buildPetDetailRoute(settings);
@@ -118,6 +118,15 @@ class Routes {
     }
 
     return _buildRoute(PetDetailScreen(pet: pet), settings);
+  }
+
+  static MaterialPageRoute _buildAddPetRoute(RouteSettings settings) {
+    final pet = settings.arguments;
+    if (pet is PetUiModel) {
+      return _buildRoute(AddPetScreen(editingPet: pet), settings);
+    }
+
+    return _buildRoute(const AddPetScreen(), settings);
   }
 
   static MaterialPageRoute _buildEditProfileRoute(RouteSettings settings) {

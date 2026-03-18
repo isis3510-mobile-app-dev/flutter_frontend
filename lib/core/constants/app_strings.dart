@@ -268,6 +268,13 @@ abstract class AppStrings {
   static const String addPetAllergiesHint = 'e.g. None, or Penicillin';
   static const String addPetValidationRequired = 'This field is required.';
   static const String addPetSavedMessage = 'Pet ready to be saved.';
+    static const String editPetTitle = 'Edit Pet';
+    static const String editPetSavedMessage = 'Pet updated successfully.';
+    static const String petDeletedMessage = 'Pet deleted successfully.';
+    static const String petDeleteConfirmTitle = 'Delete pet?';
+    static const String petDeleteConfirmMessage =
+            'This action cannot be undone.';
+    static const String petDeleteConfirmAction = 'Delete Pet';
 
   // --- Pet detail ---
   static const String petDetailTabOverview = 'Overview';
@@ -296,6 +303,8 @@ abstract class AppStrings {
   static const String petDetailShareSemantics = 'Share pet';
   static const String petDetailEditSemantics = 'Edit pet';
   static const String petDetailMoreSemantics = 'More options';
+    static const String petDetailMenuEdit = 'Edit';
+    static const String petDetailMenuDelete = 'Delete';
 
   // --- Welcome pages ---
   static const String welcomeFirstTitle =

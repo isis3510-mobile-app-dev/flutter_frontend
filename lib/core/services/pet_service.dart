@@ -62,6 +62,31 @@ class PetService {
     return PetModel.fromJson(json);
   }
 
+  Future<PetModel> updatePet({
+    required String petId,
+    required Map<String, dynamic> data,
+  }) async {
+    final response = await _apiClient.put(
+      '$petsPath${petId.trim()}/',
+      body: jsonEncode(data),
+      headers: const {'Content-Type': 'application/json'},
+    );
+
+    final json = jsonDecode(response.body);
+    if (json is! Map<String, dynamic>) {
+      throw const ApiException(
+        type: ApiErrorType.unknown,
+        message: 'Unexpected update pet response from server.',
+      );
+    }
+
+    return PetModel.fromJson(json);
+  }
+
+  Future<void> deletePet(String petId) async {
+    await _apiClient.delete('$petsPath${petId.trim()}/');
+  }
+
   Future<void> updatePetStatus({
     required String petId,
     required String status,
