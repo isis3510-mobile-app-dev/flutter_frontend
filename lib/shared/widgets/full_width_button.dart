@@ -24,43 +24,27 @@ class FullWidthButton extends StatelessWidget{
   final Color splashColor;
   final IconData ?icon;
 
-  @override
-  Widget build(BuildContext context) {
-    final style = ElevatedButton.styleFrom(
-      backgroundColor: backgroundColor ?? Theme.of(context).primaryColor,
-      minimumSize: Size.fromHeight(height),
-      overlayColor: splashColor,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(height),
-        side: borderColor != null ? BorderSide(color: borderColor!) : BorderSide.none,
-      ),
-    );
-
-    final label = Text(
-      text,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      textAlign: TextAlign.center,
-      style: TextStyle(
-        color: textColor,
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
-      ),
-    );
-
-    if (icon == null) {
-      return FilledButton(
-        onPressed: onPressed,
-        style: style,
-        child: label,
-      );
-    }
-
+  @override  Widget build(BuildContext context) {
     return FilledButton.icon(
       onPressed: onPressed,
-      style: style,
-      icon: Icon(icon, color: textColor),
-      label: label,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: backgroundColor ?? Theme.of(context).primaryColor,
+        minimumSize: Size.fromHeight(height),
+        overlayColor: splashColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(height),
+          side: borderColor != null ? BorderSide(color: borderColor!) : BorderSide.none,
+        ),
+      ),
+      icon: icon != null ? Icon(icon, color: textColor) : const SizedBox.shrink(),
+      label: Text(
+        text,
+        style: TextStyle(
+          color: textColor,
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
     );
   }
 }
