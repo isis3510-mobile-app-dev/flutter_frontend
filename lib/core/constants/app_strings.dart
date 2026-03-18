@@ -134,6 +134,7 @@ abstract class AppStrings {
   static const String semanticSkipButton = 'Skip';
   static const String semanticSignInButton = 'Sign in';
   static const String semanticAddVaccineButton = 'Add Vaccine';
+  static const String semanticUpdateVaccineButton = 'Update Vaccine';
   static const String semanticAddEventButton = 'Add Event';
 
   // --- Page titles ---

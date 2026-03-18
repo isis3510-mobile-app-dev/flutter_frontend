@@ -68,18 +68,20 @@ class _RecordsPageState extends State<RecordsPage> {
     try {
       final profile = await _userService.getCurrentUser();
       final petIds = profile.pets
-          .map((pet) {
-            if (pet is String) return pet;
-            if (pet is Map && pet['id'] != null) return pet['id'].toString();
-            return pet.toString();
-          })
+          .map(_extractPetId)
           .map((id) => id.trim())
           .where((id) => id.isNotEmpty)
           .toList(growable: false);
 
-      final pets = await Future.wait(
-        petIds.map(_petService.getPetById),
-      );
+      final pets = <PetModel>[];
+      for (final petId in petIds) {
+        try {
+          final pet = await _petService.getPetById(petId);
+          pets.add(pet);
+        } catch (_) {
+          // Skip missing/invalid pet ids to keep records page working.
+        }
+      }
 
       final vaccineIds = pets
         .expand((pet) => pet.vaccinations)
@@ -172,9 +174,9 @@ class _RecordsPageState extends State<RecordsPage> {
     return '${pet.name} - $displayVet';
   }
 
-  void navigateToDetail(_RecordEntry record) {
+  Future<void> navigateToDetail(_RecordEntry record) async {
     if (record.type == _RecordType.vaccine) {
-      Navigator.of(
+      final result = await Navigator.of(
         context,
       ).push(
         MaterialPageRoute(
@@ -186,6 +188,9 @@ class _RecordsPageState extends State<RecordsPage> {
           )
         )
       );
+      if (result == true) {
+        _loadRecords();
+      }
       return;
     } else if (record.type == _RecordType.event) {
       Navigator.of(
@@ -216,8 +221,24 @@ class _RecordsPageState extends State<RecordsPage> {
     Navigator.of(context).pushReplacementNamed(routeName);
   }
 
-  void _goToAddVaccine() {
-    Navigator.of(context).pushNamed(Routes.addVaccine);
+  Future<void> _goToAddVaccine() async {
+    final result = await Navigator.of(context).pushNamed(Routes.addVaccine);
+    if (result == true) {
+      _loadRecords();
+    }
+  }
+
+  String _extractPetId(dynamic pet) {
+    if (pet is String) {
+      return pet;
+    }
+    if (pet is Map) {
+      final id = pet['id'] ?? pet['petId'] ?? pet['pet_id'];
+      if (id != null) {
+        return id.toString();
+      }
+    }
+    return pet?.toString() ?? '';
   }
 
   void _goToAddEvent() {

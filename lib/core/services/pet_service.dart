@@ -81,6 +81,26 @@ class PetService {
     );
   }
 
+  Future<void> updateVaccination({
+    required String petId,
+    required Map<String, dynamic> data,
+  }) async {
+    await _apiClient.put(
+      '$petsPath$petId/vaccinations/',
+      body: data,
+    );
+  }
+
+  Future<void> deleteVaccination({
+    required String petId,
+    required Map<String, dynamic> data,
+  }) async {
+    await _apiClient.delete(
+      '$petsPath$petId/vaccinations/',
+      body: data,
+    );
+  }
+
   Future<void> markPetAsLost(String petId) async {
     await updatePetStatus(petId: petId, status: 'lost');
   }

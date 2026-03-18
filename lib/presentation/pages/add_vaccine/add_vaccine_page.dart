@@ -44,6 +44,8 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
   String? _selectedVaccineId;
   String? _selectedPetName;
   String? _selectedPetId;
+  String? _originalVaccineId;
+  DateTime? _originalDateGiven;
   AddVaccineArgs? _pendingPrefill;
 
   int _step = 0;
@@ -88,6 +90,10 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
     }
     if (prefill.dateGiven != null) {
       _dateController.text = _formatDateForInput(prefill.dateGiven!);
+      _originalDateGiven = prefill.dateGiven;
+    }
+    if (prefill.vaccineId != null && prefill.vaccineId!.trim().isNotEmpty) {
+      _originalVaccineId = prefill.vaccineId!.trim();
     }
 
     if (_vaccines.isNotEmpty) {
@@ -128,16 +134,20 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
     try {
       final profile = await _userService.getCurrentUser();
       final petIds = profile.pets
-          .map((pet) {
-            if (pet is String) return pet;
-            if (pet is Map && pet['id'] != null) return pet['id'].toString();
-            return pet.toString();
-          })
+          .map(_extractPetId)
           .map((id) => id.trim())
           .where((id) => id.isNotEmpty)
           .toList(growable: false);
 
-      final pets = await Future.wait(petIds.map(_petService.getPetById));
+      final pets = <PetModel>[];
+      for (final petId in petIds) {
+        try {
+          final pet = await _petService.getPetById(petId);
+          pets.add(pet);
+        } catch (_) {
+          // Skip missing/invalid pet ids to avoid crashing the flow.
+        }
+      }
       if (!mounted) return;
       setState(() {
         _pets
@@ -158,6 +168,19 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
         setState(() => _isLoadingPets = false);
       }
     }
+  }
+
+  String _extractPetId(dynamic pet) {
+    if (pet is String) {
+      return pet;
+    }
+    if (pet is Map) {
+      final id = pet['id'] ?? pet['petId'] ?? pet['pet_id'];
+      if (id != null) {
+        return id.toString();
+      }
+    }
+    return pet?.toString() ?? '';
   }
 
   void _applyPetSelectionFromPrefill(AddVaccineArgs prefill) {
@@ -364,12 +387,6 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
     if (_isSubmitting) {
       return;
     }
-    if (widget.prefill != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Editing is not available yet.')),
-      );
-      return;
-    }
     if (!(_formKey.currentState?.validate() ?? false)) {
       return;
     }
@@ -381,7 +398,10 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
       return;
     }
 
-    if (_selectedVaccineId == null || _selectedVaccineId!.trim().isEmpty) {
+    final hasOriginalVaccineId =
+        _originalVaccineId != null && _originalVaccineId!.trim().isNotEmpty;
+    if (!hasOriginalVaccineId &&
+        (_selectedVaccineId == null || _selectedVaccineId!.trim().isEmpty)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Select a valid vaccine product.')),
       );
@@ -403,18 +423,25 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
     setState(() => _isSubmitting = true);
 
     try {
+      final effectiveVaccineId = widget.prefill != null
+          ? (_originalVaccineId ?? _selectedVaccineId)
+          : _selectedVaccineId;
+      final effectiveDateGiven = widget.prefill != null
+          ? (_originalDateGiven ?? dateGiven)
+          : dateGiven;
+
       final vaccine = _vaccines.firstWhere(
-        (item) => item.id == _selectedVaccineId,
+        (item) => item.id == effectiveVaccineId,
         orElse: () => const VaccineModel(id: '', schema: '', name: ''),
       );
       final intervalDays = vaccine.intervalDays;
       final nextDueDate = intervalDays > 0
-          ? dateGiven.add(Duration(days: intervalDays))
+          ? effectiveDateGiven.add(Duration(days: intervalDays))
           : null;
 
       final payload = <String, dynamic>{
-        'vaccineId': _selectedVaccineId,
-        'dateGiven': _formatDateForApi(dateGiven),
+        'vaccineId': effectiveVaccineId,
+        'dateGiven': _formatDateForApi(effectiveDateGiven),
         'nextDueDate': nextDueDate == null ? null : _formatDateForApi(nextDueDate),
         'lotNumber': '',
         'status': 'completed',
@@ -423,15 +450,28 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
         'attachedDocuments': const [],
       };
 
-      await _petService.addVaccination(
-        petId: _selectedPetId!,
-        data: payload,
-      );
+      if (widget.prefill == null) {
+        await _petService.addVaccination(
+          petId: _selectedPetId!,
+          data: payload,
+        );
+      } else {
+        await _petService.updateVaccination(
+          petId: _selectedPetId!,
+          data: payload,
+        );
+      }
 
       if (!mounted) return;
-      Navigator.pop(context);
+      Navigator.pop(context, true);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vaccine saved successfully.')),
+        SnackBar(
+          content: Text(
+            widget.prefill == null
+                ? 'Vaccine saved successfully.'
+                : 'Vaccine updated successfully.',
+          ),
+        ),
       );
     } catch (_) {
       if (!mounted) return;
@@ -494,7 +534,9 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
               Expanded(
                 child: FullWidthButton(
                   text: _step == 2
-                      ? AppStrings.semanticAddVaccineButton
+                      ? (widget.prefill == null
+                          ? AppStrings.semanticAddVaccineButton
+                          : AppStrings.semanticUpdateVaccineButton)
                       : AppStrings.semanticContinueButton,
                   onPressed: _step == 2 ? _submit : _continue,
                 ),
