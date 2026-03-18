@@ -286,33 +286,15 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   String _themePreferenceSubtitle(ThemeController themeController) {
-    final activeTheme = themeController.isDarkModeEnabled
-        ? AppStrings.profileThemeStatusDark
-        : AppStrings.profileThemeStatusLight;
-
-    if (themeController.preference == AppThemePreference.light ||
-        themeController.preference == AppThemePreference.dark) {
-      return activeTheme;
-    }
-
-    final source = switch (themeController.activeThemeSource) {
-      ThemeSource.manual => AppStrings.profileThemeSourceManual,
-      ThemeSource.ambientLight => AppStrings.profileThemeSourceSensor,
-      ThemeSource.schedule =>
-        themeController.preference == AppThemePreference.sensor
-            ? AppStrings.profileThemeSourceFallback
-            : AppStrings.profileThemeSourceSchedule,
+    return switch (themeController.preference) {
+      AppThemePreference.light => AppStrings.profileThemeSummaryLight,
+      AppThemePreference.dark => AppStrings.profileThemeSummaryDark,
+      AppThemePreference.schedule => AppStrings.profileThemeSummaryByTime,
+      AppThemePreference.sensor =>
+        themeController.activeThemeSource == ThemeSource.ambientLight
+            ? AppStrings.profileThemeSummaryAuto
+            : AppStrings.profileThemeSummaryAutoFallback,
     };
-
-    if (themeController.preference == AppThemePreference.sensor) {
-      final lux = themeController.lastAmbientLux;
-      final luxLabel = lux == null
-          ? AppStrings.profileThemeLuxUnavailable
-          : '${lux.toStringAsFixed(1)} lx';
-      return '$source • $luxLabel • $activeTheme';
-    }
-
-    return '$source • $activeTheme';
   }
 
   Future<String?> _showSingleFieldEditor({

@@ -349,22 +349,23 @@ abstract class AppStrings {
   static const String profileThemeMode = 'Theme';
   static const String profileThemeLight = 'Light';
   static const String profileThemeDark = 'Dark';
-  static const String profileThemeSchedule = 'Hour';
-  static const String profileThemeSensor = 'Sensor';
-  static const String profileThemeLightSubtitle = 'Always use light mode';
-  static const String profileThemeDarkSubtitle = 'Always use dark mode';
+  static const String profileThemeSchedule = 'By Time';
+  static const String profileThemeSensor = 'Auto';
+  static const String profileThemeLightSubtitle = 'Always use the light theme';
+  static const String profileThemeDarkSubtitle = 'Always use the dark theme';
   static const String profileThemeScheduleSubtitle =
-      'Automatic by day and night hour';
+      'Changes automatically during the day and night';
   static const String profileThemeSensorSubtitle =
-      'Automatic using the ambient light sensor';
+      'Adapts to the light around you';
   static const String profileThemeModePickerTitle = 'Choose theme mode';
-  static const String profileThemeSourceManual = 'Manual';
-  static const String profileThemeSourceSensor = 'Sensor';
-  static const String profileThemeSourceSchedule = 'Schedule';
-  static const String profileThemeSourceFallback = 'Fallback';
-  static const String profileThemeStatusLight = 'Light active';
-  static const String profileThemeStatusDark = 'Dark active';
-  static const String profileThemeLuxUnavailable = 'lux unavailable';
+  static const String profileThemeSummaryLight = 'Light appearance';
+  static const String profileThemeSummaryDark = 'Dark appearance';
+  static const String profileThemeSummaryByTime =
+      'Changes with the time of day';
+  static const String profileThemeSummaryAuto =
+      'Adjusts to the light around you';
+  static const String profileThemeSummaryAutoFallback =
+      'Adjusts automatically when possible';
   static const String profileNotifications = 'Notifications';
   static const String profileOffline = 'Offline Mode';
   static const String profileSubtitleSupport = 'Support';
