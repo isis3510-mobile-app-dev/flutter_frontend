@@ -79,7 +79,8 @@ class Routes {
         return _buildRoute(const AddVaccinePage(), settings);
 
       case nfc:
-        return _buildRoute(const NfcPage(), settings);
+        final initialPetId = settings.arguments is String ? settings.arguments as String : null;
+        return _buildRoute(NfcPage(initialPetId: initialPetId), settings);
 
       case records:
         return _buildRecordsRoute(settings);

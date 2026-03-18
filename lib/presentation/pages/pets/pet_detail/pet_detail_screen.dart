@@ -36,6 +36,20 @@ class _PetDetailScreenState extends State<PetDetailScreen>
   final PetService _petService = PetService();
   final ProfilePhotoService _photoService = ProfilePhotoService();
 
+  Future<void> _goToAddVaccine() async {
+    final result = await Navigator.pushNamed(context, Routes.addVaccine);
+    if (result == true) {
+      await _loadPetDetail();
+    }
+  }
+
+  Future<void> _goToAddEvent() async {
+    final result = await Navigator.pushNamed(context, Routes.addEvent);
+    if (result == true) {
+      await _loadPetDetail();
+    }
+  }
+
   late PetUiModel _pet;
   PetModel? _petDetails;
   bool _isLoading = false;
@@ -146,6 +160,56 @@ class _PetDetailScreenState extends State<PetDetailScreen>
 
       _hasMutatedPet = true;
       await _loadPetDetail();
+    } on ApiException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(AppStrings.petsLoadError)),
+      );
+    }
+  }
+
+  Future<void> _toggleNfc() async {
+    try {
+      if (_pet.isNfcSynced) {
+        await _petService.updatePet(
+          petId: _pet.id,
+          data: {'isNfcSynced': false},
+        );
+
+        if (!mounted) {
+          return;
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('NFC desactivated')),
+        );
+
+        _hasMutatedPet = true;
+        await _loadPetDetail();
+      } else {
+        final result = await Navigator.pushNamed(
+          context,
+          Routes.nfc,
+          arguments: _pet.id,
+        );
+
+        if (!mounted) {
+          return;
+        }
+
+        if (result != null) {
+          await _loadPetDetail();
+        }
+      }
     } on ApiException catch (error) {
       if (!mounted) {
         return;
@@ -351,13 +415,20 @@ class _PetDetailScreenState extends State<PetDetailScreen>
             children: [
               OverviewTab(
                 pet: _pet,
+                petDetails: _petDetails,
                 onToggleLostMode: _toggleLostMode,
+                onToggleNfc: _toggleNfc,
               ),
               VaccinesTab(
                 pet: _pet,
                 vaccinations: _petDetails?.vaccinations ?? const [],
+                onAddVaccine: _goToAddVaccine,
               ),
-              EventsTab(pet: _pet),
+              EventsTab(
+                pet: _pet,
+                petDetails: _petDetails,
+                onAddEvent: _goToAddEvent,
+              ),
             ],
           ),
         ),

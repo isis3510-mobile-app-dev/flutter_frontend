@@ -18,7 +18,9 @@ enum _NfcMode { read, write }
 enum _NfcViewState { setup, scanning, success }
 
 class NfcPage extends StatefulWidget {
-	const NfcPage({super.key});
+	const NfcPage({super.key, this.initialPetId});
+
+	final String? initialPetId;
 
 	@override
 	State<NfcPage> createState() => _NfcPageState();
@@ -42,7 +44,10 @@ class _NfcPageState extends State<NfcPage> {
 	void initState() {
 		super.initState();
 		_pets = PetsMockData.all;
-		_selectedPetId = _pets.first.id;
+		_selectedPetId = widget.initialPetId != null &&
+			_pets.any((pet) => pet.id == widget.initialPetId)
+			? widget.initialPetId!
+			: _pets.first.id;
 	}
 
 	@override
