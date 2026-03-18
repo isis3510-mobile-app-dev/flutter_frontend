@@ -40,7 +40,6 @@ class PetService {
         message: 'Unexpected pet detail response from server.',
       );
     }
-
     return PetModel.fromJson(json);
   }
 
@@ -62,6 +61,31 @@ class PetService {
     return PetModel.fromJson(json);
   }
 
+  Future<PetModel> updatePet({
+    required String petId,
+    required Map<String, dynamic> data,
+  }) async {
+    final response = await _apiClient.put(
+      '$petsPath${petId.trim()}/',
+      body: jsonEncode(data),
+      headers: const {'Content-Type': 'application/json'},
+    );
+
+    final json = jsonDecode(response.body);
+    if (json is! Map<String, dynamic>) {
+      throw const ApiException(
+        type: ApiErrorType.unknown,
+        message: 'Unexpected update pet response from server.',
+      );
+    }
+
+    return PetModel.fromJson(json);
+  }
+
+  Future<void> deletePet(String petId) async {
+    await _apiClient.delete('$petsPath${petId.trim()}/');
+  }
+
   Future<void> updatePetStatus({
     required String petId,
     required String status,
@@ -71,6 +95,76 @@ class PetService {
       body: jsonEncode({'status': status}),
       headers: const {'Content-Type': 'application/json'},
     );
+  }
+
+  Future<void> addVaccination({
+    required String petId,
+    required Map<String, dynamic> data,
+  }) async {
+    await _apiClient.post('$petsPath$petId/vaccinations/', body: data);
+  }
+
+  Future<void> updateVaccination({
+    required String petId,
+    required String vaccinationId,
+    required Map<String, dynamic> data,
+  }) async {
+    final normalizedPetId = petId.trim();
+    final normalizedVaccinationId = vaccinationId.trim();
+    if (normalizedPetId.isEmpty || normalizedVaccinationId.isEmpty) {
+      throw const ApiException(
+        type: ApiErrorType.unknown,
+        message: 'Missing vaccination id.',
+      );
+    }
+
+    await _apiClient.put(
+      '$petsPath$normalizedPetId/vaccinations/$normalizedVaccinationId/',
+      body: data,
+    );
+  }
+
+  Future<void> deleteVaccination({
+    required String petId,
+    required String vaccinationId,
+  }) async {
+    await _apiClient.delete('$petsPath$petId/vaccinations/$vaccinationId/');
+  }
+
+  Future<List<PetVaccinationModel>> getVaccinations(String petId) async {
+    final response = await _apiClient.get('$petsPath$petId/vaccinations/');
+    final json = jsonDecode(response.body);
+
+    if (json is! List<dynamic>) {
+      throw const ApiException(
+        type: ApiErrorType.unknown,
+        message: 'Unexpected vaccinations response from server.',
+      );
+    }
+
+    return json
+        .map(_asPetMap)
+        .map(PetVaccinationModel.fromJson)
+        .toList(growable: false);
+  }
+
+  Future<PetVaccinationModel> getVaccination({
+    required String petId,
+    required String vaccinationId,
+  }) async {
+    final response = await _apiClient.get(
+      '$petsPath$petId/vaccinations/$vaccinationId/',
+    );
+    final json = jsonDecode(response.body);
+
+    if (json is! Map<String, dynamic>) {
+      throw const ApiException(
+        type: ApiErrorType.unknown,
+        message: 'Unexpected vaccination detail response from server.',
+      );
+    }
+
+    return PetVaccinationModel.fromJson(json);
   }
 
   Future<void> markPetAsLost(String petId) async {

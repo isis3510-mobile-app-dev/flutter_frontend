@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 
-enum PetFilter { all, healthy, vaccineDue, lost }
+enum PetFilter { all, healthy, lost }
 
 extension PetFilterLabel on PetFilter {
   String get label => switch (this) {
     PetFilter.all => 'All Pets',
     PetFilter.healthy => 'Healthy',
-    PetFilter.vaccineDue => 'Vaccine Due',
     PetFilter.lost => 'Lost',
   };
 }
@@ -71,8 +70,8 @@ class _FilterChip extends StatelessWidget {
           borderRadius: BorderRadius.circular(999),
           border: isActive
               ? null
-              : const Border.fromBorderSide(
-                  BorderSide(color: AppColors.petFilterInactiveBorder),
+              : Border.fromBorderSide(
+                  BorderSide(color: isDark ? AppColors.petFilterInactiveBorderDark : AppColors.petFilterInactiveBorder),
                 ),
         ),
         child: Text(

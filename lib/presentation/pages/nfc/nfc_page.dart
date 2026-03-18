@@ -23,7 +23,9 @@ enum _NfcMode { read, write }
 enum _NfcViewState { setup, scanning, success }
 
 class NfcPage extends StatefulWidget {
-  const NfcPage({super.key});
+  const NfcPage({super.key, this.initialPetId});
+
+  final String? initialPetId;
 
   @override
   State<NfcPage> createState() => _NfcPageState();
@@ -77,13 +79,13 @@ class _NfcPageState extends State<NfcPage> {
       setState(() {
         _pets = mappedPets;
 
-        if (_pets.isEmpty) {
+        if (mappedPets.isEmpty) {
           _selectedPetId = null;
-          return;
-        }
-
-        final selectedPetId = _selectedPetId;
-        if (selectedPetId == null || !_pets.any((pet) => pet.id == selectedPetId)) {
+        } else if (widget.initialPetId != null &&
+            mappedPets.any((pet) => pet.id == widget.initialPetId)) {
+          _selectedPetId = widget.initialPetId;
+        } else if (_selectedPetId == null ||
+            !mappedPets.any((pet) => pet.id == _selectedPetId)) {
           _selectedPetId = _pets.first.id;
         }
       });

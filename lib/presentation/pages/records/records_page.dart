@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/core/constants/app_colors.dart';
+import 'package:flutter_frontend/core/models/event_model.dart';
+import 'package:flutter_frontend/core/models/pet_model.dart';
+import 'package:flutter_frontend/core/network/api_exception.dart';
+import 'package:flutter_frontend/core/services/event_service.dart';
+import 'package:flutter_frontend/core/services/pet_service.dart';
+import 'package:flutter_frontend/core/services/vaccine_service.dart';
 import 'package:flutter_frontend/presentation/pages/records/widgets/record_list_item.dart';
 import '../../../app/routes.dart';
 import '../../../core/constants/app_strings.dart';
@@ -25,6 +31,13 @@ class _RecordsPageState extends State<RecordsPage> {
   late int _selectedFilterIndex;
   static const _currentIndex = 2;
 
+  final PetService _petService = PetService();
+  final VaccineService _vaccineService = VaccineService();
+  final EventService _eventService = EventService();
+
+
+  bool _isLoading = false;
+
   late final List<FilterOption> _filters = [
     const FilterOption(
       label: AppStrings.recordsFilterAll,
@@ -40,57 +53,7 @@ class _RecordsPageState extends State<RecordsPage> {
     ),
   ];
 
-  late final List<_RecordEntry> _records = [
-    _RecordEntry(
-      type: _RecordType.vaccine,
-      title: 'Rabies',
-      subtitle: 'Max · Dr. Smith',
-      meta: 'Feb 24, 2026',
-      icon: Icons.vaccines_outlined,
-      iconBackground: AppColors.primaryVariant,
-      iconColor: AppColors.primary,
-    ),
-    _RecordEntry(
-      type: _RecordType.event,
-      title: AppStrings.recordCheckup,
-      subtitle:
-        '${AppStrings.recordPetMax} · ${AppStrings.recordClinicHappyPaws}',
-      meta: '${AppStrings.recordDateNov19} · ${AppStrings.recordCost120}',
-      icon: Icons.assignment_outlined,
-      iconBackground: AppColors.primaryVariant,
-      iconColor: AppColors.primary,
-    ),
-    _RecordEntry(
-      type: _RecordType.event,
-      title: AppStrings.recordCheckup,
-      subtitle:
-          '${AppStrings.recordPetLuna} · ${AppStrings.recordClinicCatCare}',
-      meta: '${AppStrings.recordDateOct14} · ${AppStrings.recordCost95}',
-      icon: Icons.assignment_outlined,
-      iconBackground: AppColors.primaryVariant,
-      iconColor: AppColors.primary,
-    ),
-    _RecordEntry(
-      type: _RecordType.event,
-      title: AppStrings.recordEmergency,
-      subtitle:
-          '${AppStrings.recordPetLuna} · ${AppStrings.recordClinicCityEmergency}',
-      meta: '${AppStrings.recordDateAug29} · ${AppStrings.recordCost340}',
-      icon: Icons.medical_services_outlined,
-      iconBackground: AppColors.negativeBackground,
-      iconColor: AppColors.negativeText,
-    ),
-    _RecordEntry(
-      type: _RecordType.event,
-      title: AppStrings.recordDental,
-      subtitle:
-          '${AppStrings.recordPetMax} · ${AppStrings.recordClinicCityVet}',
-      meta: '${AppStrings.recordDateJun4} · ${AppStrings.recordCost280}',
-      icon: Icons.healing_outlined,
-      iconBackground: AppColors.positiveBackground,
-      iconColor: AppColors.positiveText,
-    ),
-  ];
+  List<_RecordEntry> _records = [];
 
   @override
   void initState() {
@@ -99,18 +62,227 @@ class _RecordsPageState extends State<RecordsPage> {
             widget.initialFilterIndex <= Routes.recordsFilterEvents
         ? widget.initialFilterIndex
         : Routes.recordsFilterAll;
+      _loadRecords();
   }
 
-  void navigateToDetail(_RecordType type) {
-    if (type == _RecordType.vaccine) {
-      Navigator.of(
+  Future<void> _loadRecords() async {
+    setState(() => _isLoading = true);
+    try {
+      final results = await Future.wait<dynamic>([
+        _petService.getPets(),
+        _vaccineService.getVaccines(),
+      ]);
+      final pets = results[0] as List<PetModel>;
+      final vaccineCatalog = results[1] as List<dynamic>;
+
+      final petVaccinations = <String, List<PetVaccinationModel>>{
+        for (final pet in pets) pet.id: pet.vaccinations,
+      };
+
+      final petEventEntries = await Future.wait(
+        pets.map((pet) async {
+          try {
+            final events = await _eventService.getEventsByPet(pet.id);
+            return MapEntry<String, List<EventModel>>(pet.id, events);
+          } catch (_) {
+            return const MapEntry<String, List<EventModel>>('', <EventModel>[]);
+          }
+        }),
+      );
+      final petEvents = <String, List<EventModel>>{
+        for (final entry in petEventEntries)
+          if (entry.key.isNotEmpty) entry.key: entry.value,
+      };
+
+      final vaccineIds = petVaccinations.values
+        .expand((vaccinations) => vaccinations)
+        .map((vaccine) => vaccine.vaccineId)
+        .toSet()
+        .toList(growable: false);
+
+      final vaccineInfoMap = <String, String>{
+        for (final vaccine in vaccineCatalog)
+          if (vaccine.id.trim().isNotEmpty)
+            vaccine.id.trim(): vaccine.name.trim().isEmpty
+                ? AppStrings.valueNotAvailable
+                : vaccine.name.trim(),
+      };
+      for (final vaccineId in vaccineIds.where((id) => !vaccineInfoMap.containsKey(id))) {
+        vaccineInfoMap[vaccineId] = AppStrings.valueNotAvailable;
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        final vaccineRecords = _buildVaccineRecords(
+          pets,
+          petVaccinations,
+          vaccineInfoMap,
+        );
+        final eventRecords = _buildEventRecords(pets, petEvents);
+
+        _records = [...vaccineRecords, ...eventRecords]
+          ..sort((a, b) => b.sortDate.compareTo(a.sortDate));
+      });
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(AppStrings.errorGeneric)),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  List<_RecordEntry> _buildVaccineRecords(
+    List<PetModel> pets,
+    Map<String, List<PetVaccinationModel>> petVaccinations,
+    Map<String, String> vaccineInfoMap,
+  ) {
+    final records = <_RecordEntry>[];
+    for (final pet in pets) {
+      final vaccinations = petVaccinations[pet.id] ?? const [];
+      for (final vaccine in vaccinations) {
+        records.add(
+          _RecordEntry(
+            type: _RecordType.vaccine,
+            title: vaccineInfoMap[vaccine.vaccineId] ?? AppStrings.valueNotAvailable,
+            subtitle: _buildVaccineSubtitle(pet, vaccine.administeredBy),
+            meta: _formatDate(vaccine.dateGiven),
+            icon: Icons.vaccines_outlined,
+            iconBackground: AppColors.primaryVariant,
+            iconColor: AppColors.primary,
+            sortDate: vaccine.dateGiven,
+            vaccination: vaccine,
+            pet: pet,
+          ),
+        );
+      }
+    }
+
+    records.sort((a, b) => b.sortDate.compareTo(a.sortDate));
+    return records;
+  }
+
+  List<_RecordEntry> _buildEventRecords(
+    List<PetModel> pets,
+    Map<String, List<EventModel>> petEvents,
+  ) {
+    final records = <_RecordEntry>[];
+    for (final pet in pets) {
+      final events = petEvents[pet.id] ?? const <EventModel>[];
+      for (final event in events) {
+        records.add(
+          _RecordEntry(
+            type: _RecordType.event,
+            title: event.title.trim().isNotEmpty
+                ? event.title.trim()
+                : AppStrings.valueNotAvailable,
+            subtitle: _buildEventSubtitle(pet, event),
+            meta: _buildEventMeta(event),
+            icon: Icons.event_note_outlined,
+            iconBackground: AppColors.primaryVariant,
+            iconColor: AppColors.primary,
+            sortDate: event.date,
+            event: event,
+            pet: pet,
+          ),
+        );
+      }
+    }
+
+    records.sort((a, b) => b.sortDate.compareTo(a.sortDate));
+    return records;
+  }
+
+  String _buildEventSubtitle(PetModel pet, EventModel event) {
+    final displaySource = event.provider.trim().isNotEmpty
+        ? event.provider.trim()
+        : event.clinic.trim().isNotEmpty
+            ? event.clinic.trim()
+            : AppStrings.valueNotAvailable;
+
+    return '${pet.name} - $displaySource';
+  }
+
+  String _buildEventMeta(EventModel event) {
+    final dateText = _formatDate(event.date);
+    final priceText = event.price == null
+        ? ''
+        : ' • \$${event.price!.toStringAsFixed(2)}';
+    return '$dateText$priceText';
+  }
+
+  String _formatDate(DateTime date) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    final month = months[date.month - 1];
+    return '$month ${date.day}, ${date.year}';
+  }
+
+  String _buildVaccineSubtitle(PetModel pet, String vetName) {
+    final displayVet = vetName.trim().isNotEmpty
+        ? vetName.trim()
+        : pet.defaultVet.trim().isNotEmpty
+            ? pet.defaultVet.trim()
+            : AppStrings.valueNotAvailable;
+    return '${pet.name} - $displayVet';
+  }
+
+  Future<void> navigateToDetail(_RecordEntry record) async {
+    if (record.type == _RecordType.vaccine) {
+      final result = await Navigator.of(
         context,
-      ).push(MaterialPageRoute(builder: (context) => const DetailPage(type: 'vaccine',)));
+      ).push(
+        MaterialPageRoute(
+          builder: (context) => DetailPage(
+            type: 'vaccine',
+            vaccination: record.vaccination,
+            pet: record.pet,
+            vaccineName: record.title,
+          )
+        )
+      );
+      if (result == true) {
+        _loadRecords();
+      }
       return;
-    } else if (type == _RecordType.event) {
-      Navigator.of(
+    } else if (record.type == _RecordType.event) {
+      final result = await Navigator.of(
         context,
-      ).push(MaterialPageRoute(builder: (context) => const DetailPage(type: 'event',)));
+      ).push(
+        MaterialPageRoute(
+          builder: (context) => DetailPage(
+            type: 'event',
+            event: record.event,
+            pet: record.pet,
+          ),
+        ),
+      );
+
+      if (result == true) {
+        _loadRecords();
+      }
+
       return;
     }
     return;
@@ -136,12 +308,18 @@ class _RecordsPageState extends State<RecordsPage> {
     Navigator.of(context).pushReplacementNamed(routeName);
   }
 
-  void _goToAddVaccine() {
-    Navigator.of(context).pushNamed(Routes.addVaccine);
+  Future<void> _goToAddVaccine() async {
+    final result = await Navigator.of(context).pushNamed(Routes.addVaccine);
+    if (result == true) {
+      _loadRecords();
+    }
   }
 
-  void _goToAddEvent() {
-    Navigator.of(context).pushNamed(Routes.addEvent);
+  Future<void> _goToAddEvent() async {
+    final result = await Navigator.of(context).pushNamed(Routes.addEvent);
+    if (result == true) {
+      _loadRecords();
+    }
   }
   
   void _goToAddPet() {
@@ -169,55 +347,57 @@ class _RecordsPageState extends State<RecordsPage> {
         onAddEvent: _goToAddEvent,
       ),
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 18.0, left: 16.0),
-              child: Text(
-                AppStrings.healthRecordsTitle,
-                style: context.textTheme.headlineMedium,
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(18.0),
-              child: FilterToggleBar(
-                selectedIndex: _selectedFilterIndex,
-                onSelected: (index) {
-                  setState(() {
-                    _selectedFilterIndex = index;
-                  });
-                },
-                filters: _filters,
-              ),
-            ),
-            Expanded(
-              child: ListView(
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.only(top: 18.0, left: 16.0),
                     child: Text(
-                      selectedLabel,
-                      style: context.textTheme.titleMedium,
+                      AppStrings.healthRecordsTitle,
+                      style: context.textTheme.headlineMedium,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  for (final record in filteredRecords)
-                    RecordListItem(
-                      title: record.title,
-                      subtitle: record.subtitle,
-                      meta: record.meta,
-                      icon: record.icon,
-                      iconBackground: record.iconBackground,
-                      iconColor: record.iconColor,
-                      onTap: () => navigateToDetail(record.type),
+                  Padding(
+                    padding: const EdgeInsets.all(18.0),
+                    child: FilterToggleBar(
+                      selectedIndex: _selectedFilterIndex,
+                      onSelected: (index) {
+                        setState(() {
+                          _selectedFilterIndex = index;
+                        });
+                      },
+                      filters: _filters,
                     ),
-                  const SizedBox(height: 12),
+                  ),
+                  Expanded(
+                    child: ListView(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Text(
+                            selectedLabel,
+                            style: context.textTheme.titleMedium,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        for (final record in filteredRecords)
+                          RecordListItem(
+                            title: record.title,
+                            subtitle: record.subtitle,
+                            meta: record.meta,
+                            icon: record.icon,
+                            iconBackground: record.iconBackground,
+                            iconColor: record.iconColor,
+                            onTap: () => navigateToDetail(record),
+                          ),
+                        const SizedBox(height: 12),
+                      ],
+                    ),
+                  ),
                 ],
               ),
-            ),
-          ],
-        ),
       ),
       bottomNavigationBar: PetcareBottomNavBar(
         currentIndex: _currentIndex,
@@ -238,6 +418,10 @@ class _RecordEntry {
     required this.icon,
     required this.iconBackground,
     required this.iconColor,
+    required this.sortDate,
+    this.vaccination,
+    this.event,
+    this.pet,
   });
 
   final _RecordType type;
@@ -247,4 +431,8 @@ class _RecordEntry {
   final IconData icon;
   final Color iconBackground;
   final Color iconColor;
+  final DateTime sortDate;
+  final PetVaccinationModel? vaccination;
+  final EventModel? event;
+  final PetModel? pet;
 }

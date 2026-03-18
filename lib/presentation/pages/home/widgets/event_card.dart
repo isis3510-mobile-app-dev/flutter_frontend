@@ -91,7 +91,7 @@ class EventCard extends StatelessWidget {
                   vertical: AppDimensions.spaceXS,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.positiveBackground,
+                  color: isDark ? AppColors.positiveBackgroundDark : AppColors.positiveBackground,
                   borderRadius: BorderRadius.circular(AppDimensions.radiusM),
                 ),
                 child: Row(
@@ -100,13 +100,13 @@ class EventCard extends StatelessWidget {
                     Icon(
                       Icons.notifications_active,
                       size: 12,
-                      color: AppColors.positiveText,
+                      color: isDark ? AppColors.positiveTextDark : AppColors.positiveText,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       'Reminder on',
                       style: TextStyle(
-                        color: AppColors.positiveText,
+                        color: isDark ? AppColors.positiveTextDark : AppColors.positiveText,
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
                       ),

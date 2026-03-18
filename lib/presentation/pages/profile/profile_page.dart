@@ -9,6 +9,7 @@ import 'package:flutter_frontend/core/services/auth_service.dart';
 import 'package:flutter_frontend/core/services/profile_photo_service.dart';
 import 'package:flutter_frontend/core/services/user_service.dart';
 import 'package:flutter_frontend/app/routes.dart';
+import 'package:flutter_frontend/app/theme_controller.dart';
 import 'package:flutter_frontend/shared/widgets/petcare_bottom_nav_bar.dart';
 import 'package:flutter_frontend/shared/widgets/quick_actions_fab.dart';
 import 'widgets/profile_header.dart';
@@ -37,14 +38,12 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _isLoadingProfile = false;
 
   // Preference states
-  late bool _darkModeEnabled;
   late bool _notificationsEnabled;
   late bool _offlineModeEnabled;
 
   @override
   void initState() {
     super.initState();
-    _darkModeEnabled = false;
     _notificationsEnabled = true;
     _offlineModeEnabled = false;
     _loadProfile();
@@ -55,7 +54,7 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       final profile = await _userService.getCurrentUser();
       final photoPath = await _photoService.getLocalPhotoPath();
-      
+
       if (mounted) {
         setState(() {
           _profile = profile;
@@ -64,9 +63,9 @@ class _ProfilePageState extends State<ProfilePage> {
       }
     } on ApiException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } catch (_) {
       if (mounted) {
@@ -108,10 +107,9 @@ class _ProfilePageState extends State<ProfilePage> {
       return;
     }
 
-    final shouldReload = await Navigator.of(context).pushNamed(
-      Routes.profileEdit,
-      arguments: profile,
-    );
+    final shouldReload = await Navigator.of(
+      context,
+    ).pushNamed(Routes.profileEdit, arguments: profile);
 
     if (!mounted) {
       return;
@@ -122,11 +120,70 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  void _handleDarkModeToggle(bool value) {
-    setState(() {
-      _darkModeEnabled = value;
-    });
-    // TODO: Implement theme switching logic
+  Future<void> _showThemeModePicker() async {
+    final themeController = ThemeControllerScope.of(context);
+    final selected = await showModalBottomSheet<AppThemePreference>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        final currentPreference = themeController.preference;
+
+        Widget option(
+          AppThemePreference preference, {
+          required String title,
+          String? subtitle,
+        }) {
+          return ListTile(
+            title: Text(title),
+            subtitle: subtitle == null ? null : Text(subtitle),
+            trailing: preference == currentPreference
+                ? const Icon(Icons.check, color: AppColors.primary)
+                : null,
+            onTap: () => Navigator.of(context).pop(preference),
+          );
+        }
+
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: Text(
+                  AppStrings.profileThemeModePickerTitle,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+              option(
+                AppThemePreference.light,
+                title: AppStrings.profileThemeLight,
+                subtitle: AppStrings.profileThemeLightSubtitle,
+              ),
+              option(
+                AppThemePreference.dark,
+                title: AppStrings.profileThemeDark,
+                subtitle: AppStrings.profileThemeDarkSubtitle,
+              ),
+              option(
+                AppThemePreference.schedule,
+                title: AppStrings.profileThemeSchedule,
+                subtitle: AppStrings.profileThemeScheduleSubtitle,
+              ),
+              option(
+                AppThemePreference.sensor,
+                title: AppStrings.profileThemeSensor,
+                subtitle: AppStrings.profileThemeSensorSubtitle,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (selected == null) {
+      return;
+    }
+
+    await themeController.setPreference(selected);
   }
 
   void _handleNotificationsToggle(bool value) {
@@ -151,7 +208,10 @@ class _ProfilePageState extends State<ProfilePage> {
         return;
       }
 
-      Navigator.of(context, rootNavigator: true).popUntil((route) => route.isFirst);
+      Navigator.of(
+        context,
+        rootNavigator: true,
+      ).pushNamedAndRemoveUntil(Routes.authGate, (route) => false);
     } catch (_) {
       if (!mounted) {
         return;
@@ -214,6 +274,27 @@ class _ProfilePageState extends State<ProfilePage> {
       return AppStrings.validationRequired;
     }
     return null;
+  }
+
+  String _themePreferenceLabel(ThemeController themeController) {
+    return switch (themeController.preference) {
+      AppThemePreference.light => AppStrings.profileThemeLight,
+      AppThemePreference.dark => AppStrings.profileThemeDark,
+      AppThemePreference.schedule => AppStrings.profileThemeSchedule,
+      AppThemePreference.sensor => AppStrings.profileThemeSensor,
+    };
+  }
+
+  String _themePreferenceSubtitle(ThemeController themeController) {
+    return switch (themeController.preference) {
+      AppThemePreference.light => AppStrings.profileThemeSummaryLight,
+      AppThemePreference.dark => AppStrings.profileThemeSummaryDark,
+      AppThemePreference.schedule => AppStrings.profileThemeSummaryByTime,
+      AppThemePreference.sensor =>
+        themeController.activeThemeSource == ThemeSource.ambientLight
+            ? AppStrings.profileThemeSummaryAuto
+            : AppStrings.profileThemeSummaryAutoFallback,
+    };
   }
 
   Future<String?> _showSingleFieldEditor({
@@ -323,9 +404,9 @@ class _ProfilePageState extends State<ProfilePage> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     } catch (_) {
       if (!mounted) {
         return;
@@ -382,8 +463,11 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final themeController = ThemeControllerScope.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: isDark ? AppColors.backgroundDark : AppColors.background,
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -411,10 +495,10 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Text(
                   AppStrings.profileSubtitleAccount.toUpperCase(),
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AppColors.onSurface,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: AppDimensions.letterSpacingSection,
-                      ),
+                    color: isDark ? AppColors.onSurfaceDark : AppColors.onSurface,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: AppDimensions.letterSpacingSection,
+                  ),
                 ),
               ),
             ),
@@ -423,7 +507,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 horizontal: AppDimensions.pageHorizontalPadding,
               ),
               decoration: BoxDecoration(
-                color: AppColors.secondary,
+                color: isDark ? AppColors.secondaryDark : AppColors.secondary,
                 borderRadius: BorderRadius.circular(AppDimensions.radiusL),
               ),
               child: Column(
@@ -434,28 +518,37 @@ class _ProfilePageState extends State<ProfilePage> {
                     title: AppStrings.profileEdit,
                     subtitle: _displayValue(_profile?.name),
                     onTap: _handleEditProfile,
+                    isDark: isDark,
                   ),
                   Divider(
                     height: AppDimensions.strokeThin,
-                    indent: AppDimensions.pageHorizontalPadding + AppDimensions.iconListItem + AppDimensions.spaceL,
-                    color: AppColors.grey100,
+                    indent:
+                        AppDimensions.pageHorizontalPadding +
+                        AppDimensions.iconListItem +
+                        AppDimensions.spaceL,
+                    color: isDark ? AppColors.grey500 : AppColors.grey100,
                   ),
                   ProfileMenuItem(
                     imageAssetPath: AppAssets.iconProfileMail,
                     title: AppStrings.profileEmail,
                     subtitle: _displayValue(_profile?.email),
                     onTap: _handleQuickEditEmail,
+                    isDark: isDark,
                   ),
                   Divider(
                     height: AppDimensions.strokeThin,
-                    indent: AppDimensions.pageHorizontalPadding + AppDimensions.iconListItem + AppDimensions.spaceL,
-                    color: AppColors.grey100,
+                    indent:
+                        AppDimensions.pageHorizontalPadding +
+                        AppDimensions.iconListItem +
+                        AppDimensions.spaceL,
+                    color: isDark ? AppColors.grey500 : AppColors.grey100,
                   ),
                   ProfileMenuItem(
                     imageAssetPath: AppAssets.iconProfilePhone,
                     title: AppStrings.profilePhone,
                     subtitle: _displayValue(_profile?.phone),
                     onTap: _handleQuickEditPhone,
+                    isDark: isDark,
                   ),
                 ],
               ),
@@ -474,10 +567,10 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Text(
                   AppStrings.profileSubtitlePreferences.toUpperCase(),
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AppColors.onSurface,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: AppDimensions.letterSpacingSection,
-                      ),
+                    color: isDark ? AppColors.onSurfaceDark : AppColors.onSurface,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: AppDimensions.letterSpacingSection,
+                  ),
                 ),
               ),
             ),
@@ -486,22 +579,27 @@ class _ProfilePageState extends State<ProfilePage> {
                 horizontal: AppDimensions.pageHorizontalPadding,
               ),
               decoration: BoxDecoration(
-                color: AppColors.secondary,
+                color: isDark ? AppColors.secondaryDark : AppColors.secondary,
                 borderRadius: BorderRadius.circular(AppDimensions.radiusL),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ProfileToggleItem(
+                  ProfileMenuItem(
                     imageAssetPath: AppAssets.iconProfileDarkMode,
-                    title: AppStrings.profileDarkMode,
-                    value: _darkModeEnabled,
-                    onChanged: _handleDarkModeToggle,
+                    title: AppStrings.profileThemeMode,
+                    subtitle:
+                        '${_themePreferenceLabel(themeController)} • ${_themePreferenceSubtitle(themeController)}',
+                    onTap: _showThemeModePicker,
+                    isDark: isDark,
                   ),
                   Divider(
                     height: AppDimensions.strokeThin,
-                    indent: AppDimensions.pageHorizontalPadding + AppDimensions.iconListItem + AppDimensions.spaceL,
-                    color: AppColors.grey100,
+                    indent:
+                        AppDimensions.pageHorizontalPadding +
+                        AppDimensions.iconListItem +
+                        AppDimensions.spaceL,
+                    color: isDark ? AppColors.grey500 : AppColors.grey100,
                   ),
                   ProfileToggleItem(
                     imageAssetPath: AppAssets.iconProfileNotifications,
@@ -511,17 +609,22 @@ class _ProfilePageState extends State<ProfilePage> {
                         : AppStrings.stateDisabled,
                     value: _notificationsEnabled,
                     onChanged: _handleNotificationsToggle,
+                    isDark: isDark,
                   ),
                   Divider(
                     height: AppDimensions.strokeThin,
-                    indent: AppDimensions.pageHorizontalPadding + AppDimensions.iconListItem + AppDimensions.spaceL,
-                    color: AppColors.grey100,
+                    indent:
+                        AppDimensions.pageHorizontalPadding +
+                        AppDimensions.iconListItem +
+                        AppDimensions.spaceL,
+                    color: isDark ? AppColors.grey500 : AppColors.grey100,
                   ),
                   ProfileToggleItem(
                     imageAssetPath: AppAssets.iconProfileOffline,
                     title: AppStrings.profileOffline,
                     value: _offlineModeEnabled,
                     onChanged: _handleOfflineModeToggle,
+                    isDark: isDark,
                   ),
                 ],
               ),
@@ -540,10 +643,10 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Text(
                   AppStrings.profileSubtitleSupport.toUpperCase(),
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AppColors.onSurface,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: AppDimensions.letterSpacingSection,
-                      ),
+                    color: isDark ? AppColors.onSurfaceDark : AppColors.onSurface,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: AppDimensions.letterSpacingSection,
+                  ),
                 ),
               ),
             ),
@@ -552,7 +655,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 horizontal: AppDimensions.pageHorizontalPadding,
               ),
               decoration: BoxDecoration(
-                color: AppColors.secondary,
+                color: isDark ? AppColors.secondaryDark : AppColors.secondary,
                 borderRadius: BorderRadius.circular(AppDimensions.radiusL),
               ),
               child: Column(
@@ -563,6 +666,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     title: AppStrings.profileSignOut,
                     onTap: _handleSignOut,
                     isDestructive: true,
+                    isDark: isDark,
                   ),
                 ],
               ),

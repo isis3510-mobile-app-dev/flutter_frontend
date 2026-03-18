@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
@@ -19,6 +21,10 @@ class PetCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? AppColors.onBackgroundDark : AppColors.onSurface;
+    final effectivePhotoPath = pet.effectivePhotoPath;
+    final uri = effectivePhotoPath == null ? null : Uri.tryParse(effectivePhotoPath);
+    final isNetwork = uri != null &&
+        (uri.scheme == 'http' || uri.scheme == 'https');
 
     return GestureDetector(
       onTap: onTap,
@@ -37,9 +43,12 @@ class PetCard extends StatelessWidget {
                       ? AppColors.petCardQuickActionBgDark
                       : AppColors.petCardQuickActionBg,
                   borderRadius: BorderRadius.circular(AppDimensions.radiusL),
-                  image: pet.photoUrl != null
+                  image: effectivePhotoPath != null
                       ? DecorationImage(
-                          image: NetworkImage(pet.photoUrl!),
+                          image: isNetwork
+                              ? NetworkImage(effectivePhotoPath)
+                              : FileImage(File(effectivePhotoPath))
+                                  as ImageProvider,
                           fit: BoxFit.cover,
                         )
                       : null,
@@ -51,7 +60,7 @@ class PetCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: pet.photoUrl == null
+                child: effectivePhotoPath == null
                     ? Icon(
                         Icons.pets,
                         color: AppColors.primary,

@@ -4,9 +4,19 @@ import '../../../app/routes.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_strings.dart';
+import '../../../core/models/event_model.dart';
+import '../../../core/models/pet_model.dart';
+import '../../../core/network/api_exception.dart';
+import '../../../core/services/event_service.dart';
+import '../../../core/services/pet_service.dart';
+import '../../../core/services/profile_photo_service.dart';
+import '../../../core/services/user_service.dart';
+import '../../../core/services/vaccine_service.dart';
 import '../../../shared/widgets/petcare_bottom_nav_bar.dart';
 import '../../../shared/widgets/quick_actions_fab.dart';
-import '../pets/data/pets_mock_data.dart';
+import '../add_event/add_event_args.dart';
+import '../add_vaccine/add_vaccine_args.dart';
+import '../pets/models/pet_ui_mapper.dart';
 import '../pets/models/pet_ui_model.dart';
 import 'widgets/event_card.dart';
 import 'widgets/home_header.dart';
@@ -25,12 +35,25 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   static const _currentIndex = 0;
-  late final List<PetUiModel> _pets;
+
+  final UserService _userService = UserService();
+  final PetService _petService = PetService();
+  final EventService _eventService = EventService();
+  final VaccineService _vaccineService = VaccineService();
+  final ProfilePhotoService _photoService = ProfilePhotoService();
+
+  String _userName = '';
+  List<PetUiModel> _pets = const [];
+  List<_HomeEventEntry> _upcomingEvents = const [];
+  List<_UpcomingVaccineData> _upcomingVaccines = const [];
+  _OverdueVaccineData? _overdueVaccineData;
+  bool _isLoading = false;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _pets = PetsMockData.all;
+    _loadHomeData();
   }
 
   void _showUnavailableMessage() {
@@ -65,64 +88,333 @@ class _HomePageState extends State<HomePage> {
     Navigator.of(context).pushNamed(Routes.petDetail, arguments: pet);
   }
 
+  Future<void> _editEvent(_HomeEventEntry entry) async {
+    final result = await Navigator.of(context).pushNamed(
+      Routes.addEvent,
+      arguments: AddEventArgs(
+        eventId: entry.event.id,
+        petId: entry.petId,
+        petName: entry.petName,
+        title: entry.event.title,
+        description: entry.event.description,
+        date: entry.event.date,
+        eventType: entry.event.eventType,
+        price: entry.event.price,
+        provider: entry.event.provider,
+        clinic: entry.event.clinic,
+        followUpDate: entry.event.followUpDate,
+      ),
+    );
+
+    if (!mounted || result != true) {
+      return;
+    }
+
+    await _loadHomeData();
+  }
+
+  Future<void> _editVaccine(_VaccinationWithPet entry, String vaccineName) async {
+    final result = await Navigator.of(context).pushNamed(
+      Routes.addVaccine,
+      arguments: AddVaccineArgs(
+        vaccinationId: entry.vaccination.id,
+        vaccineId: entry.vaccination.vaccineId,
+        vaccineName: vaccineName,
+        dateGiven: entry.vaccination.dateGiven,
+        petId: entry.petId,
+        petName: entry.petName,
+        administeredBy: entry.vaccination.administeredBy,
+      ),
+    );
+
+    if (!mounted || result != true) {
+      return;
+    }
+
+    await _loadHomeData();
+  }
+
   void _goToRecords(int initialFilterIndex) {
     Navigator.of(
       context,
     ).pushNamed(Routes.records, arguments: initialFilterIndex);
   }
 
+  Future<void> _loadHomeData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final results = await Future.wait<dynamic>([
+        _userService.getCurrentUser(),
+        _petService.getPets(),
+      ]);
+      final profile = results[0];
+      final pets = results[1] as List<PetModel>;
+
+      final allVaccinations = <_VaccinationWithPet>[];
+      for (final pet in pets) {
+        allVaccinations.addAll(
+          pet.vaccinations.map(
+            (vaccination) => _VaccinationWithPet(
+              petId: pet.id,
+              petName: pet.name,
+              vaccination: vaccination,
+            ),
+          ),
+        );
+      }
+
+      final uiPets = await Future.wait(
+        pets.map((pet) async {
+          final localPath = await _photoService.getPetPhotoPath(pet.id);
+          return pet.toUiModel().copyWith(localPhotoPath: localPath);
+        }),
+      );
+
+      final eventGroups = await Future.wait(
+        pets.map((pet) async {
+          try {
+            final petEvents = await _eventService.getEventsByPet(pet.id);
+            return petEvents
+                .map(
+                  (event) => _HomeEventEntry(
+                    event: event,
+                    petId: pet.id,
+                    petName: pet.name,
+                  ),
+                )
+                .toList(growable: false);
+          } catch (_) {
+            return const <_HomeEventEntry>[];
+          }
+        }),
+      );
+      final events = eventGroups.expand((group) => group).toList(growable: false);
+
+      final vaccineIds = allVaccinations
+          .map((entry) => entry.vaccination.vaccineId.trim())
+          .where((id) => id.isNotEmpty)
+          .toSet();
+      final vaccineNameEntries = await Future.wait(
+        vaccineIds.map((vaccineId) async {
+          try {
+            final vaccine = await _vaccineService.getVaccineById(vaccineId);
+            final name = vaccine.name.trim();
+            return MapEntry(vaccineId, name.isEmpty ? vaccineId : name);
+          } catch (_) {
+            return MapEntry(vaccineId, vaccineId);
+          }
+        }),
+      );
+      final vaccineNamesById = Map<String, String>.fromEntries(vaccineNameEntries);
+
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final overdueVaccines = allVaccinations.where((entry) {
+        final due = entry.vaccination.nextDueDate;
+        return due.year > 1 && due.isBefore(now);
+      }).toList(growable: false)
+        ..sort(
+          (a, b) => a.vaccination.nextDueDate.compareTo(b.vaccination.nextDueDate),
+        );
+
+      final upcomingVaccines = allVaccinations.where((entry) {
+        final due = entry.vaccination.nextDueDate;
+        if (due.year <= 1) {
+          return false;
+        }
+        final dueDay = DateTime(due.year, due.month, due.day);
+        return !dueDay.isBefore(today);
+      }).toList(growable: false)
+        ..sort(
+          (a, b) => a.vaccination.nextDueDate.compareTo(b.vaccination.nextDueDate),
+        );
+
+      final upcomingEvents = events.where((entry) {
+        return entry.event.date.year > 1 && entry.event.date.isAfter(now);
+      }).toList(growable: false)
+        ..sort((a, b) => a.event.date.compareTo(b.event.date));
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _userName = _firstName(profile.name);
+        _pets = uiPets;
+        _upcomingEvents = upcomingEvents;
+        _overdueVaccineData = overdueVaccines.isEmpty
+            ? null
+            : _OverdueVaccineData(
+                count: overdueVaccines.length,
+                detail: _buildVaccineDetailText(
+                  overdueVaccines.first,
+                  vaccineNamesById,
+                ),
+                vaccineName: _resolveVaccineName(
+                  overdueVaccines.first,
+                  vaccineNamesById,
+                ),
+                entry: overdueVaccines.first,
+              );
+        _upcomingVaccines = upcomingVaccines
+            .map((entry) => _UpcomingVaccineData.fromEntry(entry, vaccineNamesById))
+            .toList(growable: false);
+      });
+    } on ApiException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _errorMessage = error.message;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _errorMessage = AppStrings.errorGeneric;
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  String _firstName(String fullName) {
+    final trimmed = fullName.trim();
+    if (trimmed.isEmpty) {
+      return 'PetCare';
+    }
+    return trimmed.split(RegExp(r'\s+')).first;
+  }
+
+  String _buildVaccineDetailText(
+    _VaccinationWithPet entry,
+    Map<String, String> vaccineNamesById,
+  ) {
+    final vaccineName = _resolveVaccineName(entry, vaccineNamesById);
+    return '$vaccineName for ${entry.petName}';
+  }
+
+  String _resolveVaccineName(
+    _VaccinationWithPet entry,
+    Map<String, String> vaccineNamesById,
+  ) {
+    final vaccineId = entry.vaccination.vaccineId.trim();
+    final vaccineName = vaccineNamesById[vaccineId] ?? vaccineId;
+    return vaccineName.isEmpty ? AppStrings.valueNotAvailable : vaccineName;
+  }
+
+  String _formatDate(DateTime date) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
+
+  Widget _buildVaccinesSection() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final titleColor = isDark ? AppColors.onBackgroundDark : AppColors.onSurface;
+    final visibleVaccines = _upcomingVaccines.take(3).toList(growable: false);
+
+    if (_overdueVaccineData == null && visibleVaccines.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppDimensions.pageHorizontalPadding,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Upcoming Vaccines',
+                style: TextStyle(
+                  color: titleColor,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              TextButton(
+                onPressed: () => _goToRecords(Routes.recordsFilterVaccines),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      AppStrings.homeSeeAll,
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: AppDimensions.spaceXXS),
+                    const Icon(
+                      Icons.chevron_right,
+                      color: AppColors.primary,
+                      size: 18,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (_overdueVaccineData != null)
+          OverdueVaccinesCard(
+            overdueCount: _overdueVaccineData!.count,
+            vaccineDetails: _overdueVaccineData!.detail,
+            onTap: () => _editVaccine(
+              _overdueVaccineData!.entry,
+              _overdueVaccineData!.vaccineName,
+            ),
+          ),
+        for (final vaccine in visibleVaccines)
+          UpcomingVaccineCard(
+            vaccineName: vaccine.vaccineName,
+            petName: vaccine.petName,
+            date: _formatDate(vaccine.date),
+            daysUntil: vaccine.daysUntil,
+            onTap: () => _editVaccine(
+              vaccine.entry,
+              vaccine.vaccineName,
+            ),
+          ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final backgroundColor =
         isDark ? AppColors.backgroundDark : AppColors.background;
 
     return Scaffold(
       backgroundColor: backgroundColor,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header with greeting
-              HomeHeader(
-                userName: 'Sarah',
-                hasNotification: false,
-                onNotificationTap: () => _showUnavailableMessage(),
-                onNfcTap: () => Navigator.of(context).pushNamed(Routes.nfc),
-              ),
-              const SizedBox(height: AppDimensions.spaceL),
-
-              // Pets Section
-              _buildPetsSection(),
-              const SizedBox(height: AppDimensions.spaceL),
-
-              // Overdue Vaccines Alert
-              if (_hasOverdueVaccines())
-                OverdueVaccinesCard(
-                  overdueCount: 2,
-                  vaccineDetails: 'Leptospirosis for Max',
-                  onTap: () => _goToRecords(Routes.recordsFilterVaccines),
-                ),
-
-              // Upcoming Vaccine Card
-              UpcomingVaccineCard(
-                vaccineName: 'Rabies',
-                petName: 'Max',
-                date: 'Mar 14, 2025',
-                daysUntil: 349,
-                onTap: () => _goToRecords(Routes.recordsFilterVaccines),
-              ),
-              const SizedBox(height: AppDimensions.spaceL),
-
-              // Upcoming Events Section
-              _buildUpcomingEventsSection(),
-              const SizedBox(height: AppDimensions.spaceXXL),
-            ],
-          ),
-        ),
-      ),
+      body: SafeArea(child: _buildBody()),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: QuickActionsFab(
         onAddPet: () => Navigator.pushNamed(context, Routes.addPet),
@@ -136,7 +428,70 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget _buildBody() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppDimensions.spaceXL),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.cloud_off_rounded,
+                size: 56,
+                color: AppColors.grey300,
+              ),
+              const SizedBox(height: AppDimensions.spaceM),
+              Text(
+                _errorMessage!,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.onSurfaceDark
+                      : AppColors.grey700,
+                ),
+              ),
+              const SizedBox(height: AppDimensions.spaceM),
+              OutlinedButton(
+                onPressed: _loadHomeData,
+                child: const Text(AppStrings.petsRetry),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          HomeHeader(
+            userName: _userName,
+            hasNotification: false,
+            onNotificationTap: () => _showUnavailableMessage(),
+            onNfcTap: () => Navigator.of(context).pushNamed(Routes.nfc),
+          ),
+          const SizedBox(height: AppDimensions.spaceL),
+          _buildPetsSection(),
+          const SizedBox(height: AppDimensions.spaceL),
+          _buildVaccinesSection(),
+          const SizedBox(height: AppDimensions.spaceL),
+          _buildUpcomingEventsSection(),
+          const SizedBox(height: AppDimensions.spaceXXL),
+        ],
+      ),
+    );
+  }
+
   Widget _buildPetsSection() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final titleColor = isDark ? AppColors.onBackgroundDark : AppColors.onSurface;
+
     return Column(
       children: [
         Padding(
@@ -148,7 +503,8 @@ class _HomePageState extends State<HomePage> {
             children: [
               Text(
                 AppStrings.homePetsSection,
-                style: const TextStyle(
+                style: TextStyle(
+                  color: titleColor,
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                 ),
@@ -189,6 +545,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildPetsHorizontalList() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final visiblePets = _pets.take(5).toList(growable: false);
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(
@@ -196,7 +554,7 @@ class _HomePageState extends State<HomePage> {
       ),
       child: Row(
         children: [
-          ..._pets.map(
+          ...visiblePets.map(
             (pet) => Padding(
               padding: const EdgeInsets.only(
                 right: AppDimensions.spaceM,
@@ -244,7 +602,7 @@ class _HomePageState extends State<HomePage> {
                   'Add Pet',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: AppColors.onSurface,
+                    color: isDark ? AppColors.onSurfaceDark : AppColors.onSurface,
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                   ),
@@ -258,6 +616,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildEmptyPetsState() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: AppDimensions.pageHorizontalPadding,
@@ -265,7 +624,9 @@ class _HomePageState extends State<HomePage> {
       child: Container(
         padding: const EdgeInsets.all(AppDimensions.spaceL),
         decoration: BoxDecoration(
-          color: const Color(0x339FF2E2), // AppColors.primaryVariant with 20% opacity
+          color: isDark
+              ? AppColors.petCardQuickActionBgDark
+              : const Color(0x339FF2E2),
           borderRadius: BorderRadius.circular(AppDimensions.radiusL),
         ),
         child: Column(
@@ -273,7 +634,8 @@ class _HomePageState extends State<HomePage> {
           children: [
             Text(
               'No pets yet',
-              style: const TextStyle(
+              style: TextStyle(
+                color: isDark ? AppColors.onSurfaceDark : AppColors.onSurface,
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
               ),
@@ -282,7 +644,9 @@ class _HomePageState extends State<HomePage> {
             Text(
               'Start by adding your first pet to track their health journey',
               style: TextStyle(
-                color: AppColors.addPetBannerText,
+                color: isDark
+                    ? AppColors.onSurfaceDark.withValues(alpha: 0.78)
+                    : AppColors.addPetBannerText,
                 fontSize: 13,
                 fontWeight: FontWeight.w400,
               ),
@@ -301,29 +665,10 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildUpcomingEventsSection() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final eventsCardColor = isDark ? AppColors.surfaceDark : AppColors.secondary;
+    final eventsCardColor = isDark ? AppColors.secondaryDark : AppColors.secondary;
     final dividerColor = isDark ? AppColors.grey700 : AppColors.grey300;
-
-    final events = [
-      {
-        'name': 'Vet Check-up',
-        'pet': 'Max',
-        'date': 'March 3',
-        'hasReminder': true,
-      },
-      {
-        'name': 'Vet Check-up',
-        'pet': 'Max',
-        'date': 'October 14',
-        'hasReminder': true,
-      },
-      {
-        'name': 'Vaccination Day',
-        'pet': 'Luna',
-        'date': 'May 2',
-        'hasReminder': true,
-      },
-    ];
+    final events = _upcomingEvents.take(3).toList(growable: false);
+    final titleColor = isDark ? AppColors.onBackgroundDark : AppColors.onSurface;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -337,7 +682,8 @@ class _HomePageState extends State<HomePage> {
             children: [
               Text(
                 AppStrings.homeActiveEvents,
-                style: const TextStyle(
+                style: TextStyle(
+                  color: titleColor,
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                 ),
@@ -373,53 +719,143 @@ class _HomePageState extends State<HomePage> {
           padding: const EdgeInsets.symmetric(
             horizontal: AppDimensions.pageHorizontalPadding,
           ),
-          child: Container(
-            decoration: BoxDecoration(
-              color: eventsCardColor,
-              borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.shadowSoft,
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Column(
-              children: List.generate(events.length, (index) {
-                final event = events[index];
-                final isLast = index == events.length - 1;
-
-                return Column(
-                  children: [
-                    EventCard(
-                      eventName: event['name'] as String,
-                      petName: event['pet'] as String,
-                      date: event['date'] as String,
-                      hasReminder: event['hasReminder'] as bool,
-                      isGrouped: true,
-                      onTap: () => _showUnavailableMessage(),
+          child: events.isEmpty
+              ? Container(
+                  decoration: BoxDecoration(
+                    color: eventsCardColor,
+                    borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
+                  ),
+                  padding: const EdgeInsets.all(AppDimensions.spaceL),
+                  child: Text(
+                    'No upcoming events yet.',
+                    style: TextStyle(
+                      color: isDark
+                          ? AppColors.onBackgroundDark
+                          : AppColors.onSecondary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
                     ),
-                    if (!isLast)
-                      Divider(
-                        height: 1,
-                        thickness: AppDimensions.strokeThin,
-                        color: dividerColor,
-                        indent: AppDimensions.spaceM + 44,
-                        endIndent: AppDimensions.spaceM,
+                  ),
+                )
+              : Container(
+                  decoration: BoxDecoration(
+                    color: eventsCardColor,
+                    borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.shadowSoft,
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
                       ),
-                  ],
-                );
-              }),
-            ),
+                    ],
+                  ),
+                  child: Column(
+                    children: List.generate(events.length, (index) {
+                      final event = events[index];
+                      final isLast = index == events.length - 1;
+
+                      return Column(
+                        children: [
+                          EventCard(
+                            eventName: event.event.title,
+                            petName: event.petName,
+                            date: _formatDate(event.event.date),
+                            hasReminder: event.event.followUpDate != null,
+                            isGrouped: true,
+                            onTap: () => _editEvent(event),
+                          ),
+                          if (!isLast)
+                            Divider(
+                              height: 1,
+                              thickness: AppDimensions.strokeThin,
+                              color: dividerColor,
+                              indent: AppDimensions.spaceM + 44,
+                              endIndent: AppDimensions.spaceM,
+                            ),
+                        ],
+                      );
+                    }),
+                  ),
+                ),
           ),
-        ),
       ],
     );
   }
+}
 
-  bool _hasOverdueVaccines() {
-    // TODO: Implement logic to check if there are overdue vaccines
-    return true; // Mock data shows overdue vaccines
+class _HomeEventEntry {
+  const _HomeEventEntry({
+    required this.event,
+    required this.petId,
+    required this.petName,
+  });
+
+  final EventModel event;
+  final String petId;
+  final String petName;
+}
+
+class _VaccinationWithPet {
+  const _VaccinationWithPet({
+    required this.petId,
+    required this.petName,
+    required this.vaccination,
+  });
+
+  final String petId;
+  final String petName;
+  final PetVaccinationModel vaccination;
+}
+
+class _OverdueVaccineData {
+  const _OverdueVaccineData({
+    required this.count,
+    required this.detail,
+    required this.vaccineName,
+    required this.entry,
+  });
+
+  final int count;
+  final String detail;
+  final String vaccineName;
+  final _VaccinationWithPet entry;
+}
+
+class _UpcomingVaccineData {
+  const _UpcomingVaccineData({
+    required this.vaccineName,
+    required this.petName,
+    required this.date,
+    required this.daysUntil,
+    required this.entry,
+  });
+
+  final String vaccineName;
+  final String petName;
+  final DateTime date;
+  final int daysUntil;
+  final _VaccinationWithPet entry;
+
+  factory _UpcomingVaccineData.fromEntry(
+    _VaccinationWithPet entry,
+    Map<String, String> vaccineNamesById,
+  ) {
+    final vaccineId = entry.vaccination.vaccineId.trim();
+    final vaccineName = vaccineNamesById[vaccineId] ?? vaccineId;
+    final now = DateTime.now();
+    final dueDate = entry.vaccination.nextDueDate;
+    final daysUntil = dueDate
+        .difference(DateTime(now.year, now.month, now.day))
+        .inDays;
+
+    return _UpcomingVaccineData(
+      vaccineName: vaccineName.isEmpty
+          ? AppStrings.valueNotAvailable
+          : vaccineName,
+      petName: entry.petName,
+      date: dueDate,
+      daysUntil: daysUntil,
+      entry: entry,
+    );
   }
 }

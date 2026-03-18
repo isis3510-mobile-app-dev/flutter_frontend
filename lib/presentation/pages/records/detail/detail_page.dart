@@ -2,46 +2,303 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/app/routes.dart';
 import 'package:flutter_frontend/core/constants/app_colors.dart';
 import 'package:flutter_frontend/core/constants/app_strings.dart';
+import 'package:flutter_frontend/core/models/event_model.dart';
+import 'package:flutter_frontend/core/models/pet_model.dart';
+import 'package:flutter_frontend/core/services/event_service.dart';
+import 'package:flutter_frontend/core/services/pet_service.dart';
+import 'package:flutter_frontend/core/services/vaccine_service.dart';
 import 'package:flutter_frontend/core/utils/context_extensions.dart';
+import 'package:flutter_frontend/presentation/pages/add_event/add_event_args.dart';
+import 'package:flutter_frontend/presentation/pages/add_vaccine/add_vaccine_args.dart';
 import 'package:flutter_frontend/shared/widgets/full_width_button.dart';
 
-class DetailPage extends StatelessWidget {
-  const DetailPage({super.key, required this.type});
+class DetailPage extends StatefulWidget {
+  const DetailPage({
+    super.key,
+    required this.type,
+    this.vaccination,
+    this.pet,
+    this.vaccineName,
+    this.event,
+  });
 
   final String type;
+  final PetVaccinationModel? vaccination;
+  final PetModel? pet;
+  final String? vaccineName;
+  final EventModel? event;
 
-  void navigateToEditPage(BuildContext context) {
-    if (type == 'vaccine') {
-      Navigator.of(context).pushNamed(Routes.addVaccine);
-    } else if (type == 'event') {
-      Navigator.of(context).pushNamed(Routes.addEvent);
+  @override
+  State<DetailPage> createState() => _DetailPageState();
+}
+
+class _DetailPageState extends State<DetailPage> {
+  final PetService _petService = PetService();
+  final VaccineService _vaccineService = VaccineService();
+
+  PetVaccinationModel? _vaccination;
+  PetModel? _pet;
+  String? _vaccineName;
+
+  @override
+  void initState() {
+    super.initState();
+    _vaccination = widget.vaccination;
+    _pet = widget.pet;
+    _vaccineName = widget.vaccineName;
+  }
+
+  Future<void> _refreshVaccination() async {
+    if (widget.type != 'vaccine' ||
+        _pet == null ||
+        _vaccination == null ||
+        _vaccination!.id.trim().isEmpty) {
+      return;
+    }
+
+    try {
+      final updatedVaccination = await _petService.getVaccination(
+        petId: _pet!.id,
+        vaccinationId: _vaccination!.id,
+      );
+      final updatedVaccineInfo = await _vaccineService.getVaccineById(
+        updatedVaccination.vaccineId,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _vaccination = updatedVaccination;
+        _vaccineName = updatedVaccineInfo.name;
+      });
+    } catch (_) {
+      // Keep existing data if refresh fails.
+    }
+  }
+
+  Future<void> _confirmAndDelete(BuildContext context) async {
+    if (widget.type == 'vaccine' && (_vaccination == null || _pet == null)) {
+      return;
+    }
+
+    if (widget.type == 'event' && widget.event == null) {
+      return;
+    }
+
+    final isEvent = widget.type == 'event';
+
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(isEvent ? 'Delete event?' : 'Delete vaccine?'),
+        content: Text(
+          isEvent
+              ? 'Are you sure you want to delete this event record?'
+              : 'Are you sure you want to delete this vaccination record?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text(AppStrings.nfcCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.error,
+            ),
+            child: const Text(AppStrings.actionDelete),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldDelete != true) {
+      return;
+    }
+
+    try {
+      if (isEvent) {
+        await EventService().deleteEvent(widget.event!.id);
+      } else {
+        await PetService().deleteVaccination(
+          petId: _pet!.id,
+          vaccinationId: _vaccination!.id,
+        );
+      }
+
+      if (!context.mounted) return;
+      Navigator.of(context).pop(true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isEvent
+                ? 'Event deleted successfully.'
+                : 'Vaccine deleted successfully.',
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(AppStrings.errorGeneric)),
+      );
+    }
+  }
+
+  Future<void> navigateToEditPage(BuildContext context) async {
+    if (widget.type == 'vaccine') {
+      final result = await Navigator.of(context).pushNamed(
+        Routes.addVaccine,
+        arguments: AddVaccineArgs(
+          vaccinationId: _vaccination?.id,
+          vaccineId: _vaccination?.vaccineId,
+          vaccineName: _vaccineName,
+          dateGiven: _vaccination?.dateGiven,
+          petId: _pet?.id,
+          petName: _pet?.name,
+          administeredBy: _vaccination?.administeredBy,
+        ),
+      );
+      if (result == true) {
+        await _refreshVaccination();
+      }
+    } else if (widget.type == 'event') {
+      final result = await Navigator.of(context).pushNamed(
+        Routes.addEvent,
+        arguments: AddEventArgs(
+          eventId: widget.event?.id,
+          petId: _pet?.id,
+          petName: _pet?.name,
+          title: widget.event?.title,
+          description: widget.event?.description,
+          date: widget.event?.date,
+          eventType: widget.event?.eventType,
+          price: widget.event?.price,
+          provider: widget.event?.provider,
+          clinic: widget.event?.clinic,
+          followUpDate: widget.event?.followUpDate,
+        ),
+      );
+
+      if (result == true && context.mounted) {
+        Navigator.of(context).pop(true);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final (appbarIcon, appbarTitle, lastCardTitle, lastCardEmpty) = switch (type) {
+    final (appbarIcon, appbarTitle, lastCardTitle) =
+        switch (widget.type) {
       'vaccine' => (
           Icons.vaccines_outlined,
           AppStrings.vaccineDetailsTitle,
-          AppStrings.vaccineAttachedDocumentTitle,
-          AppStrings.vaccineNoDocuments
+          AppStrings.vaccineAttachedDocumentTitle
         ),
       'event' => (
           Icons.event_note_outlined,
           AppStrings.eventDetailsTitle,
-          AppStrings.eventNotesTitle,
-          AppStrings.eventNoNotes
+          AppStrings.eventNotesTitle
         ),
       _ => (
           Icons.info_outline,
           '',
-          '',
           ''
         ),
     };
+    
+    final isVaccine = widget.type == 'vaccine';
+    final isEvent = widget.type == 'event';
+
+    final displayPetName = _pet?.name.trim().isNotEmpty == true
+        ? _pet!.name.trim()
+        : AppStrings.valueNotAvailable;
+    final displayPetSpecies = _pet?.species.trim().isNotEmpty == true
+        ? _pet!.species.trim()
+        : '';
+    final displaySubtitle = displayPetSpecies.isNotEmpty
+        ? '$displayPetName - $displayPetSpecies'
+        : displayPetName;
+
+    final displayVaccineName = _vaccineName?.trim().isNotEmpty == true
+        ? _vaccineName!.trim()
+        : AppStrings.valueNotAvailable;
+    final displayVaccineStatus = _vaccination?.status.trim().isNotEmpty == true
+        ? _vaccination!.status.trim()
+        : AppStrings.vaccineStatusCompleted;
+    final displayDateGiven = _isValidDate(_vaccination?.dateGiven)
+        ? _formatDate(_vaccination!.dateGiven)
+        : AppStrings.valueNotAvailable;
+    final displayNextDue = _isValidDate(_vaccination?.nextDueDate)
+      ? _formatDate(_vaccination!.nextDueDate)
+        : AppStrings.hintNotProvided;
+    final displayVet = _vaccination?.administeredBy.trim().isNotEmpty == true
+        ? _vaccination!.administeredBy.trim()
+        : _pet?.defaultVet.trim().isNotEmpty == true
+            ? _pet!.defaultVet.trim()
+            : AppStrings.valueNotAvailable;
+    final displayClinic = _vaccination?.clinicName.trim().isNotEmpty == true
+        ? _vaccination!.clinicName.trim()
+        : AppStrings.valueNotAvailable;
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final displayEventTitle = widget.event?.title.trim().isNotEmpty == true
+      ? widget.event!.title.trim()
+      : AppStrings.valueNotAvailable;
+    final displayEventType = _formatEventType(widget.event?.eventType ?? 'general');
+    final displayEventDate = _isValidDate(widget.event?.date)
+      ? _formatDate(widget.event!.date)
+      : AppStrings.valueNotAvailable;
+    final displayEventFollowUp = _isValidDate(widget.event?.followUpDate)
+      ? _formatDate(widget.event!.followUpDate!)
+      : AppStrings.hintNotProvided;
+    final displayEventProvider = widget.event?.provider.trim().isNotEmpty == true
+      ? widget.event!.provider.trim()
+      : AppStrings.valueNotAvailable;
+    final displayEventClinic = widget.event?.clinic.trim().isNotEmpty == true
+      ? widget.event!.clinic.trim()
+      : AppStrings.valueNotAvailable;
+    final displayEventPrice = widget.event?.price == null
+      ? AppStrings.hintNotProvided
+      : '\$${widget.event!.price!.toStringAsFixed(2)}';
+    final displayEventNotes = widget.event?.description.trim().isNotEmpty == true
+      ? widget.event!.description.trim()
+      : AppStrings.eventNoNotes;
+
+    final mainTitle = isVaccine ? displayVaccineName : displayEventTitle;
+    final statusText = isVaccine ? displayVaccineStatus : displayEventType;
+    final statusBackground =
+      isVaccine ? AppColors.positiveBackground : AppColors.primaryVariant;
+    final statusTextColor = isVaccine ? AppColors.success : AppColors.primary;
+    final statusIcon = isVaccine ? Icons.check : Icons.label_rounded;
+
+    final timelineTitle = isVaccine ? AppStrings.vaccineTimelineTitle : 'Schedule';
+    final firstTimelineLabel =
+      isVaccine ? AppStrings.vaccineDateGivenLabel : AppStrings.labelDate;
+    final firstTimelineValue = isVaccine ? displayDateGiven : displayEventDate;
+    final secondTimelineLabel =
+      isVaccine ? AppStrings.vaccineNextDueLabel : 'Follow-up Date';
+    final secondTimelineValue = isVaccine ? displayNextDue : displayEventFollowUp;
+
+    final providerFirstLabel = isVaccine ? AppStrings.veterinarianLabel : 'Provider';
+    final providerFirstValue = isVaccine ? displayVet : displayEventProvider;
+    final providerSecondValue = isVaccine ? displayClinic : displayEventClinic;
+
+    final lastCardValue =
+        isVaccine ? AppStrings.vaccineNoDocuments : displayEventNotes;
+
+    final hasMutableData =
+      (isVaccine && _vaccination != null && _pet != null) ||
+      (isEvent && widget.event != null);
+
+    void showMissingDataMessage() {
+      ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text(AppStrings.featureUnavailable)),
+      );
+    }
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: isDark ? AppColors.backgroundDark : AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
@@ -58,19 +315,20 @@ class DetailPage extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 Icon(appbarIcon),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 Text(appbarTitle),
               ]
             ),
             const SizedBox(height: 2),
-            Text(
-              AppStrings.detailsSubtitle,
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.grey100,
-                fontWeight: FontWeight.w400,
+            if (displaySubtitle.isNotEmpty)
+              Text(
+                displaySubtitle,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.grey100,
+                  fontWeight: FontWeight.w400,
+                ),
               ),
-            ),
           ],
         ),
       ),
@@ -81,12 +339,14 @@ class DetailPage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _InfoCard(
+                backgroundColor: isDark ? AppColors.secondaryDark : AppColors.secondary,
+                borderColor: isDark ? AppColors.grey700 : AppColors.grey300,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      "Bordetella",
-                      style: TextStyle(
+                    Text(
+                      mainTitle,
+                      style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
                         color: AppColors.onSurface,
@@ -99,24 +359,24 @@ class DetailPage extends StatelessWidget {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.positiveBackground,
+                        color: isDark ? AppColors.positiveBackgroundDark : AppColors.positiveBackground,
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
                             Icons.check,
                             size: 16,
-                            color: AppColors.positiveText,
+                            color: isDark? AppColors.positiveTextDark : AppColors.positiveText,
                           ),
-                          SizedBox(width: 6),
+                          const SizedBox(width: 6),
                           Text(
-                            AppStrings.vaccineStatusCompleted,
+                            statusText,
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.success,
+                              color: isDark? AppColors.positiveTextDark : AppColors.positiveText,
                             ),
                           ),
                         ],
@@ -127,48 +387,67 @@ class DetailPage extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               _InfoCard(
-                title: AppStrings.vaccineTimelineTitle,
+                backgroundColor: isDark ? AppColors.secondaryDark : AppColors.secondary,
+                borderColor: isDark ? AppColors.grey700 : AppColors.grey300,
+                title: timelineTitle,
                 child: Column(
-                  children: const [
+                  children: [
                     _InfoRow(
                       icon: Icons.calendar_today_outlined,
-                      label: AppStrings.vaccineDateGivenLabel,
-                      value: AppStrings.vaccineDateGivenValue,
+                      label: firstTimelineLabel,
+                      value: firstTimelineValue,
+                      isDark: isDark,
                     ),
-                    Divider(height: 24),
+                    const Divider(height: 24),
                     _InfoRow(
                       icon: Icons.calendar_month_outlined,
-                      label: AppStrings.vaccineNextDueLabel,
-                      value: AppStrings.vaccineNextDueValue,
+                      label: secondTimelineLabel,
+                      value: secondTimelineValue,
+                      isDark: isDark,
                     ),
+                    if (isEvent) ...[
+                      const Divider(height: 24),
+                      _InfoRow(
+                        icon: Icons.attach_money_outlined,
+                        label: AppStrings.labelEventPrice,
+                        value: displayEventPrice,
+                        isDark: isDark,
+                      ),
+                    ],
                   ],
                 ),
               ),
               const SizedBox(height: 16),
               _InfoCard(
+                backgroundColor: isDark ? AppColors.secondaryDark : AppColors.secondary,
+                borderColor: isDark ? AppColors.grey700 : AppColors.grey300,
                 title: AppStrings.providerInfoTitle,
                 child: Column(
-                  children: const [
+                  children: [
                     _InfoRow(
                       icon: Icons.person_outline,
-                      label: AppStrings.veterinarianLabel,
-                      value: AppStrings.vaccineVeterinarianValue,
+                      label: providerFirstLabel,
+                      value: providerFirstValue,
+                      isDark: isDark,
                     ),
-                    Divider(height: 24),
+                    const Divider(height: 24),
                     _InfoRow(
                       icon: Icons.location_on_outlined,
                       label: AppStrings.clinicLabel,
-                      value: AppStrings.vaccineClinicValue,
+                      value: providerSecondValue,
+                      isDark: isDark,
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 16),
               _InfoCard(
+                backgroundColor: isDark ? AppColors.secondaryDark : AppColors.secondary,
+                borderColor: isDark ? AppColors.grey700 : AppColors.grey300,
                 title: lastCardTitle,
                 child: Text(
-                  lastCardEmpty,
-                  style: TextStyle(
+                  lastCardValue,
+                  style: const TextStyle(
                     fontSize: 14,
                     color: AppColors.grey700,
                   ),
@@ -179,7 +458,7 @@ class DetailPage extends StatelessWidget {
         ),
       ),
       bottomNavigationBar: Container(
-        color: AppColors.secondary,
+        color: isDark ? AppColors.secondaryDark : AppColors.secondary,
         child: SafeArea(
           minimum: const EdgeInsets.fromLTRB(16, 18, 16, 16),
           child: Padding(
@@ -189,7 +468,9 @@ class DetailPage extends StatelessWidget {
                 Expanded(
                   child: FullWidthButton(
                     text: AppStrings.actionDelete,
-                    onPressed: () {},
+                    onPressed: hasMutableData
+                        ? () => _confirmAndDelete(context)
+                        : showMissingDataMessage,
                     backgroundColor: Colors.transparent,
                     borderColor: AppColors.error,
                     textColor: AppColors.error,
@@ -201,8 +482,11 @@ class DetailPage extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: FullWidthButton(
+                    backgroundColor: AppColors.primary,
                     text: AppStrings.actionEdit,
-                    onPressed: () => navigateToEditPage(context),
+                    onPressed: hasMutableData
+                        ? () => navigateToEditPage(context)
+                        : showMissingDataMessage,
                     icon: Icons.edit_outlined,
                     height: 52,
                   ),
@@ -216,12 +500,62 @@ class DetailPage extends StatelessWidget {
   }
 }
 
+bool _isValidDate(DateTime? date) {
+  if (date == null) {
+    return false;
+  }
+
+  return date.year > 1900;
+}
+
+String _formatEventType(String eventType) {
+  final normalized = eventType.trim();
+  if (normalized.isEmpty) {
+    return 'General';
+  }
+
+  final words = normalized
+      .split(RegExp(r'[_\s-]+'))
+      .where((part) => part.trim().isNotEmpty)
+      .map(
+        (part) => '${part[0].toUpperCase()}${part.substring(1).toLowerCase()}',
+      )
+      .toList(growable: false);
+
+  if (words.isEmpty) {
+    return 'General';
+  }
+
+  return words.join(' ');
+}
+
+String _formatDate(DateTime date) {
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  final month = months[date.month - 1];
+  return '$month ${date.day}, ${date.year}';
+}
+
 class _InfoCard extends StatelessWidget {
-  const _InfoCard({this.title, required this.child, this.backgroundColor = AppColors.secondary});
+  // ignore: unused_element_parameter
+  const _InfoCard({this.title, required this.child, required this.backgroundColor, required this.borderColor});
 
   final String? title;
   final Widget child;
   final Color backgroundColor;
+  final Color borderColor;
 
   @override
   Widget build(BuildContext context) {
@@ -230,7 +564,7 @@ class _InfoCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.grey100),
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -254,11 +588,13 @@ class _InfoRow extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
+    required this.isDark,
   });
 
   final IconData icon;
   final String label;
   final String value;
+  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
@@ -272,12 +608,14 @@ class _InfoRow extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: context.textTheme.bodySmall?.copyWith(color: AppColors.grey700),
+                style: context.textTheme.bodySmall?.copyWith(color: 
+                isDark? AppColors.grey300 : AppColors.grey700),
               ),
               const SizedBox(height: 4),
               Text(
                 value,
-                style: context.textTheme.bodyMedium?.copyWith(color: AppColors.onSecondary),
+                style: context.textTheme.bodyMedium?.copyWith(color: 
+                isDark? AppColors.onSecondaryDark : AppColors.onSecondary),
               ),
             ],
           ),

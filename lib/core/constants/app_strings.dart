@@ -113,6 +113,8 @@ abstract class AppStrings {
       'An account already exists with this email.';
   static const String authErrorTooManyRequests =
       'Too many attempts. Please try again later.';
+  static const String authErrorGoogleConfig =
+      'Google Sign-In is not configured for this build. Add your Android SHA-1 in Firebase and download an updated google-services.json.';
   static const String authErrorResetPassword =
       'Could not send the password reset email. Please try again.';
 
@@ -134,12 +136,26 @@ abstract class AppStrings {
   static const String semanticSkipButton = 'Skip';
   static const String semanticSignInButton = 'Sign in';
   static const String semanticAddVaccineButton = 'Add Vaccine';
+  static const String semanticUpdateVaccineButton = 'Update Vaccine';
   static const String semanticAddEventButton = 'Add Event';
 
   // --- Page titles ---
   static const String addVaccineTitle = 'Add New Vaccine';
   static const String addEventTitle = 'Add New Event';
   static const String healthRecordsTitle = 'Health Records';
+  static const String calendarTitle = 'Calendar';
+  static const String calendarAllPets = 'All Pets';
+  static const String calendarNoEventsForDay = 'No events for this day';
+  static const String calendarNoEventsHint =
+      'Choose another day or add a new event.';
+  static const String calendarDateStripUnavailable =
+      'Advanced filters are not available yet.';
+  static const String calendarEventAnnualVaccination = 'Annual Vaccination';
+  static const String calendarEventVetAppointment = 'Vet Appointment';
+  static const String calendarEventDentalCleaning = 'Dental Cleaning';
+  static const String calendarEventGroomingSession = 'Grooming Session';
+  static const String calendarEventBoosterShot = 'Booster Shot';
+  static const String calendarFilterAppointments = 'Appointments';
   static const String recordsFilterAll = 'All';
   static const String recordsFilterVaccines = 'Vaccines';
   static const String recordsFilterEvents = 'Events';
@@ -195,13 +211,18 @@ abstract class AppStrings {
   static const String labelAdditionalFiles = 'Additional Files';
   static const String labelEventName = 'Event Name';
   static const String labelEventTime = 'Event Time';
+    static const String labelEventType = 'Event Type';
+    static const String labelEventPrice = 'Price';
+    static const String labelEventProvider = 'Provider';
+    static const String labelEventClinic = 'Clinic';
+    static const String labelEventFollowUpDate = 'Follow-up Date';
   static const String labelDescription = 'Description';
 
   // --- Form field hints ---
   static const String hintVaccineName = 'e.g. Rabies';
   static const String hintDate = 'dd/mm/yyyy';
   static const String hintProductName = 'e.g. Rabisin';
-  static const String hintPetName = 'Max';
+  static const String hintPetName = 'Select a pet';
   static const String hintClinicProvider = 'e.g. City Vet Clinic';
   static const String hintDose = '1';
   static const String hintNotes = 'Optional notes';
@@ -211,12 +232,17 @@ abstract class AppStrings {
   static const String uploadHint = 'Tap to upload or take a photo';
   static const String hintEventName = 'e.g. Vet Appointment';
   static const String hintEventTime = 'e.g. 9:00 AM';
+    static const String hintEventType = 'e.g. vet_visit';
+    static const String hintEventPrice = 'e.g. 120.00';
+    static const String hintEventProvider = 'e.g. Dr. Smith';
+    static const String hintEventClinic = 'e.g. Happy Paws Clinic';
   static const String hintEventDescription =
       'Optional description of the event';
 
   // --- Validation messages ---
   static const String validationRequired = 'This field is required.';
   static const String validationInvalidDate = 'Please enter a valid date.';
+    static const String validationInvalidNumber = 'Please enter a valid number.';
 
   // --- Step names ---
   static const String stepBasicInfo = 'Basic Info';
@@ -268,6 +294,12 @@ abstract class AppStrings {
   static const String addPetAllergiesHint = 'e.g. None, or Penicillin';
   static const String addPetValidationRequired = 'This field is required.';
   static const String addPetSavedMessage = 'Pet ready to be saved.';
+  static const String editPetTitle = 'Edit Pet';
+  static const String editPetSavedMessage = 'Pet updated successfully.';
+  static const String petDeletedMessage = 'Pet deleted successfully.';
+  static const String petDeleteConfirmTitle = 'Delete pet?';
+  static const String petDeleteConfirmMessage = 'This action cannot be undone.';
+  static const String petDeleteConfirmAction = 'Delete Pet';
 
   // --- Pet detail ---
   static const String petDetailTabOverview = 'Overview';
@@ -286,16 +318,18 @@ abstract class AppStrings {
   static const String petDetailStatusHealthy = 'Healthy';
   static const String petDetailStatusNeedsAttention = 'Needs Attention';
   static const String petDetailStatusLost = 'Lost';
-    static const String petLostConfirmTitle = 'Mark as lost?';
-    static const String petLostConfirmMessage =
-            'Are you sure you want to mark this pet as lost?';
-    static const String petLostConfirmCancel = 'Cancel';
-    static const String petLostConfirmAction = 'Mark Lost';
-    static const String petMarkedAsLostMessage = 'Pet marked as lost.';
-    static const String petMarkedAsFoundMessage = 'Pet marked as found.';
+  static const String petLostConfirmTitle = 'Mark as lost?';
+  static const String petLostConfirmMessage =
+      'Are you sure you want to mark this pet as lost?';
+  static const String petLostConfirmCancel = 'Cancel';
+  static const String petLostConfirmAction = 'Mark Lost';
+  static const String petMarkedAsLostMessage = 'Pet marked as lost.';
+  static const String petMarkedAsFoundMessage = 'Pet marked as found.';
   static const String petDetailShareSemantics = 'Share pet';
   static const String petDetailEditSemantics = 'Edit pet';
   static const String petDetailMoreSemantics = 'More options';
+  static const String petDetailMenuEdit = 'Edit';
+  static const String petDetailMenuDelete = 'Delete';
 
   // --- Welcome pages ---
   static const String welcomeFirstTitle =
@@ -322,6 +356,26 @@ abstract class AppStrings {
   static const String profilePhone = 'Phone';
   static const String profileSubtitlePreferences = 'Preferences';
   static const String profileDarkMode = 'Dark Mode';
+  static const String profileThemeMode = 'Theme';
+  static const String profileThemeLight = 'Light';
+  static const String profileThemeDark = 'Dark';
+  static const String profileThemeSchedule = 'By Time';
+  static const String profileThemeSensor = 'Auto';
+  static const String profileThemeLightSubtitle = 'Always use the light theme';
+  static const String profileThemeDarkSubtitle = 'Always use the dark theme';
+  static const String profileThemeScheduleSubtitle =
+      'Changes automatically during the day and night';
+  static const String profileThemeSensorSubtitle =
+      'Adapts to the light around you';
+  static const String profileThemeModePickerTitle = 'Choose theme mode';
+  static const String profileThemeSummaryLight = 'Light appearance';
+  static const String profileThemeSummaryDark = 'Dark appearance';
+  static const String profileThemeSummaryByTime =
+      'Changes with the time of day';
+  static const String profileThemeSummaryAuto =
+      'Adjusts to the light around you';
+  static const String profileThemeSummaryAutoFallback =
+      'Adjusts automatically when possible';
   static const String profileNotifications = 'Notifications';
   static const String profileOffline = 'Offline Mode';
   static const String profileSubtitleSupport = 'Support';
