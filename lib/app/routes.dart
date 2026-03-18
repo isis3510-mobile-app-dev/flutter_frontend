@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/pages/add_event/add_event_page.dart';
 import 'package:flutter_frontend/presentation/pages/add_vaccine/add_vaccine_page.dart';
+import 'package:flutter_frontend/presentation/pages/calendar/calendar_page.dart';
 import 'package:flutter_frontend/presentation/pages/nfc/nfc_page.dart';
 import 'package:flutter_frontend/core/models/user_profile.dart';
 import 'package:flutter_frontend/presentation/pages/records/detail/detail_page.dart';
@@ -34,6 +35,7 @@ class Routes {
   static const String eventDetail = 'event/detail';
   static const String nfc = '/nfc';
   static const String records = '/records';
+  static const String calendar = '/calendar';
   static const String profile = '/profile';
   static const String profileEdit = '/profile/edit';
 
@@ -72,6 +74,9 @@ class Routes {
       case records:
         return _buildRecordsRoute(settings);
 
+      case calendar:
+        return _buildRoute(const CalendarPage(), settings);
+
       case profile:
         return _buildRoute(const ProfilePage(), settings);
       case profileEdit:
@@ -98,7 +103,8 @@ class Routes {
 
   static MaterialPageRoute _buildRecordsRoute(RouteSettings settings) {
     final argument = settings.arguments;
-    final initialFilterIndex = argument is int &&
+    final initialFilterIndex =
+        argument is int &&
             argument >= recordsFilterAll &&
             argument <= recordsFilterEvents
         ? argument
@@ -135,6 +141,7 @@ class Routes {
       0 => home,
       1 => pets,
       2 => records,
+      3 => calendar,
 
       4 => profile,
       _ => null,
