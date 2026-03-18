@@ -336,6 +336,7 @@ class _PageHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppDimensions.pageHorizontalPadding,
@@ -355,7 +356,7 @@ class _PageHeader extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              if (showCount) ...[PetCountPill(count: petCount)],
+              if (showCount) ...[PetCountPill(count: petCount, isDark: isDark)],
             ],
           ),
           const SizedBox(height: AppDimensions.spaceM),

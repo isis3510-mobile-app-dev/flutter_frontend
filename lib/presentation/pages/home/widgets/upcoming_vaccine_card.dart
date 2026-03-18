@@ -70,6 +70,10 @@ class UpcomingVaccineCard extends StatelessWidget {
                     AppAssets.iconVaccine,
                     width: 20,
                     height: 20,
+                    colorFilter: ColorFilter.mode(
+                      isDark ? AppColors.primaryVariant : AppColors.primary,
+                      BlendMode.srcIn,
+                    ),
                   ),
                 ),
               ),
@@ -116,13 +120,13 @@ class UpcomingVaccineCard extends StatelessWidget {
                   vertical: AppDimensions.spaceXS,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE3F2FD),
+                  color: isDark ? AppColors.timeBackgroundDark : AppColors.timeBackground,
                   borderRadius: BorderRadius.circular(AppDimensions.radiusM),
                 ),
                 child: Text(
                   '-${daysUntil}d',
-                  style: const TextStyle(
-                    color: Color(0xFF1976D2),
+                  style: TextStyle(
+                    color: isDark? AppColors.timeTextDark : AppColors.timeText,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),

@@ -19,9 +19,7 @@ class OverdueVaccinesCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const cardBackgroundColor = Color(0xFFFFF9EC);
-    const cardBorderColor = Color(0xFFF4C542);
-    const contentColor = Color(0xFFFF6A00);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GestureDetector(
       onTap: onTap,
@@ -31,10 +29,10 @@ class OverdueVaccinesCard extends StatelessWidget {
           vertical: AppDimensions.spaceM,
         ),
         decoration: BoxDecoration(
-          color: cardBackgroundColor,
+          color: isDark? AppColors.overdueCardBackgroundDark : AppColors.overdueCardBackground,
           borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
           border: Border.all(
-            color: cardBorderColor,
+            color: isDark? AppColors.overdueCardBorderDark : AppColors.overdueCardBorder,
             width: 1.5,
           ),
         ),
@@ -49,6 +47,10 @@ class OverdueVaccinesCard extends StatelessWidget {
                 AppAssets.iconWarning,
                 width: 44,
                 height: 44,
+                colorFilter: ColorFilter.mode(
+                  isDark? AppColors.overdueCardBackgroundDark : AppColors.overdueCardBackground,
+                  BlendMode.dst,
+                ),
               ),
               const SizedBox(width: AppDimensions.spaceM),
               Expanded(
@@ -59,7 +61,7 @@ class OverdueVaccinesCard extends StatelessWidget {
                     Text(
                       '$overdueCount Overdue Vaccines',
                       style: TextStyle(
-                        color: contentColor,
+                        color: isDark? AppColors.overdueCardContentDark : AppColors.overdueCardContent,
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
                       ),
@@ -68,7 +70,7 @@ class OverdueVaccinesCard extends StatelessWidget {
                     Text(
                       vaccineDetails,
                       style: TextStyle(
-                        color: const Color.fromARGB(255, 133, 64, 15),
+                        color: isDark? AppColors.overdueCardContentDark : AppColors.overdueCardContent,
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
                       ),
@@ -78,7 +80,7 @@ class OverdueVaccinesCard extends StatelessWidget {
               ),
               Icon(
                 Icons.chevron_right,
-                color: contentColor,
+                color: isDark? AppColors.overdueCardContentDark : AppColors.overdueCardContent,
               ),
             ],
           ),

@@ -421,6 +421,8 @@ class _CalendarFilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -437,9 +439,9 @@ class _CalendarFilterChip extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppDimensions.radiusCircle),
             border: isSelected
                 ? null
-                : const Border.fromBorderSide(
+                : Border.fromBorderSide(
                     BorderSide(
-                      color: AppColors.petFilterInactiveBorder,
+                      color: isDark ? AppColors.petFilterInactiveBorderDark : AppColors.petFilterInactiveBorder,
                       width: AppDimensions.strokeThin,
                     ),
                   ),

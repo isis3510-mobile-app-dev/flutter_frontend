@@ -5,6 +5,7 @@ import 'package:flutter_frontend/core/constants/app_dimensions.dart';
 /// A reusable menu item for the profile page.
 /// Displays an icon, title, and optional subtitle with a tap action.
 class ProfileMenuItem extends StatelessWidget {
+  final bool isDark;
   final IconData? icon;
   final String? imageAssetPath;
   final String title;
@@ -17,6 +18,7 @@ class ProfileMenuItem extends StatelessWidget {
     this.icon,
     this.imageAssetPath,
     required this.title,
+    required this.isDark,
     this.subtitle,
     this.onTap,
     this.isDestructive = false,
@@ -24,7 +26,8 @@ class ProfileMenuItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final titleColor = isDestructive ? AppColors.error : AppColors.onBackground;
+    final titleColor = isDestructive ? AppColors.error : 
+    (isDark? AppColors.onSurfaceDark : AppColors.onSurface);
 
     return Material(
       color: Colors.transparent,

@@ -6,12 +6,13 @@ import 'package:flutter_frontend/core/models/event_model.dart';
 import 'package:flutter_frontend/core/models/pet_model.dart';
 import 'package:flutter_frontend/core/services/event_service.dart';
 import 'package:flutter_frontend/core/services/pet_service.dart';
+import 'package:flutter_frontend/core/services/vaccine_service.dart';
 import 'package:flutter_frontend/core/utils/context_extensions.dart';
 import 'package:flutter_frontend/presentation/pages/add_event/add_event_args.dart';
 import 'package:flutter_frontend/presentation/pages/add_vaccine/add_vaccine_args.dart';
 import 'package:flutter_frontend/shared/widgets/full_width_button.dart';
 
-class DetailPage extends StatelessWidget {
+class DetailPage extends StatefulWidget {
   const DetailPage({
     super.key,
     required this.type,
@@ -26,6 +27,53 @@ class DetailPage extends StatelessWidget {
   final PetModel? pet;
   final String? vaccineName;
   final EventModel? event;
+
+  @override
+  State<DetailPage> createState() => _DetailPageState();
+}
+
+class _DetailPageState extends State<DetailPage> {
+  final PetService _petService = PetService();
+  final VaccineService _vaccineService = VaccineService();
+
+  PetVaccinationModel? _vaccination;
+  PetModel? _pet;
+  String? _vaccineName;
+
+  @override
+  void initState() {
+    super.initState();
+    _vaccination = widget.vaccination;
+    _pet = widget.pet;
+    _vaccineName = widget.vaccineName;
+  }
+
+  Future<void> _refreshVaccination() async {
+    if (widget.type != 'vaccine' ||
+        _pet == null ||
+        _vaccination == null ||
+        _vaccination!.id.trim().isEmpty) {
+      return;
+    }
+
+    try {
+      final updatedVaccination = await _petService.getVaccination(
+        petId: _pet!.id,
+        vaccinationId: _vaccination!.id,
+      );
+      final updatedVaccineInfo = await _vaccineService.getVaccineById(
+        updatedVaccination.vaccineId,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _vaccination = updatedVaccination;
+        _vaccineName = updatedVaccineInfo.name;
+      });
+    } catch (_) {
+      // Keep existing data if refresh fails.
+    }
+  }
 
   Future<void> _confirmAndDelete(BuildContext context) async {
     if (type == 'vaccine' && (vaccination == null || pet == null)) {
@@ -101,18 +149,17 @@ class DetailPage extends StatelessWidget {
       final result = await Navigator.of(context).pushNamed(
         Routes.addVaccine,
         arguments: AddVaccineArgs(
-          vaccinationId: vaccination?.id,
-          vaccineId: vaccination?.vaccineId,
-          vaccineName: vaccineName,
-          dateGiven: vaccination?.dateGiven,
-          petId: pet?.id,
-          petName: pet?.name,
-          administeredBy: vaccination?.administeredBy,
+          vaccinationId: _vaccination?.id,
+          vaccineId: _vaccination?.vaccineId,
+          vaccineName: _vaccineName,
+          dateGiven: _vaccination?.dateGiven,
+          petId: _pet?.id,
+          petName: _pet?.name,
+          administeredBy: _vaccination?.administeredBy,
         ),
       );
-
-      if (result == true && context.mounted) {
-        Navigator.of(context).pop(true);
+      if (result == true) {
+        await _refreshVaccination();
       }
     } else if (type == 'event') {
       final result = await Navigator.of(context).pushNamed(
@@ -140,6 +187,28 @@ class DetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final (appbarIcon, appbarTitle, lastCardTitle, lastCardEmpty) =
+        switch (widget.type) {
+      'vaccine' => (
+          Icons.vaccines_outlined,
+          AppStrings.vaccineDetailsTitle,
+          AppStrings.vaccineAttachedDocumentTitle,
+          AppStrings.vaccineNoDocuments
+        ),
+      'event' => (
+          Icons.event_note_outlined,
+          AppStrings.eventDetailsTitle,
+          AppStrings.eventNotesTitle,
+          AppStrings.eventNoNotes
+        ),
+      _ => (
+          Icons.info_outline,
+          '',
+          '',
+          ''
+        ),
+    };
+    
     final isVaccine = type == 'vaccine';
     final isEvent = type == 'event';
 
@@ -157,15 +226,15 @@ class DetailPage extends StatelessWidget {
     final displayPetName = pet?.name.trim().isNotEmpty == true
         ? pet!.name.trim()
         : AppStrings.valueNotAvailable;
-    final displayPetSpecies = pet?.species.trim().isNotEmpty == true
-        ? pet!.species.trim()
+    final displayPetSpecies = _pet?.species.trim().isNotEmpty == true
+        ? _pet!.species.trim()
         : '';
     final displaySubtitle = displayPetSpecies.isNotEmpty
         ? '$displayPetName - $displayPetSpecies'
         : displayPetName;
 
-    final displayVaccineName = vaccineName?.trim().isNotEmpty == true
-        ? vaccineName!.trim()
+    final displayVaccineName = _vaccineName?.trim().isNotEmpty == true
+        ? _vaccineName!.trim()
         : AppStrings.valueNotAvailable;
     final displayVaccineStatus = vaccination?.status.trim().isNotEmpty == true
         ? vaccination!.status.trim()
@@ -176,14 +245,16 @@ class DetailPage extends StatelessWidget {
     final displayNextDue = _isValidDate(vaccination?.nextDueDate)
       ? _formatDate(vaccination!.nextDueDate)
         : AppStrings.hintNotProvided;
-    final displayVet = vaccination?.administeredBy.trim().isNotEmpty == true
-        ? vaccination!.administeredBy.trim()
-        : pet?.defaultVet.trim().isNotEmpty == true
-            ? pet!.defaultVet.trim()
+    final displayVet = _vaccination?.administeredBy.trim().isNotEmpty == true
+        ? _vaccination!.administeredBy.trim()
+        : _pet?.defaultVet.trim().isNotEmpty == true
+            ? _pet!.defaultVet.trim()
             : AppStrings.valueNotAvailable;
-    final displayClinic = vaccination?.clinicName.trim().isNotEmpty == true
-        ? vaccination!.clinicName.trim()
+    final displayClinic = _vaccination?.clinicName.trim().isNotEmpty == true
+        ? _vaccination!.clinicName.trim()
         : AppStrings.valueNotAvailable;
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final displayEventTitle = event?.title.trim().isNotEmpty == true
       ? event!.title.trim()
@@ -243,7 +314,7 @@ class DetailPage extends StatelessWidget {
     }
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: isDark ? AppColors.backgroundDark : AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
@@ -284,6 +355,8 @@ class DetailPage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _InfoCard(
+                backgroundColor: isDark ? AppColors.secondaryDark : AppColors.secondary,
+                borderColor: isDark ? AppColors.grey700 : AppColors.grey300,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -302,16 +375,16 @@ class DetailPage extends StatelessWidget {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: statusBackground,
+                        color: isDark ? AppColors.positiveBackgroundDark : AppColors.positiveBackground,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            statusIcon,
+                            Icons.check,
                             size: 16,
-                            color: statusTextColor,
+                            color: isDark? AppColors.positiveTextDark : AppColors.positiveText,
                           ),
                           const SizedBox(width: 6),
                           Text(
@@ -319,7 +392,7 @@ class DetailPage extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: statusTextColor,
+                              color: isDark? AppColors.positiveTextDark : AppColors.positiveText,
                             ),
                           ),
                         ],
@@ -330,19 +403,23 @@ class DetailPage extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               _InfoCard(
-                title: timelineTitle,
+                backgroundColor: isDark ? AppColors.secondaryDark : AppColors.secondary,
+                borderColor: isDark ? AppColors.grey700 : AppColors.grey300,
+                title: AppStrings.vaccineTimelineTitle,
                 child: Column(
                   children: [
                     _InfoRow(
                       icon: Icons.calendar_today_outlined,
-                      label: firstTimelineLabel,
-                      value: firstTimelineValue,
+                      label: AppStrings.vaccineDateGivenLabel,
+                      value: displayDateGiven,
+                      isDark: isDark,
                     ),
                     const Divider(height: 24),
                     _InfoRow(
                       icon: Icons.calendar_month_outlined,
-                      label: secondTimelineLabel,
-                      value: secondTimelineValue,
+                      label: AppStrings.vaccineNextDueLabel,
+                      value: displayNextDue,
+                      isDark: isDark,
                     ),
                     if (isEvent) ...[
                       const Divider(height: 24),
@@ -357,25 +434,31 @@ class DetailPage extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               _InfoCard(
+                backgroundColor: isDark ? AppColors.secondaryDark : AppColors.secondary,
+                borderColor: isDark ? AppColors.grey700 : AppColors.grey300,
                 title: AppStrings.providerInfoTitle,
                 child: Column(
                   children: [
                     _InfoRow(
                       icon: Icons.person_outline,
-                      label: providerFirstLabel,
-                      value: providerFirstValue,
+                      label: AppStrings.veterinarianLabel,
+                      value: displayVet,
+                      isDark: isDark,
                     ),
                     const Divider(height: 24),
                     _InfoRow(
                       icon: Icons.location_on_outlined,
                       label: AppStrings.clinicLabel,
-                      value: providerSecondValue,
+                      value: displayClinic,
+                      isDark: isDark,
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 16),
               _InfoCard(
+                backgroundColor: isDark ? AppColors.secondaryDark : AppColors.secondary,
+                borderColor: isDark ? AppColors.grey700 : AppColors.grey300,
                 title: lastCardTitle,
                 child: Text(
                   lastCardValue,
@@ -390,7 +473,7 @@ class DetailPage extends StatelessWidget {
         ),
       ),
       bottomNavigationBar: Container(
-        color: AppColors.secondary,
+        color: isDark ? AppColors.secondaryDark : AppColors.secondary,
         child: SafeArea(
           minimum: const EdgeInsets.fromLTRB(16, 18, 16, 16),
           child: Padding(
@@ -414,6 +497,7 @@ class DetailPage extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: FullWidthButton(
+                    backgroundColor: AppColors.primary,
                     text: AppStrings.actionEdit,
                     onPressed: hasMutableData
                         ? () => navigateToEditPage(context)
@@ -481,11 +565,12 @@ String _formatDate(DateTime date) {
 
 class _InfoCard extends StatelessWidget {
   // ignore: unused_element_parameter
-  const _InfoCard({this.title, required this.child, this.backgroundColor = AppColors.secondary});
+  const _InfoCard({this.title, required this.child, required this.backgroundColor, required this.borderColor});
 
   final String? title;
   final Widget child;
   final Color backgroundColor;
+  final Color borderColor;
 
   @override
   Widget build(BuildContext context) {
@@ -494,7 +579,7 @@ class _InfoCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.grey100),
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -518,11 +603,13 @@ class _InfoRow extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
+    required this.isDark,
   });
 
   final IconData icon;
   final String label;
   final String value;
+  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
@@ -536,12 +623,14 @@ class _InfoRow extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: context.textTheme.bodySmall?.copyWith(color: AppColors.grey700),
+                style: context.textTheme.bodySmall?.copyWith(color: 
+                isDark? AppColors.grey300 : AppColors.grey700),
               ),
               const SizedBox(height: 4),
               Text(
                 value,
-                style: context.textTheme.bodyMedium?.copyWith(color: AppColors.onSecondary),
+                style: context.textTheme.bodyMedium?.copyWith(color: 
+                isDark? AppColors.onSecondaryDark : AppColors.onSecondary),
               ),
             ],
           ),

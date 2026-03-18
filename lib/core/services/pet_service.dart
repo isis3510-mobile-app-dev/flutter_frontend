@@ -144,6 +144,25 @@ class PetService {
         .toList(growable: false);
   }
 
+  Future<PetVaccinationModel> getVaccination({
+    required String petId,
+    required String vaccinationId,
+  }) async {
+    final response = await _apiClient.get(
+      '$petsPath$petId/vaccinations/$vaccinationId/',
+    );
+    final json = jsonDecode(response.body);
+
+    if (json is! Map<String, dynamic>) {
+      throw const ApiException(
+        type: ApiErrorType.unknown,
+        message: 'Unexpected vaccination detail response from server.',
+      );
+    }
+
+    return PetVaccinationModel.fromJson(json);
+  }
+
   Future<void> markPetAsLost(String petId) async {
     await updatePetStatus(petId: petId, status: 'lost');
   }
