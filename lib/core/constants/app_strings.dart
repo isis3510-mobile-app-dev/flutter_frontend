@@ -113,6 +113,8 @@ abstract class AppStrings {
       'An account already exists with this email.';
   static const String authErrorTooManyRequests =
       'Too many attempts. Please try again later.';
+  static const String authErrorGoogleConfig =
+      'Google Sign-In is not configured for this build. Add your Android SHA-1 in Firebase and download an updated google-services.json.';
   static const String authErrorResetPassword =
       'Could not send the password reset email. Please try again.';
 
@@ -281,13 +283,12 @@ abstract class AppStrings {
   static const String addPetAllergiesHint = 'e.g. None, or Penicillin';
   static const String addPetValidationRequired = 'This field is required.';
   static const String addPetSavedMessage = 'Pet ready to be saved.';
-    static const String editPetTitle = 'Edit Pet';
-    static const String editPetSavedMessage = 'Pet updated successfully.';
-    static const String petDeletedMessage = 'Pet deleted successfully.';
-    static const String petDeleteConfirmTitle = 'Delete pet?';
-    static const String petDeleteConfirmMessage =
-            'This action cannot be undone.';
-    static const String petDeleteConfirmAction = 'Delete Pet';
+  static const String editPetTitle = 'Edit Pet';
+  static const String editPetSavedMessage = 'Pet updated successfully.';
+  static const String petDeletedMessage = 'Pet deleted successfully.';
+  static const String petDeleteConfirmTitle = 'Delete pet?';
+  static const String petDeleteConfirmMessage = 'This action cannot be undone.';
+  static const String petDeleteConfirmAction = 'Delete Pet';
 
   // --- Pet detail ---
   static const String petDetailTabOverview = 'Overview';
@@ -316,8 +317,8 @@ abstract class AppStrings {
   static const String petDetailShareSemantics = 'Share pet';
   static const String petDetailEditSemantics = 'Edit pet';
   static const String petDetailMoreSemantics = 'More options';
-    static const String petDetailMenuEdit = 'Edit';
-    static const String petDetailMenuDelete = 'Delete';
+  static const String petDetailMenuEdit = 'Edit';
+  static const String petDetailMenuDelete = 'Delete';
 
   // --- Welcome pages ---
   static const String welcomeFirstTitle =

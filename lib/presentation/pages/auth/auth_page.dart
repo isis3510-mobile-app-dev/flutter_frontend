@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_frontend/core/constants/app_assets.dart';
 import 'package:flutter_frontend/core/constants/app_colors.dart';
@@ -237,15 +238,13 @@ class _AuthPageState extends State<AuthPage> {
       return;
     }
 
-    await _runAuthAction(
-      () async {
-        await _authService.signUpWithEmail(
-          _emailController.text.trim(),
-          _passwordController.text,
-          name: _nameController.text.trim(),
-        );
-      },
-    );
+    await _runAuthAction(() async {
+      await _authService.signUpWithEmail(
+        _emailController.text.trim(),
+        _passwordController.text,
+        name: _nameController.text.trim(),
+      );
+    });
   }
 
   Future<void> _handleGoogleSignIn() async {
@@ -275,9 +274,7 @@ class _AuthPageState extends State<AuthPage> {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(AppStrings.authForgotPasswordEmailSent),
-        ),
+        const SnackBar(content: Text(AppStrings.authForgotPasswordEmailSent)),
       );
     } on FirebaseAuthException catch (error) {
       if (!mounted) {
@@ -332,8 +329,14 @@ class _AuthPageState extends State<AuthPage> {
         _errorMessage = error.message;
       });
     } on FirebaseAuthException catch (error) {
+      final message = _firebaseErrorMessage(error);
       setState(() {
-        _errorMessage = _firebaseErrorMessage(error);
+        _errorMessage = message.isEmpty ? null : message;
+      });
+    } on PlatformException catch (error) {
+      final message = _platformAuthErrorMessage(error);
+      setState(() {
+        _errorMessage = message.isEmpty ? null : message;
       });
     } catch (_) {
       setState(() {
@@ -350,6 +353,10 @@ class _AuthPageState extends State<AuthPage> {
 
   String _firebaseErrorMessage(FirebaseAuthException error) {
     switch (error.code) {
+      case 'sign_in_canceled':
+      case 'web-context-cancelled':
+      case 'popup-closed-by-user':
+        return '';
       case 'invalid-email':
         return AppStrings.authErrorInvalidEmail;
       case 'user-not-found':
@@ -370,6 +377,33 @@ class _AuthPageState extends State<AuthPage> {
       default:
         return AppStrings.errorGeneric;
     }
+  }
+
+  String _platformAuthErrorMessage(PlatformException error) {
+    final normalizedCode = error.code.toLowerCase();
+    final message = error.message?.toLowerCase() ?? '';
+
+    if (normalizedCode == 'sign_in_canceled' ||
+        normalizedCode == 'canceled' ||
+        normalizedCode == 'cancelled') {
+      return '';
+    }
+
+    if (normalizedCode.contains('network')) {
+      return AppStrings.errorNoConnection;
+    }
+
+    final isGoogleConfigError =
+        normalizedCode == 'sign_in_failed' ||
+        message.contains('apiexception: 10') ||
+        message.contains('10:') ||
+        message.contains('developer error');
+
+    if (isGoogleConfigError) {
+      return AppStrings.authErrorGoogleConfig;
+    }
+
+    return AppStrings.errorGeneric;
   }
 
   String _forgotPasswordErrorMessage(FirebaseAuthException error) {

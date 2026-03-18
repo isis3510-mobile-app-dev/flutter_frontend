@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/pages/add_event/add_event_page.dart';
 import 'package:flutter_frontend/presentation/pages/add_vaccine/add_vaccine_page.dart';
+import 'package:flutter_frontend/presentation/pages/auth/auth_gate.dart';
 import 'package:flutter_frontend/presentation/pages/calendar/calendar_page.dart';
 import 'package:flutter_frontend/presentation/pages/nfc/nfc_page.dart';
 import 'package:flutter_frontend/core/models/user_profile.dart';
@@ -23,6 +24,7 @@ class Routes {
   Routes._(); // Prevents instantiation
 
   // Route name constants — use these instead of raw strings throughout the app
+  static const String authGate = '/auth-gate';
   static const String home = '/';
   static const String auth = '/auth';
   static const String welcomePage = '/welcome';
@@ -47,6 +49,9 @@ class Routes {
   /// Called automatically by MaterialApp when navigating.
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
+      case authGate:
+        return _buildRoute(const AuthGate(), settings);
+
       case auth:
         return _buildRoute(const AuthPage(), settings);
 

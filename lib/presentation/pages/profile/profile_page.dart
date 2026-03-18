@@ -55,7 +55,7 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       final profile = await _userService.getCurrentUser();
       final photoPath = await _photoService.getLocalPhotoPath();
-      
+
       if (mounted) {
         setState(() {
           _profile = profile;
@@ -64,9 +64,9 @@ class _ProfilePageState extends State<ProfilePage> {
       }
     } on ApiException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } catch (_) {
       if (mounted) {
@@ -108,10 +108,9 @@ class _ProfilePageState extends State<ProfilePage> {
       return;
     }
 
-    final shouldReload = await Navigator.of(context).pushNamed(
-      Routes.profileEdit,
-      arguments: profile,
-    );
+    final shouldReload = await Navigator.of(
+      context,
+    ).pushNamed(Routes.profileEdit, arguments: profile);
 
     if (!mounted) {
       return;
@@ -151,7 +150,10 @@ class _ProfilePageState extends State<ProfilePage> {
         return;
       }
 
-      Navigator.of(context, rootNavigator: true).popUntil((route) => route.isFirst);
+      Navigator.of(
+        context,
+        rootNavigator: true,
+      ).pushNamedAndRemoveUntil(Routes.authGate, (route) => false);
     } catch (_) {
       if (!mounted) {
         return;
@@ -323,9 +325,9 @@ class _ProfilePageState extends State<ProfilePage> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     } catch (_) {
       if (!mounted) {
         return;
@@ -411,10 +413,10 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Text(
                   AppStrings.profileSubtitleAccount.toUpperCase(),
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AppColors.onSurface,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: AppDimensions.letterSpacingSection,
-                      ),
+                    color: AppColors.onSurface,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: AppDimensions.letterSpacingSection,
+                  ),
                 ),
               ),
             ),
@@ -437,7 +439,10 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   Divider(
                     height: AppDimensions.strokeThin,
-                    indent: AppDimensions.pageHorizontalPadding + AppDimensions.iconListItem + AppDimensions.spaceL,
+                    indent:
+                        AppDimensions.pageHorizontalPadding +
+                        AppDimensions.iconListItem +
+                        AppDimensions.spaceL,
                     color: AppColors.grey100,
                   ),
                   ProfileMenuItem(
@@ -448,7 +453,10 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   Divider(
                     height: AppDimensions.strokeThin,
-                    indent: AppDimensions.pageHorizontalPadding + AppDimensions.iconListItem + AppDimensions.spaceL,
+                    indent:
+                        AppDimensions.pageHorizontalPadding +
+                        AppDimensions.iconListItem +
+                        AppDimensions.spaceL,
                     color: AppColors.grey100,
                   ),
                   ProfileMenuItem(
@@ -474,10 +482,10 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Text(
                   AppStrings.profileSubtitlePreferences.toUpperCase(),
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AppColors.onSurface,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: AppDimensions.letterSpacingSection,
-                      ),
+                    color: AppColors.onSurface,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: AppDimensions.letterSpacingSection,
+                  ),
                 ),
               ),
             ),
@@ -500,7 +508,10 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   Divider(
                     height: AppDimensions.strokeThin,
-                    indent: AppDimensions.pageHorizontalPadding + AppDimensions.iconListItem + AppDimensions.spaceL,
+                    indent:
+                        AppDimensions.pageHorizontalPadding +
+                        AppDimensions.iconListItem +
+                        AppDimensions.spaceL,
                     color: AppColors.grey100,
                   ),
                   ProfileToggleItem(
@@ -514,7 +525,10 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   Divider(
                     height: AppDimensions.strokeThin,
-                    indent: AppDimensions.pageHorizontalPadding + AppDimensions.iconListItem + AppDimensions.spaceL,
+                    indent:
+                        AppDimensions.pageHorizontalPadding +
+                        AppDimensions.iconListItem +
+                        AppDimensions.spaceL,
                     color: AppColors.grey100,
                   ),
                   ProfileToggleItem(
@@ -540,10 +554,10 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Text(
                   AppStrings.profileSubtitleSupport.toUpperCase(),
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AppColors.onSurface,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: AppDimensions.letterSpacingSection,
-                      ),
+                    color: AppColors.onSurface,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: AppDimensions.letterSpacingSection,
+                  ),
                 ),
               ),
             ),
