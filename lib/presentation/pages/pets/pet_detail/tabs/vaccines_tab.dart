@@ -14,6 +14,7 @@ enum VaccineStatusType { completed, upcoming, overdue }
 
 class VaccineUiModel {
   VaccineUiModel({
+    required this.vaccinationId,
     required this.vaccineId,
     required this.vaccineName,
     required this.dateGiven,
@@ -24,6 +25,7 @@ class VaccineUiModel {
     required this.clinicName,
   });
 
+  final String vaccinationId;
   final String vaccineId;
   final String vaccineName;
   final DateTime dateGiven;
@@ -278,6 +280,7 @@ class _VaccinesTabState extends State<VaccinesTab> {
 
       await _petService.updateVaccination(
         petId: widget.pet.id,
+        vaccinationId: vaccine.vaccinationId,
         data: payload,
       );
 
@@ -333,6 +336,7 @@ class _VaccinesTabState extends State<VaccinesTab> {
       final resolvedName =
           name != null && name.isNotEmpty ? name : candidate;
       final vaccine = VaccineUiModel(
+        vaccinationId: item.id,
         vaccineId: item.vaccineId,
         vaccineName:
             resolvedName.isEmpty ? AppStrings.valueNotAvailable : resolvedName,
@@ -350,6 +354,7 @@ class _VaccinesTabState extends State<VaccinesTab> {
       }
 
       return VaccineUiModel(
+        vaccinationId: vaccine.vaccinationId,
         vaccineId: vaccine.vaccineId,
         vaccineName: vaccine.vaccineName,
         dateGiven: vaccine.dateGiven,
