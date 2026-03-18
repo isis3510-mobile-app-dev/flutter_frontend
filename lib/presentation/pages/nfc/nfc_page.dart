@@ -1,14 +1,15 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../app/routes.dart';
-import '../../../core/constants/app_assets.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/services/nfc_backend_service.dart';
 import '../../../core/services/nfc_service.dart';
 import '../../../core/services/pet_service.dart';
 import '../../../shared/widgets/petcare_bottom_nav_bar.dart';
@@ -33,10 +34,9 @@ class NfcPage extends StatefulWidget {
 
 class _NfcPageState extends State<NfcPage> {
   static const _currentBottomIndex = 0;
-  static const _defaultOwnerName = 'Sarah Johnson';
-  static const _defaultOwnerPhone = '+1 (555) 012-3456';
 
   final NfcService _nfcService = NfcService();
+  final NfcBackendService _nfcBackendService = NfcBackendService();
   final PetService _petService = PetService();
 
   List<PetUiModel> _pets = const [];
@@ -44,6 +44,7 @@ class _NfcPageState extends State<NfcPage> {
 
   bool _isLoadingPets = false;
   String? _petsLoadErrorMessage;
+  bool? _isNfcAvailable;
 
   _NfcMode _mode = _NfcMode.read;
   _NfcViewState _viewState = _NfcViewState.setup;
@@ -59,7 +60,32 @@ class _NfcPageState extends State<NfcPage> {
   @override
   void initState() {
     super.initState();
+    _checkNfcAvailability();
     _loadPets();
+  }
+
+  Future<void> _checkNfcAvailability() async {
+    // NFC manager is only expected to work on Android/iOS devices.
+    if (kIsWeb ||
+        (defaultTargetPlatform != TargetPlatform.android &&
+            defaultTargetPlatform != TargetPlatform.iOS)) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isNfcAvailable = false;
+      });
+      return;
+    }
+
+    final available = await _nfcService.isAvailable();
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _isNfcAvailable = available;
+    });
   }
 
   Future<void> _loadPets() async {
@@ -155,10 +181,43 @@ class _NfcPageState extends State<NfcPage> {
     });
 
     try {
+      final nfcAvailable = await _nfcService.isAvailable();
+      if (mounted && _isNfcAvailable != nfcAvailable) {
+        setState(() {
+          _isNfcAvailable = nfcAvailable;
+        });
+      }
+
+      if (!nfcAvailable) {
+        if (_mode == _NfcMode.read) {
+          await _simulateReadWithoutNfc();
+        } else {
+          await _simulateWriteWithoutNfc();
+        }
+        return;
+      }
+
       if (_mode == _NfcMode.read) {
         final payload = await _nfcService.readTextTag();
         final parsedPayload = _tryParseJsonMap(payload);
-        final scannedPetId = parsedPayload?['petId']?.toString();
+        final scannedPetId = _extractPetId(
+          rawPayload: payload,
+          payload: parsedPayload,
+        );
+        Map<String, dynamic>? resolvedReadPayload = parsedPayload;
+
+        if (scannedPetId != null && scannedPetId.isNotEmpty) {
+          try {
+            final backendPayload = await _nfcBackendService.readPublicTagData(
+              scannedPetId,
+            );
+            if (backendPayload.isNotEmpty) {
+              resolvedReadPayload = backendPayload;
+            }
+          } catch (_) {
+            // Fall back to the payload stored on the tag when public read fails.
+          }
+        }
 
         if (!mounted) {
           return;
@@ -166,7 +225,7 @@ class _NfcPageState extends State<NfcPage> {
 
         setState(() {
           _lastReadRawPayload = payload;
-          _lastReadTagData = parsedPayload;
+          _lastReadTagData = resolvedReadPayload;
           if (scannedPetId != null && _pets.any((pet) => pet.id == scannedPetId)) {
             _selectedPetId = scannedPetId;
           }
@@ -181,8 +240,15 @@ class _NfcPageState extends State<NfcPage> {
         return;
       }
 
-      final payloadData = _buildWritePayload(selectedPet);
+      final backendPayload = await _nfcBackendService.getWritePayload(
+        selectedPet.id,
+      );
+      final payloadData = _applyWriteOptions(
+        payload: backendPayload,
+        pet: selectedPet,
+      );
       await _nfcService.writeTextTag(jsonEncode(payloadData));
+      await _nfcBackendService.syncPet(selectedPet.id);
 
       if (!mounted) {
         return;
@@ -192,6 +258,10 @@ class _NfcPageState extends State<NfcPage> {
         _lastWrittenTagData = payloadData;
         _viewState = _NfcViewState.success;
       });
+
+      unawaited(_loadPets());
+    } on ApiException catch (error) {
+      _handleNfcError(error.message);
     } on NfcServiceException catch (error) {
       _handleNfcError(error.message);
     } catch (_) {
@@ -201,6 +271,74 @@ class _NfcPageState extends State<NfcPage> {
             : 'Could not write NFC tag. Please try again.',
       );
     }
+  }
+
+  Future<void> _simulateReadWithoutNfc() async {
+    final pet = _selectedPet;
+    if (pet == null) {
+      _handleNfcError(
+        'Simulation requires at least one pet. Add a pet to continue.',
+      );
+      return;
+    }
+
+    final backendPayload = await _nfcBackendService.readPublicTagData(pet.id);
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _lastReadRawPayload = jsonEncode({
+        'petId': pet.id,
+        'source': 'simulation',
+      });
+      _lastReadTagData = backendPayload;
+      _selectedPetId = pet.id;
+      _viewState = _NfcViewState.success;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Simulation mode: read completed using backend data.',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _simulateWriteWithoutNfc() async {
+    final selectedPet = _selectedPet;
+    if (selectedPet == null) {
+      _handleNfcError('You do not have pets available to write. Add a pet first.');
+      return;
+    }
+
+    final backendPayload = await _nfcBackendService.getWritePayload(
+      selectedPet.id,
+    );
+    final payloadData = _applyWriteOptions(
+      payload: backendPayload,
+      pet: selectedPet,
+    );
+    await _nfcBackendService.syncPet(selectedPet.id);
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _lastWrittenTagData = payloadData;
+      _viewState = _NfcViewState.success;
+    });
+
+    unawaited(_loadPets());
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Simulation mode: write flow completed without NFC hardware.',
+        ),
+      ),
+    );
   }
 
   Future<void> _cancelScanning() async {
@@ -254,28 +392,52 @@ class _NfcPageState extends State<NfcPage> {
     );
   }
 
-  Map<String, dynamic> _buildWritePayload(PetUiModel pet) {
-    final payload = <String, dynamic>{
-      'app': 'PetCare',
-      'version': 1,
-      'petId': pet.id,
-      'name': pet.name,
-      'species': pet.species,
-      'breed': pet.breed,
-    };
+  Map<String, dynamic> _applyWriteOptions({
+    required Map<String, dynamic> payload,
+    required PetUiModel pet,
+  }) {
+    final filteredPayload = Map<String, dynamic>.from(payload);
 
-    if (_includeOwnerContact) {
-      payload['ownerName'] = _defaultOwnerName;
-      payload['ownerPhone'] = _defaultOwnerPhone;
+    // Keep minimum identity fields for public lookup after writing.
+    filteredPayload['petId'] =
+        _extractPetIdFromPayload(filteredPayload) ?? pet.id;
+    filteredPayload.putIfAbsent('petName', () => pet.name);
+    filteredPayload.putIfAbsent('name', () => pet.name);
+    filteredPayload.putIfAbsent('species', () => pet.species);
+    filteredPayload.putIfAbsent('breed', () => pet.breed);
+
+    if (!_includeOwnerContact) {
+      for (final key in const [
+        'ownerName',
+        'owner_name',
+        'ownerPhone',
+        'owner_phone',
+        'ownerEmail',
+        'owner_email',
+        'owner',
+        'contact',
+      ]) {
+        filteredPayload.remove(key);
+      }
     }
 
-    if (_includeEmergencyInfo) {
-      payload['knownAllergies'] = pet.knownAllergies;
-      payload['defaultVet'] = pet.defaultVet;
-      payload['defaultClinic'] = pet.defaultClinic;
+    if (!_includeEmergencyInfo) {
+      for (final key in const [
+        'knownAllergies',
+        'known_allergies',
+        'defaultVet',
+        'default_vet',
+        'defaultClinic',
+        'default_clinic',
+        'medicalNotes',
+        'medical_notes',
+        'emergency',
+      ]) {
+        filteredPayload.remove(key);
+      }
     }
 
-    return payload;
+    return filteredPayload;
   }
 
   Map<String, dynamic>? _tryParseJsonMap(String rawPayload) {
@@ -293,6 +455,102 @@ class _NfcPageState extends State<NfcPage> {
     }
 
     return null;
+  }
+
+  String? _extractPetId({
+    required String rawPayload,
+    Map<String, dynamic>? payload,
+  }) {
+    final fromPayload = _extractPetIdFromPayload(payload);
+    if (fromPayload != null && fromPayload.isNotEmpty) {
+      return fromPayload;
+    }
+
+    final normalizedRawPayload = rawPayload.trim();
+    if (normalizedRawPayload.isEmpty) {
+      return null;
+    }
+
+    final looksLikeMongoObjectId = RegExp(
+      r'^[a-fA-F0-9]{24}$',
+    ).hasMatch(normalizedRawPayload);
+    if (looksLikeMongoObjectId) {
+      return normalizedRawPayload;
+    }
+
+    return null;
+  }
+
+  String? _extractPetIdFromPayload(Map<String, dynamic>? payload) {
+    final directId = _readPayloadOptionalText(
+      payload,
+      const ['petId', 'pet_id', 'id', '_id'],
+    );
+    if (directId != null && directId.isNotEmpty) {
+      return directId;
+    }
+
+    return _readPayloadOptionalText(
+      payload,
+      const ['pet.id', 'pet.petId', 'pet.pet_id', 'pet._id'],
+    );
+  }
+
+  dynamic _readPayloadValue(Map<String, dynamic>? payload, List<String> paths) {
+    if (payload == null) {
+      return null;
+    }
+
+    for (final path in paths) {
+      if (path.contains('.')) {
+        dynamic current = payload;
+        final segments = path.split('.');
+        for (final segment in segments) {
+          if (current is Map && current.containsKey(segment)) {
+            current = current[segment];
+          } else {
+            current = null;
+            break;
+          }
+        }
+        if (current != null) {
+          return current;
+        }
+        continue;
+      }
+
+      if (payload.containsKey(path)) {
+        return payload[path];
+      }
+    }
+
+    return null;
+  }
+
+  String? _readPayloadOptionalText(
+    Map<String, dynamic>? payload,
+    List<String> paths,
+  ) {
+    final value = _readPayloadValue(payload, paths);
+    if (value == null) {
+      return null;
+    }
+
+    final text = value.toString().trim();
+    if (text.isEmpty) {
+      return null;
+    }
+
+    return text;
+  }
+
+  String _readPayloadText(
+    Map<String, dynamic>? payload,
+    List<String> paths, {
+    required String fallback,
+  }) {
+    final text = _readPayloadOptionalText(payload, paths);
+    return text == null || text.isEmpty ? fallback : text;
   }
 
   PetUiModel? get _selectedPet {
@@ -357,6 +615,14 @@ class _NfcPageState extends State<NfcPage> {
     final selectedPetName = pet?.name ?? 'your pet';
     final canWriteTag = pet != null;
     final canStartNfc = isReadMode || canWriteTag;
+    final isSimulationMode = _isNfcAvailable == false;
+    final actionButtonText = isSimulationMode
+        ? (isReadMode
+            ? 'Test Read (Simulation)'
+            : 'Test Write (Simulation)')
+        : (isReadMode
+            ? AppStrings.nfcStartScanning
+            : AppStrings.nfcStartWriting);
 
     return Column(
       key: const ValueKey('nfc-setup'),
@@ -364,6 +630,14 @@ class _NfcPageState extends State<NfcPage> {
       children: [
         const SizedBox(height: AppDimensions.spaceL),
         _buildModeSegmentedControl(),
+        if (isSimulationMode) ...[
+          const SizedBox(height: AppDimensions.spaceM),
+          const NfcStatusBanner(
+            message:
+                'NFC hardware not available. You can still test the full flow in simulation mode.',
+            isAttention: true,
+          ),
+        ],
         if (_operationErrorMessage != null) ...[
           const SizedBox(height: AppDimensions.spaceM),
           NfcStatusBanner(
@@ -481,7 +755,7 @@ class _NfcPageState extends State<NfcPage> {
               ),
             ),
             child: Text(
-              isReadMode ? AppStrings.nfcStartScanning : AppStrings.nfcStartWriting,
+              actionButtonText,
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
             ),
           ),
@@ -651,9 +925,27 @@ class _NfcPageState extends State<NfcPage> {
   }
 
   Widget _buildWriteSuccessContent(PetUiModel pet) {
-    final payload = _lastWrittenTagData ?? _buildWritePayload(pet);
-    final ownerName = payload['ownerName']?.toString();
-    final ownerPhone = payload['ownerPhone']?.toString();
+    final payload = _lastWrittenTagData ?? const <String, dynamic>{};
+    final ownerName = _readPayloadOptionalText(
+      payload,
+      const [
+        'ownerName',
+        'owner_name',
+        'owner.name',
+        'contact.ownerName',
+        'contact.owner_name',
+      ],
+    );
+    final ownerPhone = _readPayloadOptionalText(
+      payload,
+      const [
+        'ownerPhone',
+        'owner_phone',
+        'owner.phone',
+        'contact.ownerPhone',
+        'contact.owner_phone',
+      ],
+    );
 
     return Column(
       key: const ValueKey('nfc-write-success'),
@@ -892,14 +1184,51 @@ class _NfcPageState extends State<NfcPage> {
 
   Widget _buildScannedTagCard(PetUiModel? pet) {
     final avatarSize = AppDimensions.iconXL - AppDimensions.spaceXS;
-    final imageHeight = AppDimensions.iconXXXL + AppDimensions.spaceXXXL;
+    const headerHeight = 96.0;
     final payload = _lastReadTagData;
-    final displayName = payload?['name']?.toString() ?? pet?.name ?? AppStrings.valueNotAvailable;
-    final displayBreed = payload?['breed']?.toString() ?? pet?.breed ?? AppStrings.valueNotAvailable;
-    final displaySpecies = payload?['species']?.toString() ?? pet?.species ?? AppStrings.valueNotAvailable;
-    final ownerName = payload?['ownerName']?.toString() ?? _defaultOwnerName;
-    final ownerPhone = payload?['ownerPhone']?.toString() ?? _defaultOwnerPhone;
+    final displayName = _readPayloadText(
+      payload,
+      const ['petName', 'name', 'pet_name', 'pet.name'],
+      fallback: pet?.name ?? AppStrings.valueNotAvailable,
+    );
+    final displayBreed = _readPayloadText(
+      payload,
+      const ['breed', 'pet_breed', 'pet.breed'],
+      fallback: pet?.breed ?? AppStrings.valueNotAvailable,
+    );
+    final displaySpecies = _readPayloadText(
+      payload,
+      const ['species', 'pet_species', 'pet.species'],
+      fallback: pet?.species ?? AppStrings.valueNotAvailable,
+    );
+    final ownerName = _readPayloadText(
+      payload,
+      const [
+        'ownerName',
+        'owner_name',
+        'owner.name',
+        'contact.ownerName',
+        'contact.owner_name',
+      ],
+      fallback: AppStrings.valueNotAvailable,
+    );
+    final ownerPhone = _readPayloadText(
+      payload,
+      const [
+        'ownerPhone',
+        'owner_phone',
+        'owner.phone',
+        'contact.ownerPhone',
+        'contact.owner_phone',
+      ],
+      fallback: AppStrings.valueNotAvailable,
+    );
     final medicalNotesValue = _buildMedicalNotes(payload);
+    final statusKey = _resolvePetStatus(payload, pet);
+    final statusLabel = _statusLabel(statusKey);
+    final statusIcon = _statusIcon(statusKey);
+    final statusBadgeBackground = _statusBadgeBackground(statusKey);
+    final statusBadgeTextColor = _statusBadgeTextColor(statusKey);
 
     return Container(
       width: double.infinity,
@@ -922,71 +1251,90 @@ class _NfcPageState extends State<NfcPage> {
               topLeft: Radius.circular(AppDimensions.radiusXL),
               topRight: Radius.circular(AppDimensions.radiusXL),
             ),
-            child: SizedBox(
+            child: Container(
               width: double.infinity,
-              height: imageHeight,
-              child: Stack(
+              height: headerHeight,
+              color: AppColors.primary,
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppDimensions.spaceM,
+                vertical: AppDimensions.spaceS,
+              ),
+              child: Row(
                 children: [
-                  Positioned.fill(
-                    child: Image.asset(
-                      AppAssets.imageDogPrimary,
-                      fit: BoxFit.cover,
+                  Container(
+                    width: AppDimensions.iconL + AppDimensions.spaceS,
+                    height: AppDimensions.iconL + AppDimensions.spaceS,
+                    decoration: BoxDecoration(
+                      color: AppColors.onPrimary.withValues(alpha: 0.18),
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      Icons.pets_rounded,
+                      color: AppColors.onPrimary,
+                      size: AppDimensions.iconM,
                     ),
                   ),
-                  Positioned(
-                    top: AppDimensions.spaceM,
-                    right: AppDimensions.spaceM,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppDimensions.spaceS,
-                        vertical: AppDimensions.spaceXS,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.petStatusHealthyBg,
-                        borderRadius: BorderRadius.circular(AppDimensions.radiusCircle),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.check_rounded,
-                            color: AppColors.petStatusHealthyText,
-                            size: AppDimensions.iconS,
-                          ),
-                          SizedBox(width: AppDimensions.spaceXXS),
-                          Text(
-                            AppStrings.nfcHealthyStatus,
-                            style: TextStyle(
-                              color: AppColors.petStatusHealthyText,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    left: AppDimensions.spaceM,
-                    bottom: AppDimensions.spaceM,
+                  const SizedBox(width: AppDimensions.spaceM),
+                  Expanded(
                     child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           displayName,
-                          style: TextStyle(
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
                             color: AppColors.onPrimary,
-                            fontSize: AppDimensions.iconL - AppDimensions.spaceXXS,
+                            fontSize: 20,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                         const SizedBox(height: AppDimensions.spaceXXS),
                         Text(
                           '$displayBreed - $displaySpecies',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: AppColors.onPrimary,
-                            fontSize: 14,
+                            fontSize: 13,
                             fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: AppDimensions.spaceS),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppDimensions.spaceS,
+                      vertical: AppDimensions.spaceXXS,
+                    ),
+                    decoration: BoxDecoration(
+                      color: statusBadgeBackground,
+                      borderRadius: BorderRadius.circular(
+                        AppDimensions.radiusCircle,
+                      ),
+                      border: Border.all(
+                        color: statusBadgeTextColor.withValues(alpha: 0.42),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          statusIcon,
+                          color: statusBadgeTextColor,
+                          size: AppDimensions.iconS,
+                        ),
+                        const SizedBox(width: AppDimensions.spaceXXS),
+                        Text(
+                          statusLabel,
+                          style: TextStyle(
+                            color: statusBadgeTextColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ],
@@ -1057,66 +1405,6 @@ class _NfcPageState extends State<NfcPage> {
                   ],
                 ),
                 const SizedBox(height: AppDimensions.spaceM),
-                SizedBox(
-                  width: double.infinity,
-                  height: AppDimensions.buttonHeightL,
-                  child: FilledButton.icon(
-                    onPressed: _showUnavailableMessage,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: AppColors.onPrimary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppDimensions.radiusCircle),
-                      ),
-                    ),
-                    icon: const Icon(Icons.phone_rounded),
-                    label: const Text(
-                      AppStrings.nfcCallOwnerNow,
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: AppDimensions.spaceM),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FilledButton.icon(
-                        onPressed: _showUnavailableMessage,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.nfcSmsActionBg,
-                          foregroundColor: AppColors.nfcSmsActionFg,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppDimensions.radiusCircle),
-                          ),
-                        ),
-                        icon: const Icon(Icons.sms_outlined),
-                        label: const Text(
-                          AppStrings.nfcSendSms,
-                          style: TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: AppDimensions.spaceM),
-                    Expanded(
-                      child: FilledButton.icon(
-                        onPressed: _showUnavailableMessage,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.petStatusAttentionBg,
-                          foregroundColor: AppColors.warning,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppDimensions.radiusCircle),
-                          ),
-                        ),
-                        icon: const Icon(Icons.share_outlined),
-                        label: const Text(
-                          AppStrings.nfcShare,
-                          style: TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppDimensions.spaceM),
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(AppDimensions.spaceM),
@@ -1169,15 +1457,101 @@ class _NfcPageState extends State<NfcPage> {
     );
   }
 
+  String _resolvePetStatus(Map<String, dynamic>? payload, PetUiModel? pet) {
+    final payloadStatus = _readPayloadOptionalText(
+      payload,
+      const [
+        'status',
+        'petStatus',
+        'pet_status',
+        'pet.status',
+      ],
+    );
+
+    final rawStatus = (payloadStatus ?? pet?.status ?? 'healthy')
+        .trim()
+        .toLowerCase();
+
+    if (rawStatus.contains('lost')) {
+      return 'lost';
+    }
+
+    if (rawStatus.contains('attention') ||
+        rawStatus.contains('need') ||
+        rawStatus.contains('overdue') ||
+        rawStatus.contains('warning')) {
+      return 'needs_attention';
+    }
+
+    return 'healthy';
+  }
+
+  String _statusLabel(String status) {
+    return switch (status) {
+      'lost' => AppStrings.petDetailStatusLost,
+      'needs_attention' => AppStrings.petDetailStatusNeedsAttention,
+      _ => AppStrings.petDetailStatusHealthy,
+    };
+  }
+
+  IconData _statusIcon(String status) {
+    return switch (status) {
+      'lost' => Icons.report_problem_rounded,
+      'needs_attention' => Icons.warning_amber_rounded,
+      _ => Icons.check_rounded,
+    };
+  }
+
+  Color _statusBadgeBackground(String status) {
+    return switch (status) {
+      'lost' => AppColors.petStatusLostBg.withValues(alpha: 0.92),
+      'needs_attention' => AppColors.petStatusAttentionBg.withValues(alpha: 0.92),
+      _ => AppColors.petStatusHealthyBg.withValues(alpha: 0.92),
+    };
+  }
+
+  Color _statusBadgeTextColor(String status) {
+    return switch (status) {
+      'lost' => AppColors.petStatusLostText,
+      'needs_attention' => AppColors.petStatusAttentionText,
+      _ => AppColors.petStatusHealthyText,
+    };
+  }
+
   String _buildMedicalNotes(Map<String, dynamic>? payload) {
     if (payload == null) {
       return AppStrings.nfcMedicalNotesValue;
     }
 
     final parts = <String>[];
-    final allergies = payload['knownAllergies']?.toString();
-    final vet = payload['defaultVet']?.toString();
-    final clinic = payload['defaultClinic']?.toString();
+    final allergies = _readPayloadOptionalText(
+      payload,
+      const [
+        'knownAllergies',
+        'known_allergies',
+        'medical_notes',
+        'emergency.knownAllergies',
+        'emergency.known_allergies',
+      ],
+    );
+    final vet = _readPayloadOptionalText(
+      payload,
+      const [
+        'defaultVet',
+        'default_vet',
+        'emergency.defaultVet',
+        'emergency.default_vet',
+      ],
+    );
+    final clinic = _readPayloadOptionalText(
+      payload,
+      const [
+        'defaultClinic',
+        'default_clinic',
+        'emergency.defaultClinic',
+        'emergency.default_clinic',
+      ],
+    );
 
     if (allergies != null && allergies.isNotEmpty) {
       parts.add('Allergies: $allergies');
