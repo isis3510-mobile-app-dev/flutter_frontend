@@ -4,84 +4,38 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../../core/constants/app_assets.dart';
 import '../../../../../core/constants/app_colors.dart';
 import '../../../../../core/constants/app_dimensions.dart';
-import '../../../../../core/models/pet_model.dart';
+import '../../../../../core/constants/app_strings.dart';
+import '../../../../../core/models/event_model.dart';
 import '../../models/pet_ui_model.dart';
-
-class _MedicalEvent {
-  const _MedicalEvent({
-    required this.title,
-    required this.iconAsset,
-    required this.vet,
-    required this.clinic,
-    required this.date,
-    required this.notes,
-    this.cost,
-    this.followUp,
-  });
-
-  final String title;
-  final String iconAsset;
-  final String vet;
-  final String clinic;
-  final String date;
-  final String notes;
-  final double? cost;
-  final String? followUp;
-}
-
-const List<_MedicalEvent> _mockEvents = [
-  _MedicalEvent(
-    title: 'Checkup',
-    iconAsset: AppAssets.iconVetCheck,
-    vet: 'Dr. Smith',
-    clinic: 'Happy Paws Clinic',
-    date: 'Nov 19, 2024',
-    notes: 'Annual wellness exam. All vitals normal. Weight stable at 28.5kg.',
-    cost: 120,
-    followUp: 'Nov 19, 2025',
-  ),
-  _MedicalEvent(
-    title: 'Dental',
-    iconAsset: AppAssets.iconDentalCheck,
-    vet: 'Dr. Johnson',
-    clinic: 'City Vet Center',
-    date: 'Jun 4, 2024',
-    notes: 'Routine dental cleaning. No extractions needed.',
-    cost: 280,
-  ),
-  _MedicalEvent(
-    title: 'Emergency',
-    iconAsset: AppAssets.iconEmergencyCheck,
-    vet: 'Dr. Patel',
-    clinic: '24/7 Emergency Vet',
-    date: 'Jan 8, 2025',
-    notes: 'Mild allergic reaction treated quickly. Observed and discharged.',
-    cost: 340,
-    followUp: 'Jan 15, 2025',
-  ),
-];
 
 class EventsTab extends StatelessWidget {
   const EventsTab({
     super.key,
     required this.pet,
-    required this.petDetails,
+    required this.events,
+    required this.isLoading,
+    required this.onRetry,
     required this.onAddEvent,
+    required this.onOpenEvent,
+    this.errorMessage,
   });
 
   final PetUiModel pet;
-  final PetModel? petDetails;
+  final List<EventModel> events;
+  final bool isLoading;
+  final String? errorMessage;
+  final VoidCallback onRetry;
   final VoidCallback onAddEvent;
+  final ValueChanged<EventModel> onOpenEvent;
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final petName = pet.name;
-    final _ = petDetails;
 
-    // TODO(events-backend): Replace mock cards with events fetched from backend.
-    // Keep this subtab design, only swap the source of truth.
-    final events = _mockEvents;
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(
@@ -90,10 +44,26 @@ class EventsTab extends StatelessWidget {
         AppDimensions.pageHorizontalPadding,
         88,
       ),
-      itemCount: events.length + 1,
+      itemCount: (events.isEmpty ? 2 : events.length + 1) + (errorMessage == null ? 0 : 1),
       separatorBuilder: (_, _) => const SizedBox(height: AppDimensions.spaceS),
       itemBuilder: (context, index) {
-        if (index == events.length) {
+        if (errorMessage != null && index == 0) {
+          return _EventsErrorCard(
+            message: errorMessage!,
+            onRetry: onRetry,
+          );
+        }
+
+        final eventIndex = errorMessage == null ? index : index - 1;
+        if (events.isEmpty && eventIndex == 0) {
+          return _EmptyEventsCard(
+            petName: petName,
+            isDark: isDark,
+          );
+        }
+
+        if ((events.isEmpty && eventIndex == 1) ||
+            (events.isNotEmpty && eventIndex == events.length)) {
           return _AddEventButton(
             petName: petName,
             onTap: onAddEvent,
@@ -101,8 +71,9 @@ class EventsTab extends StatelessWidget {
         }
 
         return _EventCard(
-          event: events[index],
+          event: events[eventIndex],
           isDark: isDark,
+          onTap: () => onOpenEvent(events[eventIndex]),
         );
       },
     );
@@ -110,10 +81,15 @@ class EventsTab extends StatelessWidget {
 }
 
 class _EventCard extends StatelessWidget {
-  const _EventCard({required this.event, required this.isDark});
+  const _EventCard({
+    required this.event,
+    required this.isDark,
+    required this.onTap,
+  });
 
-  final _MedicalEvent event;
+  final EventModel event;
   final bool isDark;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -124,92 +100,112 @@ class _EventCard extends StatelessWidget {
     final bodyColor = isDark ? AppColors.onSurfaceDark : AppColors.grey900;
     final titleColor = isDark ? AppColors.onSurfaceDark : AppColors.grey900;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: cardColor,
+    final title = event.title.trim().isNotEmpty
+        ? event.title.trim()
+        : AppStrings.valueNotAvailable;
+    final provider = event.provider.trim().isNotEmpty
+        ? event.provider.trim()
+        : AppStrings.valueNotAvailable;
+    final clinic = event.clinic.trim().isNotEmpty
+        ? event.clinic.trim()
+        : AppStrings.valueNotAvailable;
+    final notes = event.description.trim().isNotEmpty
+        ? event.description.trim()
+        : AppStrings.valueNotAvailable;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
         borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.16 : 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+        onTap: onTap,
+        child: Ink(
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.16 : 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
-        ],
-      ),
-      padding: const EdgeInsets.all(AppDimensions.pageHorizontalPadding),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SvgPicture.asset(
-            event.iconAsset,
-            width: 46,
-            height: 46,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          padding: const EdgeInsets.all(AppDimensions.pageHorizontalPadding),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SvgPicture.asset(
+                _eventIconAsset(event),
+                width: 46,
+                height: 46,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Text(
-                        event.title,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: titleColor,
-                          fontWeight: FontWeight.w700,
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              color: titleColor,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ),
+                        if (event.price != null) ...[
+                          const SizedBox(width: 8),
+                          Text(
+                            '\$${event.price!.toStringAsFixed(0)}',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              color: titleColor,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$provider · $clinic',
+                      style: TextStyle(
+                        color: metaColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                    if (event.cost != null) ...[
-                      const SizedBox(width: 8),
-                      Text(
-                        '\$${event.cost!.toStringAsFixed(0)}',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: titleColor,
-                          fontWeight: FontWeight.w700,
-                        ),
+                    const SizedBox(height: 1),
+                    Text(
+                      _formatDate(event.date),
+                      style: TextStyle(
+                        color: metaColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
                       ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      notes,
+                      style: TextStyle(
+                        color: bodyColor,
+                        fontSize: 13,
+                        height: 1.4,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    if (event.followUpDate != null) ...[
+                      const SizedBox(height: AppDimensions.spaceS),
+                      _FollowUpChip(date: _formatDate(event.followUpDate!)),
                     ],
                   ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  '${event.vet} · ${event.clinic}',
-                  style: TextStyle(
-                    color: metaColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 1),
-                Text(
-                  event.date,
-                  style: TextStyle(
-                    color: metaColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  event.notes,
-                  style: TextStyle(
-                    color: bodyColor,
-                    fontSize: 13,
-                    height: 1.4,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                if (event.followUp != null) ...[
-                  const SizedBox(height: AppDimensions.spaceS),
-                  _FollowUpChip(date: event.followUp!),
-                ],
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -249,6 +245,137 @@ class _FollowUpChip extends StatelessWidget {
       ),
     );
   }
+}
+
+class _EmptyEventsCard extends StatelessWidget {
+  const _EmptyEventsCard({
+    required this.petName,
+    required this.isDark,
+  });
+
+  final String petName;
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    final cardColor = isDark ? AppColors.petCardBackgroundDark : Colors.white;
+    final textColor = isDark ? AppColors.onSurfaceDark : AppColors.grey900;
+    final subtextColor = isDark
+        ? AppColors.onSurfaceDark.withValues(alpha: 0.75)
+        : AppColors.grey700;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
+      ),
+      padding: const EdgeInsets.all(AppDimensions.pageHorizontalPadding),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'No medical events yet',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: textColor,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Add the first event for $petName to start building a real medical history.',
+            style: TextStyle(
+              color: subtextColor,
+              fontSize: 13,
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EventsErrorCard extends StatelessWidget {
+  const _EventsErrorCard({
+    required this.message,
+    required this.onRetry,
+  });
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.error.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
+        border: Border.all(
+          color: AppColors.error.withValues(alpha: 0.24),
+        ),
+      ),
+      padding: const EdgeInsets.all(AppDimensions.pageHorizontalPadding),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Could not load events',
+            style: TextStyle(
+              color: AppColors.error,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            message,
+            style: const TextStyle(
+              color: AppColors.grey700,
+              fontSize: 13,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextButton(
+            onPressed: onRetry,
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _eventIconAsset(EventModel event) {
+  final normalized = '${event.eventType} ${event.title}'.toLowerCase();
+  if (normalized.contains('emergency') || normalized.contains('urgent')) {
+    return AppAssets.iconEmergencyCheck;
+  }
+  if (normalized.contains('dental')) {
+    return AppAssets.iconDentalCheck;
+  }
+  return AppAssets.iconVetCheck;
+}
+
+String _formatDate(DateTime date) {
+  if (date.year < 2) {
+    return AppStrings.valueNotAvailable;
+  }
+
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  return '${months[date.month - 1]} ${date.day}, ${date.year}';
 }
 
 class _AddEventButton extends StatelessWidget {

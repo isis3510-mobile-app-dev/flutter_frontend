@@ -8,11 +8,15 @@ import '../../../../app/routes.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/models/event_model.dart';
 import '../../../../core/models/pet_model.dart';
 import '../../../../core/network/api_exception.dart';
+import '../../../../core/services/event_service.dart';
 import '../../../../core/services/pet_service.dart';
 import '../../../../core/services/profile_photo_service.dart';
 import '../../../../shared/widgets/quick_actions_fab.dart';
+import '../../add_event/add_event_args.dart';
+import '../../records/detail/detail_page.dart';
 import '../models/pet_ui_mapper.dart';
 import '../models/pet_ui_model.dart';
 import 'tabs/events_tab.dart';
@@ -34,6 +38,7 @@ class _PetDetailScreenState extends State<PetDetailScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   final PetService _petService = PetService();
+  final EventService _eventService = EventService();
   final ProfilePhotoService _photoService = ProfilePhotoService();
 
   Future<void> _goToAddVaccine() async {
@@ -44,17 +49,27 @@ class _PetDetailScreenState extends State<PetDetailScreen>
   }
 
   Future<void> _goToAddEvent() async {
-    final result = await Navigator.pushNamed(context, Routes.addEvent);
+    final result = await Navigator.pushNamed(
+      context,
+      Routes.addEvent,
+      arguments: AddEventArgs(
+        petId: _pet.id,
+        petName: _pet.name,
+      ),
+    );
     if (result == true) {
+      _hasMutatedPet = true;
       await _loadPetDetail();
     }
   }
 
   late PetUiModel _pet;
   PetModel? _petDetails;
+  List<EventModel> _petEvents = const [];
   bool _isLoading = false;
   bool _hasMutatedPet = false;
   String? _errorMessage;
+  String? _eventsErrorMessage;
 
   @override
   void initState() {
@@ -68,12 +83,23 @@ class _PetDetailScreenState extends State<PetDetailScreen>
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _eventsErrorMessage = null;
     });
 
     try {
       final detail = await _petService.getPetById(widget.pet.id);
       final localPath = await _photoService.getPetPhotoPath(widget.pet.id);
       final uiPet = detail.toUiModel().copyWith(localPhotoPath: localPath);
+      List<EventModel> petEvents = const [];
+      String? eventsErrorMessage;
+
+      try {
+        petEvents = await _eventService.getEventsByPet(widget.pet.id);
+      } on ApiException catch (error) {
+        eventsErrorMessage = error.message;
+      } catch (_) {
+        eventsErrorMessage = AppStrings.errorGeneric;
+      }
 
       if (!mounted) {
         return;
@@ -82,6 +108,9 @@ class _PetDetailScreenState extends State<PetDetailScreen>
       setState(() {
         _petDetails = detail;
         _pet = uiPet;
+        _petEvents = petEvents
+          ..sort((a, b) => b.date.compareTo(a.date));
+        _eventsErrorMessage = eventsErrorMessage;
       });
     } on ApiException catch (error) {
       if (!mounted) {
@@ -174,6 +203,27 @@ class _PetDetailScreenState extends State<PetDetailScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text(AppStrings.petsLoadError)),
       );
+    }
+  }
+
+  Future<void> _openEventDetail(EventModel event) async {
+    if (_petDetails == null) {
+      return;
+    }
+
+    final result = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => DetailPage(
+          type: 'event',
+          event: event,
+          pet: _petDetails,
+        ),
+      ),
+    );
+
+    if (result == true) {
+      _hasMutatedPet = true;
+      await _loadPetDetail();
     }
   }
 
@@ -426,8 +476,12 @@ class _PetDetailScreenState extends State<PetDetailScreen>
               ),
               EventsTab(
                 pet: _pet,
-                petDetails: _petDetails,
+                events: _petEvents,
+                isLoading: _isLoading,
+                errorMessage: _eventsErrorMessage,
                 onAddEvent: _goToAddEvent,
+                onRetry: _loadPetDetail,
+                onOpenEvent: _openEventDetail,
               ),
             ],
           ),
