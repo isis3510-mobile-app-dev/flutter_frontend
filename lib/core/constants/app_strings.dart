@@ -140,6 +140,19 @@ abstract class AppStrings {
   static const String addVaccineTitle = 'Add New Vaccine';
   static const String addEventTitle = 'Add New Event';
   static const String healthRecordsTitle = 'Health Records';
+  static const String calendarTitle = 'Calendar';
+  static const String calendarAllPets = 'All Pets';
+  static const String calendarNoEventsForDay = 'No events for this day';
+  static const String calendarNoEventsHint =
+      'Choose another day or add a new event.';
+  static const String calendarDateStripUnavailable =
+      'Advanced filters are not available yet.';
+  static const String calendarEventAnnualVaccination = 'Annual Vaccination';
+  static const String calendarEventVetAppointment = 'Vet Appointment';
+  static const String calendarEventDentalCleaning = 'Dental Cleaning';
+  static const String calendarEventGroomingSession = 'Grooming Session';
+  static const String calendarEventBoosterShot = 'Booster Shot';
+  static const String calendarFilterAppointments = 'Appointments';
   static const String recordsFilterAll = 'All';
   static const String recordsFilterVaccines = 'Vaccines';
   static const String recordsFilterEvents = 'Events';
@@ -286,13 +299,13 @@ abstract class AppStrings {
   static const String petDetailStatusHealthy = 'Healthy';
   static const String petDetailStatusNeedsAttention = 'Needs Attention';
   static const String petDetailStatusLost = 'Lost';
-    static const String petLostConfirmTitle = 'Mark as lost?';
-    static const String petLostConfirmMessage =
-            'Are you sure you want to mark this pet as lost?';
-    static const String petLostConfirmCancel = 'Cancel';
-    static const String petLostConfirmAction = 'Mark Lost';
-    static const String petMarkedAsLostMessage = 'Pet marked as lost.';
-    static const String petMarkedAsFoundMessage = 'Pet marked as found.';
+  static const String petLostConfirmTitle = 'Mark as lost?';
+  static const String petLostConfirmMessage =
+      'Are you sure you want to mark this pet as lost?';
+  static const String petLostConfirmCancel = 'Cancel';
+  static const String petLostConfirmAction = 'Mark Lost';
+  static const String petMarkedAsLostMessage = 'Pet marked as lost.';
+  static const String petMarkedAsFoundMessage = 'Pet marked as found.';
   static const String petDetailShareSemantics = 'Share pet';
   static const String petDetailEditSemantics = 'Edit pet';
   static const String petDetailMoreSemantics = 'More options';
