@@ -27,9 +27,13 @@ abstract class AppColors {
   static const Color success = Color(0xFF386A20);
   static const Color warning = Color(0xFFE65100);
   static const Color positiveBackground = Color(0xFFE8F5E9);
+  static const Color positiveBackgroundDark = Color(0xFF1A3B38);
   static const Color negativeBackground = Color(0xFFFFEBEE);
+  static const Color negativeBackgroundDark = Color(0xFF522421);
   static const Color positiveText = Color(0xFF2E7D32);
+  static const Color positiveTextDark = Color.fromARGB(255, 66, 158, 106);
   static const Color negativeText = Color(0xFFC62828);
+  static const Color negativeTextDark = Color(0xFFEF9A9A);
 
   // --- Neutral / grey scale ---
   static const Color grey100 = Color(0xFFF2F2F2);
@@ -40,10 +44,11 @@ abstract class AppColors {
 
   // --- Dark theme overrides ---
   static const Color backgroundDark = Color(0xFF1C1B1F);
-  static const Color secondaryDark = Color(0xFF5D5B62);
+  static const Color secondaryDark = Color(0xFF2A2A2A);
   static const Color surfaceDark = Color(0xFF1C1B1F);
   static const Color onBackgroundDark = Color(0xFFE6E1E5);
   static const Color onSurfaceDark = Color(0xFFE6E1E5);
+  static const Color onSecondaryDark = Color(0xFFE6E1E5);
 
   // --- Welcome pages colors ---
   static const List<Color> welcomeFirstBackground = [
@@ -97,6 +102,7 @@ abstract class AppColors {
 
   // --- Pet filters ---
   static const Color petFilterInactiveBorder = Color(0xFFBEC9C8);
+  static const Color petFilterInactiveBorderDark = Color(0xFF4C4B51);
 
   // --- Add pet flow ---
   static const Color addPetStepInactiveLineDark = Color(0xFF4C4B51);
@@ -128,4 +134,18 @@ abstract class AppColors {
   static const Color petsSearchBarBackgroundDark = Color(0xFF20312F);
   static const Color petsSearchBarIcon = Color(0xFF757575);
   static const Color petsSearchBarPlaceholder = Color(0xFF8E8E93);
+
+  // --- Overdue vaccines card ---
+  static const Color overdueCardBackground = Color(0xFFFFF9EC);
+  static const Color overdueCardBorder = Color(0xFFF4C542);
+  static const Color overdueCardContent = Color(0xFFFF6A00);
+  static const Color overdueCardBackgroundDark = Color(0xFF4B2E00);
+  static const Color overdueCardBorderDark = Color(0xFF7B3D00);
+  static const Color overdueCardContentDark = Color.fromARGB(255, 208, 179, 150);
+
+  // --- Upcoming vaccine card ---
+  static const Color timeBackground = Color(0xFFE3F2FD);
+  static const Color timeText = Color(0xFF1976D2);
+  static const Color timeBackgroundDark = Color.fromARGB(255, 29, 69, 79);
+  static const Color timeTextDark = Color(0xFF9FF2E2);
 }

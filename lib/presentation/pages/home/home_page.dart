@@ -301,7 +301,7 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildUpcomingEventsSection() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final eventsCardColor = isDark ? AppColors.surfaceDark : AppColors.secondary;
+    final eventsCardColor = isDark ? AppColors.secondaryDark : AppColors.secondary;
     final dividerColor = isDark ? AppColors.grey700 : AppColors.grey300;
 
     final events = [

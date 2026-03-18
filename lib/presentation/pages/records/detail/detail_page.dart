@@ -146,8 +146,11 @@ class DetailPage extends StatelessWidget {
         ? vaccination!.clinicName.trim()
         : AppStrings.valueNotAvailable;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: isDark ? AppColors.backgroundDark : AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
@@ -187,16 +190,18 @@ class DetailPage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _InfoCard(
+                backgroundColor: isDark ? AppColors.secondaryDark : AppColors.secondary,
+                borderColor: isDark ? AppColors.grey700 : AppColors.grey300,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (type == 'vaccine')
                       Text(
                         displayVaccineName,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.onSurface,
+                          color: isDark ? AppColors.onSurfaceDark : AppColors.onSurface,
                         ),
                       ),
                     const SizedBox(height: 12),
@@ -206,16 +211,16 @@ class DetailPage extends StatelessWidget {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.positiveBackground,
+                        color: isDark ? AppColors.positiveBackgroundDark : AppColors.positiveBackground,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.check,
                             size: 16,
-                            color: AppColors.positiveText,
+                            color: isDark? AppColors.positiveTextDark : AppColors.positiveText,
                           ),
                           const SizedBox(width: 6),
                           Text(
@@ -223,7 +228,7 @@ class DetailPage extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.success,
+                              color: isDark? AppColors.positiveTextDark : AppColors.positiveText,
                             ),
                           ),
                         ],
@@ -234,6 +239,8 @@ class DetailPage extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               _InfoCard(
+                backgroundColor: isDark ? AppColors.secondaryDark : AppColors.secondary,
+                borderColor: isDark ? AppColors.grey700 : AppColors.grey300,
                 title: AppStrings.vaccineTimelineTitle,
                 child: Column(
                   children: [
@@ -241,18 +248,22 @@ class DetailPage extends StatelessWidget {
                       icon: Icons.calendar_today_outlined,
                       label: AppStrings.vaccineDateGivenLabel,
                       value: displayDateGiven,
+                      isDark: isDark,
                     ),
                     const Divider(height: 24),
                     _InfoRow(
                       icon: Icons.calendar_month_outlined,
                       label: AppStrings.vaccineNextDueLabel,
                       value: displayNextDue,
+                      isDark: isDark,
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 16),
               _InfoCard(
+                backgroundColor: isDark ? AppColors.secondaryDark : AppColors.secondary,
+                borderColor: isDark ? AppColors.grey700 : AppColors.grey300,
                 title: AppStrings.providerInfoTitle,
                 child: Column(
                   children: [
@@ -260,18 +271,22 @@ class DetailPage extends StatelessWidget {
                       icon: Icons.person_outline,
                       label: AppStrings.veterinarianLabel,
                       value: displayVet,
+                      isDark: isDark,
                     ),
                     const Divider(height: 24),
                     _InfoRow(
                       icon: Icons.location_on_outlined,
                       label: AppStrings.clinicLabel,
                       value: displayClinic,
+                      isDark: isDark,
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 16),
               _InfoCard(
+                backgroundColor: isDark ? AppColors.secondaryDark : AppColors.secondary,
+                borderColor: isDark ? AppColors.grey700 : AppColors.grey300,
                 title: lastCardTitle,
                 child: Text(
                   lastCardEmpty,
@@ -286,7 +301,7 @@ class DetailPage extends StatelessWidget {
         ),
       ),
       bottomNavigationBar: Container(
-        color: AppColors.secondary,
+        color: isDark ? AppColors.secondaryDark : AppColors.secondary,
         child: SafeArea(
           minimum: const EdgeInsets.fromLTRB(16, 18, 16, 16),
           child: Padding(
@@ -308,6 +323,7 @@ class DetailPage extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: FullWidthButton(
+                    backgroundColor: AppColors.primary,
                     text: AppStrings.actionEdit,
                     onPressed: () => navigateToEditPage(context),
                     icon: Icons.edit_outlined,
@@ -344,11 +360,12 @@ String _formatDate(DateTime date) {
 
 class _InfoCard extends StatelessWidget {
   // ignore: unused_element_parameter
-  const _InfoCard({this.title, required this.child, this.backgroundColor = AppColors.secondary});
+  const _InfoCard({this.title, required this.child, required this.backgroundColor, required this.borderColor});
 
   final String? title;
   final Widget child;
   final Color backgroundColor;
+  final Color borderColor;
 
   @override
   Widget build(BuildContext context) {
@@ -357,7 +374,7 @@ class _InfoCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.grey100),
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -381,11 +398,13 @@ class _InfoRow extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
+    required this.isDark,
   });
 
   final IconData icon;
   final String label;
   final String value;
+  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
@@ -399,12 +418,14 @@ class _InfoRow extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: context.textTheme.bodySmall?.copyWith(color: AppColors.grey700),
+                style: context.textTheme.bodySmall?.copyWith(color: 
+                isDark? AppColors.grey300 : AppColors.grey700),
               ),
               const SizedBox(height: 4),
               Text(
                 value,
-                style: context.textTheme.bodyMedium?.copyWith(color: AppColors.onSecondary),
+                style: context.textTheme.bodyMedium?.copyWith(color: 
+                isDark? AppColors.onSecondaryDark : AppColors.onSecondary),
               ),
             ],
           ),

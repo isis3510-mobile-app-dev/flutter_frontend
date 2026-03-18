@@ -49,10 +49,14 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final foregroundColor =
-        isSelected ? AppColors.onPrimary : AppColors.grey900;
-    final backgroundColor = isSelected ? AppColors.primary : AppColors.secondary;
-    final borderColor = isSelected ? AppColors.primary : AppColors.grey500;
+        isSelected ? AppColors.secondary : 
+        (isDark ? AppColors.grey500 : AppColors.grey700);
+    final backgroundColor = isSelected ? AppColors.primary : 
+    (isDark ? AppColors.secondaryDark : AppColors.secondary);
+    final borderColor = isSelected ? AppColors.primary : 
+    (isDark ? AppColors.grey700 : AppColors.grey300);
 
     return Material(
       color: Colors.transparent,

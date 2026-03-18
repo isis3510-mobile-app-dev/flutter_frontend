@@ -24,16 +24,16 @@ class RecordListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.secondary,
+        color: isDark? AppColors.secondaryDark : AppColors.secondary,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-            color: AppColors.grey100,
-            blurRadius: 12,
-            offset: Offset(0, 4),
+            color: isDark? AppColors.grey900 : AppColors.grey100,
+            blurRadius: 4,
           ),
         ],
       ),
@@ -62,29 +62,29 @@ class RecordListItem extends StatelessWidget {
                       title,
                       style: context.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w700,
-                        color: AppColors.onSurface,
+                        color: isDark? AppColors.onSurfaceDark : AppColors.onSurface,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
                       style: context.textTheme.bodySmall?.copyWith(
-                        color: AppColors.onSurface,
+                        color: isDark? AppColors.onSurfaceDark : AppColors.onSurface,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       meta,
                       style: context.textTheme.bodySmall?.copyWith(
-                        color: AppColors.grey700,
+                        color: isDark? AppColors.grey500 : AppColors.grey700,
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(
+              Icon(
                 Icons.chevron_right,
-                color: AppColors.grey700,
+                color: isDark? AppColors.grey500 : AppColors.grey700,
               ),
             ],
           ),

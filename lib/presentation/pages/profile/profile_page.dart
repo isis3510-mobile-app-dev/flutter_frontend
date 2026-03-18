@@ -464,9 +464,10 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     final themeController = ThemeControllerScope.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: isDark ? AppColors.backgroundDark : AppColors.background,
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -494,7 +495,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Text(
                   AppStrings.profileSubtitleAccount.toUpperCase(),
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: AppColors.onSurface,
+                    color: isDark ? AppColors.onSurfaceDark : AppColors.onSurface,
                     fontWeight: FontWeight.w600,
                     letterSpacing: AppDimensions.letterSpacingSection,
                   ),
@@ -506,7 +507,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 horizontal: AppDimensions.pageHorizontalPadding,
               ),
               decoration: BoxDecoration(
-                color: AppColors.secondary,
+                color: isDark ? AppColors.secondaryDark : AppColors.secondary,
                 borderRadius: BorderRadius.circular(AppDimensions.radiusL),
               ),
               child: Column(
@@ -517,6 +518,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     title: AppStrings.profileEdit,
                     subtitle: _displayValue(_profile?.name),
                     onTap: _handleEditProfile,
+                    isDark: isDark,
                   ),
                   Divider(
                     height: AppDimensions.strokeThin,
@@ -524,13 +526,14 @@ class _ProfilePageState extends State<ProfilePage> {
                         AppDimensions.pageHorizontalPadding +
                         AppDimensions.iconListItem +
                         AppDimensions.spaceL,
-                    color: AppColors.grey100,
+                    color: isDark ? AppColors.grey500 : AppColors.grey100,
                   ),
                   ProfileMenuItem(
                     imageAssetPath: AppAssets.iconProfileMail,
                     title: AppStrings.profileEmail,
                     subtitle: _displayValue(_profile?.email),
                     onTap: _handleQuickEditEmail,
+                    isDark: isDark,
                   ),
                   Divider(
                     height: AppDimensions.strokeThin,
@@ -538,13 +541,14 @@ class _ProfilePageState extends State<ProfilePage> {
                         AppDimensions.pageHorizontalPadding +
                         AppDimensions.iconListItem +
                         AppDimensions.spaceL,
-                    color: AppColors.grey100,
+                    color: isDark ? AppColors.grey500 : AppColors.grey100,
                   ),
                   ProfileMenuItem(
                     imageAssetPath: AppAssets.iconProfilePhone,
                     title: AppStrings.profilePhone,
                     subtitle: _displayValue(_profile?.phone),
                     onTap: _handleQuickEditPhone,
+                    isDark: isDark,
                   ),
                 ],
               ),
@@ -563,7 +567,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Text(
                   AppStrings.profileSubtitlePreferences.toUpperCase(),
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: AppColors.onSurface,
+                    color: isDark ? AppColors.onSurfaceDark : AppColors.onSurface,
                     fontWeight: FontWeight.w600,
                     letterSpacing: AppDimensions.letterSpacingSection,
                   ),
@@ -575,7 +579,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 horizontal: AppDimensions.pageHorizontalPadding,
               ),
               decoration: BoxDecoration(
-                color: AppColors.secondary,
+                color: isDark ? AppColors.secondaryDark : AppColors.secondary,
                 borderRadius: BorderRadius.circular(AppDimensions.radiusL),
               ),
               child: Column(
@@ -587,6 +591,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     subtitle:
                         '${_themePreferenceLabel(themeController)} • ${_themePreferenceSubtitle(themeController)}',
                     onTap: _showThemeModePicker,
+                    isDark: isDark,
                   ),
                   Divider(
                     height: AppDimensions.strokeThin,
@@ -594,7 +599,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         AppDimensions.pageHorizontalPadding +
                         AppDimensions.iconListItem +
                         AppDimensions.spaceL,
-                    color: AppColors.grey100,
+                    color: isDark ? AppColors.grey500 : AppColors.grey100,
                   ),
                   ProfileToggleItem(
                     imageAssetPath: AppAssets.iconProfileNotifications,
@@ -604,6 +609,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         : AppStrings.stateDisabled,
                     value: _notificationsEnabled,
                     onChanged: _handleNotificationsToggle,
+                    isDark: isDark,
                   ),
                   Divider(
                     height: AppDimensions.strokeThin,
@@ -611,13 +617,14 @@ class _ProfilePageState extends State<ProfilePage> {
                         AppDimensions.pageHorizontalPadding +
                         AppDimensions.iconListItem +
                         AppDimensions.spaceL,
-                    color: AppColors.grey100,
+                    color: isDark ? AppColors.grey500 : AppColors.grey100,
                   ),
                   ProfileToggleItem(
                     imageAssetPath: AppAssets.iconProfileOffline,
                     title: AppStrings.profileOffline,
                     value: _offlineModeEnabled,
                     onChanged: _handleOfflineModeToggle,
+                    isDark: isDark,
                   ),
                 ],
               ),
@@ -636,7 +643,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Text(
                   AppStrings.profileSubtitleSupport.toUpperCase(),
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: AppColors.onSurface,
+                    color: isDark ? AppColors.onSurfaceDark : AppColors.onSurface,
                     fontWeight: FontWeight.w600,
                     letterSpacing: AppDimensions.letterSpacingSection,
                   ),
@@ -648,7 +655,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 horizontal: AppDimensions.pageHorizontalPadding,
               ),
               decoration: BoxDecoration(
-                color: AppColors.secondary,
+                color: isDark ? AppColors.secondaryDark : AppColors.secondary,
                 borderRadius: BorderRadius.circular(AppDimensions.radiusL),
               ),
               child: Column(
@@ -659,6 +666,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     title: AppStrings.profileSignOut,
                     onTap: _handleSignOut,
                     isDestructive: true,
+                    isDark: isDark,
                   ),
                 ],
               ),
