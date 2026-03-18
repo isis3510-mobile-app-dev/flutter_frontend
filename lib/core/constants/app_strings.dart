@@ -346,6 +346,26 @@ abstract class AppStrings {
   static const String profilePhone = 'Phone';
   static const String profileSubtitlePreferences = 'Preferences';
   static const String profileDarkMode = 'Dark Mode';
+  static const String profileThemeMode = 'Theme';
+  static const String profileThemeLight = 'Light';
+  static const String profileThemeDark = 'Dark';
+  static const String profileThemeSchedule = 'By Time';
+  static const String profileThemeSensor = 'Auto';
+  static const String profileThemeLightSubtitle = 'Always use the light theme';
+  static const String profileThemeDarkSubtitle = 'Always use the dark theme';
+  static const String profileThemeScheduleSubtitle =
+      'Changes automatically during the day and night';
+  static const String profileThemeSensorSubtitle =
+      'Adapts to the light around you';
+  static const String profileThemeModePickerTitle = 'Choose theme mode';
+  static const String profileThemeSummaryLight = 'Light appearance';
+  static const String profileThemeSummaryDark = 'Dark appearance';
+  static const String profileThemeSummaryByTime =
+      'Changes with the time of day';
+  static const String profileThemeSummaryAuto =
+      'Adjusts to the light around you';
+  static const String profileThemeSummaryAutoFallback =
+      'Adjusts automatically when possible';
   static const String profileNotifications = 'Notifications';
   static const String profileOffline = 'Offline Mode';
   static const String profileSubtitleSupport = 'Support';
