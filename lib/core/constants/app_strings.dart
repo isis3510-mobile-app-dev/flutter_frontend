@@ -217,7 +217,7 @@ abstract class AppStrings {
   static const String hintVaccineName = 'e.g. Rabies';
   static const String hintDate = 'dd/mm/yyyy';
   static const String hintProductName = 'e.g. Rabisin';
-  static const String hintPetName = 'Max';
+  static const String hintPetName = 'Select a pet';
   static const String hintClinicProvider = 'e.g. City Vet Clinic';
   static const String hintDose = '1';
   static const String hintNotes = 'Optional notes';
