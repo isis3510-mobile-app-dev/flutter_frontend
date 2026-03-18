@@ -29,13 +29,18 @@ class UpcomingVaccineCard extends StatelessWidget {
         : AppColors.secondary;
     final textColor = isDark ? AppColors.onBackgroundDark : AppColors.onSecondary;
     final subtextColor = isDark ? AppColors.grey500 : AppColors.grey700;
+    final timeLabel = switch (daysUntil) {
+      < 0 => '${daysUntil.abs()}d',
+      0 => 'Today',
+      _ => '${daysUntil}d',
+    };
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.symmetric(
           horizontal: AppDimensions.pageHorizontalPadding,
-          vertical: AppDimensions.spaceM,
+          vertical: AppDimensions.spaceS,
         ),
         decoration: BoxDecoration(
           color: backgroundColor,
@@ -51,14 +56,14 @@ class UpcomingVaccineCard extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(
             horizontal: AppDimensions.spaceL,
-            vertical: AppDimensions.spaceL,
+            vertical: AppDimensions.spaceM,
           ),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
-                width: 41,
-                height: 41,
+                width: 38,
+                height: 38,
                 decoration: BoxDecoration(
                   color: isDark
                       ? AppColors.petCardQuickActionBgDark
@@ -68,8 +73,8 @@ class UpcomingVaccineCard extends StatelessWidget {
                 child: Center(
                   child: SvgPicture.asset(
                     AppAssets.iconVaccine,
-                    width: 20,
-                    height: 20,
+                    width: 18,
+                    height: 18,
                     colorFilter: ColorFilter.mode(
                       isDark ? AppColors.primaryVariant : AppColors.primary,
                       BlendMode.srcIn,
@@ -97,7 +102,7 @@ class UpcomingVaccineCard extends StatelessWidget {
                       vaccineName,
                       style: TextStyle(
                         color: textColor,
-                        fontSize: 16,
+                        fontSize: 14,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -106,7 +111,7 @@ class UpcomingVaccineCard extends StatelessWidget {
                       '$petName • $date',
                       style: TextStyle(
                         color: subtextColor,
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -124,7 +129,7 @@ class UpcomingVaccineCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppDimensions.radiusM),
                 ),
                 child: Text(
-                  '-${daysUntil}d',
+                  timeLabel,
                   style: TextStyle(
                     color: isDark? AppColors.timeTextDark : AppColors.timeText,
                     fontSize: 12,

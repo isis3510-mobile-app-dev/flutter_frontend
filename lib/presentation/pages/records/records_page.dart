@@ -5,7 +5,6 @@ import 'package:flutter_frontend/core/models/pet_model.dart';
 import 'package:flutter_frontend/core/network/api_exception.dart';
 import 'package:flutter_frontend/core/services/event_service.dart';
 import 'package:flutter_frontend/core/services/pet_service.dart';
-import 'package:flutter_frontend/core/services/user_service.dart';
 import 'package:flutter_frontend/core/services/vaccine_service.dart';
 import 'package:flutter_frontend/presentation/pages/records/widgets/record_list_item.dart';
 import '../../../app/routes.dart';
@@ -32,7 +31,6 @@ class _RecordsPageState extends State<RecordsPage> {
   late int _selectedFilterIndex;
   static const _currentIndex = 2;
 
-  final UserService _userService = UserService();
   final PetService _petService = PetService();
   final VaccineService _vaccineService = VaccineService();
   final EventService _eventService = EventService();
@@ -70,38 +68,31 @@ class _RecordsPageState extends State<RecordsPage> {
   Future<void> _loadRecords() async {
     setState(() => _isLoading = true);
     try {
-      final profile = await _userService.getCurrentUser();
-      final petIds = profile.pets
-          .map(_extractPetId)
-          .map((id) => id.trim())
-          .where((id) => id.isNotEmpty)
-          .toList(growable: false);
+      final results = await Future.wait<dynamic>([
+        _petService.getPets(),
+        _vaccineService.getVaccines(),
+      ]);
+      final pets = results[0] as List<PetModel>;
+      final vaccineCatalog = results[1] as List<dynamic>;
 
-      final pets = <PetModel>[];
-      final petVaccinations = <String, List<PetVaccinationModel>>{};
-      final petEvents = <String, List<EventModel>>{};
-      for (final petId in petIds) {
-        try {
-          final pet = await _petService.getPetById(petId);
-          pets.add(pet);
+      final petVaccinations = <String, List<PetVaccinationModel>>{
+        for (final pet in pets) pet.id: pet.vaccinations,
+      };
 
-          try {
-            final vaccinations = await _petService.getVaccinations(pet.id);
-            petVaccinations[pet.id] = vaccinations;
-          } catch (_) {
-            petVaccinations[pet.id] = const [];
-          }
-
+      final petEventEntries = await Future.wait(
+        pets.map((pet) async {
           try {
             final events = await _eventService.getEventsByPet(pet.id);
-            petEvents[pet.id] = events;
+            return MapEntry<String, List<EventModel>>(pet.id, events);
           } catch (_) {
-            petEvents[pet.id] = const [];
+            return const MapEntry<String, List<EventModel>>('', <EventModel>[]);
           }
-        } catch (_) {
-          // Skip missing/invalid pet ids to keep records page working.
-        }
-      }
+        }),
+      );
+      final petEvents = <String, List<EventModel>>{
+        for (final entry in petEventEntries)
+          if (entry.key.isNotEmpty) entry.key: entry.value,
+      };
 
       final vaccineIds = petVaccinations.values
         .expand((vaccinations) => vaccinations)
@@ -109,14 +100,15 @@ class _RecordsPageState extends State<RecordsPage> {
         .toSet()
         .toList(growable: false);
 
-      final vaccineInfoMap = <String, String>{};
-      for (final vaccineId in vaccineIds) {
-        try {
-          final vaccineInfo = await _vaccineService.getVaccineById(vaccineId);
-          vaccineInfoMap[vaccineId] = vaccineInfo.name;
-        } catch (_) {
-          vaccineInfoMap[vaccineId] = AppStrings.valueNotAvailable;
-        }
+      final vaccineInfoMap = <String, String>{
+        for (final vaccine in vaccineCatalog)
+          if (vaccine.id.trim().isNotEmpty)
+            vaccine.id.trim(): vaccine.name.trim().isEmpty
+                ? AppStrings.valueNotAvailable
+                : vaccine.name.trim(),
+      };
+      for (final vaccineId in vaccineIds.where((id) => !vaccineInfoMap.containsKey(id))) {
+        vaccineInfoMap[vaccineId] = AppStrings.valueNotAvailable;
       }
 
       if (!mounted) {
@@ -323,19 +315,6 @@ class _RecordsPageState extends State<RecordsPage> {
     }
   }
 
-  String _extractPetId(dynamic pet) {
-    if (pet is String) {
-      return pet;
-    }
-    if (pet is Map) {
-      final id = pet['id'] ?? pet['petId'] ?? pet['pet_id'];
-      if (id != null) {
-        return id.toString();
-      }
-    }
-    return pet?.toString() ?? '';
-  }
-
   Future<void> _goToAddEvent() async {
     final result = await Navigator.of(context).pushNamed(Routes.addEvent);
     if (result == true) {
@@ -359,8 +338,6 @@ class _RecordsPageState extends State<RecordsPage> {
       }
       return true;
     }).toList();
-
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,

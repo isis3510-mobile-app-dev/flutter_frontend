@@ -53,10 +53,6 @@ class EventCard extends StatelessWidget {
             _getEventIconPath,
             width: 38,
             height: 38,
-            colorFilter: ColorFilter.mode(
-              AppColors.primary,
-              BlendMode.srcIn,
-            ),
           ),
           const SizedBox(width: AppDimensions.spaceM),
           // Event Details
