@@ -4,17 +4,24 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../../core/constants/app_colors.dart';
 import '../../../../../core/constants/app_dimensions.dart';
 import '../../../../../core/constants/app_strings.dart';
+import '../../../../../core/models/pet_model.dart';
 import '../../models/pet_ui_model.dart';
 
 class OverviewTab extends StatelessWidget {
   const OverviewTab({
     super.key,
     required this.pet,
+    required this.petDetails,
+    required this.eventCount,
     required this.onToggleLostMode,
+    required this.onToggleNfc,
   });
 
   final PetUiModel pet;
+  final PetModel? petDetails;
+  final int eventCount;
   final VoidCallback onToggleLostMode;
+  final VoidCallback onToggleNfc;
 
   static String _formatDate(DateTime date) {
     const months = [
@@ -78,13 +85,19 @@ class OverviewTab extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppDimensions.spaceM),
-          _HealthSummaryCard(isDark: isDark),
+          _HealthSummaryCard(
+            isDark: isDark,
+            pet: pet,
+            petDetails: petDetails,
+            eventCount: eventCount,
+          ),
           const SizedBox(height: AppDimensions.spaceM),
           _StatusRow(
             isNfcActive: pet.isNfcSynced,
             isLost: pet.status == 'lost',
             isDark: isDark,
             onToggleLostMode: onToggleLostMode,
+            onToggleNfc: onToggleNfc,
           ),
         ],
       ),
@@ -217,15 +230,33 @@ class _InfoCell extends StatelessWidget {
 }
 
 class _HealthSummaryCard extends StatelessWidget {
-  const _HealthSummaryCard({required this.isDark});
+  const _HealthSummaryCard({
+    required this.isDark,
+    required this.pet,
+    required this.petDetails,
+    required this.eventCount,
+  });
 
   final bool isDark;
+  final PetUiModel pet;
+  final PetModel? petDetails;
+  final int eventCount;
 
   @override
   Widget build(BuildContext context) {
     final bgColor = isDark
         ? AppColors.petDetailHealthSummaryBgDark
         : AppColors.petDetailHealthSummaryBg;
+
+    final vaccinations = petDetails?.vaccinations ?? const [];
+    final totalVaccines = vaccinations.length;
+    final upcoming = vaccinations
+        .where((v) => v.nextDueDate.isAfter(DateTime.now()))
+        .toList(growable: false)
+      ..sort((a, b) => a.nextDueDate.compareTo(b.nextDueDate));
+    final completedVaccines = vaccinations.length - upcoming.length;
+    final vaccineMetric = totalVaccines == 0 ? '0/0' : '$completedVaccines/$totalVaccines';
+    final summaryTitleColor = isDark ? AppColors.onSurfaceDark : AppColors.grey900;
 
     return Container(
       decoration: BoxDecoration(
@@ -234,9 +265,9 @@ class _HealthSummaryCard extends StatelessWidget {
       ),
       padding: const EdgeInsets.fromLTRB(
         AppDimensions.pageHorizontalPadding,
-        12,
-        AppDimensions.pageHorizontalPadding,
         AppDimensions.spaceM,
+        AppDimensions.pageHorizontalPadding,
+        AppDimensions.pageHorizontalPadding,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -244,16 +275,91 @@ class _HealthSummaryCard extends StatelessWidget {
           Text(
             AppStrings.petDetailSectionHealthSummary.toUpperCase(),
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppColors.bottomNavActive,
-              letterSpacing: 0.8,
+              color: summaryTitleColor,
+              letterSpacing: 0.4,
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppDimensions.spaceM),
+          Row(
+            children: [
+              Expanded(
+                child: _HealthMetricTile(
+                  isDark: isDark,
+                  icon: Icons.vaccines_outlined,
+                  value: vaccineMetric,
+                  label: 'Vaccines',
+                ),
+              ),
+              const SizedBox(width: AppDimensions.spaceM),
+              Expanded(
+                child: _HealthMetricTile(
+                  isDark: isDark,
+                  icon: Icons.event_note_outlined,
+                  value: '$eventCount',
+                  label: 'Events',
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HealthMetricTile extends StatelessWidget {
+  const _HealthMetricTile({
+    required this.isDark,
+    required this.icon,
+    required this.value,
+    required this.label,
+  });
+
+  final bool isDark;
+  final IconData icon;
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final tileColor = isDark
+        ? AppColors.surfaceDark.withValues(alpha: 0.55)
+        : Colors.white.withValues(alpha: 0.75);
+    final iconColor = AppColors.bottomNavActive;
+    final valueColor = isDark ? AppColors.onSurfaceDark : AppColors.bottomNavActive;
+    final labelColor = isDark ? AppColors.onSurfaceDark : AppColors.grey900;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppDimensions.spaceM,
+        vertical: AppDimensions.spaceM,
+      ),
+      decoration: BoxDecoration(
+        color: tileColor,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 22,
+            color: iconColor,
+          ),
+          const SizedBox(height: AppDimensions.spaceS),
           Text(
-            'TODO: Health summary integration pending.',
+            value,
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              color: valueColor,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: isDark ? AppColors.onSurfaceDark : AppColors.grey700,
+              color: labelColor,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -269,12 +375,14 @@ class _StatusRow extends StatelessWidget {
     required this.isLost,
     required this.isDark,
     required this.onToggleLostMode,
+    required this.onToggleNfc,
   });
 
   final bool isNfcActive;
   final bool isLost;
   final bool isDark;
   final VoidCallback onToggleLostMode;
+  final VoidCallback onToggleNfc;
 
   @override
   Widget build(BuildContext context) {
@@ -302,6 +410,7 @@ class _StatusRow extends StatelessWidget {
             isActive: isNfcActive,
             borderColor: borderColor,
             isDark: isDark,
+            onTap: onToggleNfc,
           ),
         ),
       ],

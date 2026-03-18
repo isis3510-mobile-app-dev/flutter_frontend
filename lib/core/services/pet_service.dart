@@ -101,10 +101,7 @@ class PetService {
     required String petId,
     required Map<String, dynamic> data,
   }) async {
-    await _apiClient.post(
-      '$petsPath$petId/vaccinations/',
-      body: data,
-    );
+    await _apiClient.post('$petsPath$petId/vaccinations/', body: data);
   }
 
   Future<void> updateVaccination({
@@ -112,8 +109,17 @@ class PetService {
     required String vaccinationId,
     required Map<String, dynamic> data,
   }) async {
+    final normalizedPetId = petId.trim();
+    final normalizedVaccinationId = vaccinationId.trim();
+    if (normalizedPetId.isEmpty || normalizedVaccinationId.isEmpty) {
+      throw const ApiException(
+        type: ApiErrorType.unknown,
+        message: 'Missing vaccination id.',
+      );
+    }
+
     await _apiClient.put(
-      '$petsPath$petId/vaccinations/$vaccinationId/',
+      '$petsPath$normalizedPetId/vaccinations/$normalizedVaccinationId/',
       body: data,
     );
   }
@@ -122,9 +128,7 @@ class PetService {
     required String petId,
     required String vaccinationId,
   }) async {
-    await _apiClient.delete(
-      '$petsPath$petId/vaccinations/$vaccinationId/',
-    );
+    await _apiClient.delete('$petsPath$petId/vaccinations/$vaccinationId/');
   }
 
   Future<List<PetVaccinationModel>> getVaccinations(String petId) async {

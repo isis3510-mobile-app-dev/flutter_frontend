@@ -448,7 +448,9 @@ class _PetCardBottomActions extends StatelessWidget {
             child: _PetCardActionItem(
               label: 'Vaccines',
               assetPath: _PetCardAssets.vaccines,
-              color: AppColors.bottomNavActive,
+              color: isDark
+                  ? AppColors.addPetPhotoBackground
+                  : AppColors.bottomNavActive,
               onTap: onVaccinesTap,
             ),
           ),

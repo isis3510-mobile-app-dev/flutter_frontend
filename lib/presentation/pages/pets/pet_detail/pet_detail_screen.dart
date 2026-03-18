@@ -8,11 +8,15 @@ import '../../../../app/routes.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/models/event_model.dart';
 import '../../../../core/models/pet_model.dart';
 import '../../../../core/network/api_exception.dart';
+import '../../../../core/services/event_service.dart';
 import '../../../../core/services/pet_service.dart';
 import '../../../../core/services/profile_photo_service.dart';
 import '../../../../shared/widgets/quick_actions_fab.dart';
+import '../../add_event/add_event_args.dart';
+import '../../records/detail/detail_page.dart';
 import '../models/pet_ui_mapper.dart';
 import '../models/pet_ui_model.dart';
 import 'tabs/events_tab.dart';
@@ -22,9 +26,14 @@ import 'tabs/vaccines_tab.dart';
 enum _PetAction { edit, delete }
 
 class PetDetailScreen extends StatefulWidget {
-  const PetDetailScreen({super.key, required this.pet});
+  const PetDetailScreen({
+    super.key,
+    required this.pet,
+    this.initialTabIndex = 0,
+  });
 
   final PetUiModel pet;
+  final int initialTabIndex;
 
   @override
   State<PetDetailScreen> createState() => _PetDetailScreenState();
@@ -34,19 +43,48 @@ class _PetDetailScreenState extends State<PetDetailScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   final PetService _petService = PetService();
+  final EventService _eventService = EventService();
   final ProfilePhotoService _photoService = ProfilePhotoService();
+
+  Future<void> _goToAddVaccine() async {
+    final result = await Navigator.pushNamed(context, Routes.addVaccine);
+    if (result == true) {
+      await _loadPetDetail();
+    }
+  }
+
+  Future<void> _goToAddEvent() async {
+    final result = await Navigator.pushNamed(
+      context,
+      Routes.addEvent,
+      arguments: AddEventArgs(
+        petId: _pet.id,
+        petName: _pet.name,
+      ),
+    );
+    if (result == true) {
+      _hasMutatedPet = true;
+      await _loadPetDetail();
+    }
+  }
 
   late PetUiModel _pet;
   PetModel? _petDetails;
+  List<EventModel> _petEvents = const [];
   bool _isLoading = false;
   bool _hasMutatedPet = false;
   String? _errorMessage;
+  String? _eventsErrorMessage;
 
   @override
   void initState() {
     super.initState();
     _pet = widget.pet;
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(
+      length: 3,
+      vsync: this,
+      initialIndex: widget.initialTabIndex.clamp(0, 2),
+    );
     _loadPetDetail();
   }
 
@@ -54,12 +92,23 @@ class _PetDetailScreenState extends State<PetDetailScreen>
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _eventsErrorMessage = null;
     });
 
     try {
       final detail = await _petService.getPetById(widget.pet.id);
       final localPath = await _photoService.getPetPhotoPath(widget.pet.id);
       final uiPet = detail.toUiModel().copyWith(localPhotoPath: localPath);
+      List<EventModel> petEvents = const [];
+      String? eventsErrorMessage;
+
+      try {
+        petEvents = await _eventService.getEventsByPet(widget.pet.id);
+      } on ApiException catch (error) {
+        eventsErrorMessage = error.message;
+      } catch (_) {
+        eventsErrorMessage = AppStrings.errorGeneric;
+      }
 
       if (!mounted) {
         return;
@@ -68,6 +117,8 @@ class _PetDetailScreenState extends State<PetDetailScreen>
       setState(() {
         _petDetails = detail;
         _pet = uiPet;
+        _petEvents = petEvents..sort((a, b) => b.date.compareTo(a.date));
+        _eventsErrorMessage = eventsErrorMessage;
       });
     } on ApiException catch (error) {
       if (!mounted) {
@@ -89,6 +140,27 @@ class _PetDetailScreenState extends State<PetDetailScreen>
           _isLoading = false;
         });
       }
+    }
+  }
+
+  Future<void> _openEventDetail(EventModel event) async {
+    if (_petDetails == null) {
+      return;
+    }
+
+    final result = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => DetailPage(
+          type: 'event',
+          event: event,
+          pet: _petDetails,
+        ),
+      ),
+    );
+
+    if (result == true) {
+      _hasMutatedPet = true;
+      await _loadPetDetail();
     }
   }
 
@@ -146,6 +218,56 @@ class _PetDetailScreenState extends State<PetDetailScreen>
 
       _hasMutatedPet = true;
       await _loadPetDetail();
+    } on ApiException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(AppStrings.petsLoadError)),
+      );
+    }
+  }
+
+  Future<void> _toggleNfc() async {
+    try {
+      if (_pet.isNfcSynced) {
+        await _petService.updatePet(
+          petId: _pet.id,
+          data: {'isNfcSynced': false},
+        );
+
+        if (!mounted) {
+          return;
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('NFC desactivated')),
+        );
+
+        _hasMutatedPet = true;
+        await _loadPetDetail();
+      } else {
+        final result = await Navigator.pushNamed(
+          context,
+          Routes.nfc,
+          arguments: _pet.id,
+        );
+
+        if (!mounted) {
+          return;
+        }
+
+        if (result != null) {
+          await _loadPetDetail();
+        }
+      }
     } on ApiException catch (error) {
       if (!mounted) {
         return;
@@ -351,13 +473,25 @@ class _PetDetailScreenState extends State<PetDetailScreen>
             children: [
               OverviewTab(
                 pet: _pet,
+                petDetails: _petDetails,
+                eventCount: _petEvents.length,
                 onToggleLostMode: _toggleLostMode,
+                onToggleNfc: _toggleNfc,
               ),
               VaccinesTab(
                 pet: _pet,
                 vaccinations: _petDetails?.vaccinations ?? const [],
+                onAddVaccine: _goToAddVaccine,
               ),
-              EventsTab(pet: _pet),
+              EventsTab(
+                pet: _pet,
+                events: _petEvents,
+                isLoading: false,
+                errorMessage: _eventsErrorMessage,
+                onAddEvent: _goToAddEvent,
+                onRetry: _loadPetDetail,
+                onOpenEvent: _openEventDetail,
+              ),
             ],
           ),
         ),
@@ -755,7 +889,7 @@ class _PetDetailTabBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return ColoredBox(
-      color: isDark ? AppColors.surfaceDark : Colors.white,
+      color: isDark ? AppColors.petDetailInfoBackgroundDark : Colors.white,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -767,27 +901,32 @@ class _PetDetailTabBar extends StatelessWidget {
                   label: AppStrings.petDetailTabOverview,
                   svgPath: 'assets/icons/featureIcons/overview.svg',
                   isActive: controller.index == 0,
+                  isDark: isDark,
                   onTap: () => controller.animateTo(0),
                 ),
                 _Tab(
                   label: AppStrings.petDetailTabVaccines,
                   svgPath: 'assets/icons/featureIcons/vaccines.svg',
                   isActive: controller.index == 1,
+                  isDark: isDark,
                   onTap: () => controller.animateTo(1),
                 ),
                 _Tab(
                   label: AppStrings.petDetailTabEvents,
                   svgPath: 'assets/icons/featureIcons/calendar.svg',
                   isActive: controller.index == 2,
+                  isDark: isDark,
                   onTap: () => controller.animateTo(2),
                 ),
               ],
             ),
           ),
-          const Divider(
+          Divider(
             height: 1,
             thickness: 1,
-            color: AppColors.petFilterInactiveBorder,
+            color: isDark
+                ? AppColors.bottomNavTopBorderDark
+                : AppColors.petFilterInactiveBorder,
           ),
         ],
       ),
@@ -800,19 +939,25 @@ class _Tab extends StatelessWidget {
     required this.label,
     required this.svgPath,
     required this.isActive,
+    required this.isDark,
     required this.onTap,
   });
 
   final String label;
   final String svgPath;
   final bool isActive;
+  final bool isDark;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final color = isActive
-        ? AppColors.bottomNavActive
+    final activeColor = isDark
+        ? AppColors.addPetPhotoBackground
+        : AppColors.bottomNavActive;
+    final inactiveColor = isDark
+        ? AppColors.bottomNavInactiveDark
         : AppColors.bottomNavInactive;
+    final color = isActive ? activeColor : inactiveColor;
     return Expanded(
       child: InkWell(
         onTap: onTap,
@@ -844,7 +989,7 @@ class _Tab extends StatelessWidget {
             ),
             Container(
               height: 2.5,
-              color: isActive ? AppColors.bottomNavActive : Colors.transparent,
+              color: isActive ? activeColor : Colors.transparent,
             ),
           ],
         ),

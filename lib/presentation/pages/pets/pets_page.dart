@@ -10,6 +10,7 @@ import '../../../shared/widgets/petcare_bottom_nav_bar.dart';
 import '../../../shared/widgets/quick_actions_fab.dart';
 import 'models/pet_ui_mapper.dart';
 import 'models/pet_ui_model.dart';
+import 'pet_detail/pet_detail_args.dart';
 import 'widgets/pet_card.dart';
 import 'widgets/pet_count_pill.dart';
 import 'widgets/pet_filter_chips.dart';
@@ -134,6 +135,26 @@ class _PetsPageState extends State<PetsPage> {
     Navigator.of(context).pushNamed(Routes.addEvent);
   }
 
+  Future<void> _openPetDetail(
+    PetUiModel pet, {
+    int initialTabIndex = 0,
+  }) async {
+    final changed = await Navigator.pushNamed(
+      context,
+      Routes.petDetail,
+      arguments: PetDetailArgs(
+        pet: pet,
+        initialTabIndex: initialTabIndex,
+      ),
+    );
+
+    if (!mounted || changed != true) {
+      return;
+    }
+
+    await _loadPets();
+  }
+
   Future<bool> _confirmMarkAsLost(PetUiModel pet) async {
     final result = await showDialog<bool>(
       context: context,
@@ -208,6 +229,57 @@ class _PetsPageState extends State<PetsPage> {
     }
   }
 
+  Future<void> _handleNfcTap(PetUiModel pet) async {
+    try {
+      if (pet.isNfcSynced) {
+        await _petService.updatePet(
+          petId: pet.id,
+          data: {'isNfcSynced': false},
+        );
+
+        if (!mounted) {
+          return;
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${pet.name} NFC deactivated')),
+        );
+        await _loadPets();
+        return;
+      }
+
+      final result = await Navigator.pushNamed(
+        context,
+        Routes.nfc,
+        arguments: pet.id,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      if (result != null) {
+        await _loadPets();
+      }
+    } on ApiException catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(AppStrings.petsLoadError)),
+      );
+    }
+  }
+
   static List<PetUiModel> _applyFilters(
     List<PetUiModel> pets,
     PetFilter filter,
@@ -228,8 +300,6 @@ class _PetsPageState extends State<PetsPage> {
 
     if (filter == PetFilter.healthy) {
       result = result.where((p) => p.status == 'healthy').toList();
-    } else if (filter == PetFilter.vaccineDue) {
-      result = result.where((p) => p.status == 'needs attention').toList();
     } else if (filter == PetFilter.lost) {
       result = result.where((p) => p.status == 'lost').toList();
     }
@@ -293,22 +363,10 @@ class _PetsPageState extends State<PetsPage> {
         final pet = _filtered[index];
         return PetCard(
           pet: pet,
-          onTap: () async {
-            final changed = await Navigator.pushNamed(
-              context,
-              Routes.petDetail,
-              arguments: pet,
-            );
-
-            if (!mounted || changed != true) {
-              return;
-            }
-
-            await _loadPets();
-          },
-          onVaccinesTap: () {},
+          onTap: () => _openPetDetail(pet),
+          onVaccinesTap: () => _openPetDetail(pet, initialTabIndex: 1),
           onLostModeTap: () => _toggleLostMode(pet),
-          onNfcTap: () {},
+          onNfcTap: () => _handleNfcTap(pet),
         );
       },
     );

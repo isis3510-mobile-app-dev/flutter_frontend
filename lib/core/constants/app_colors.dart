@@ -33,6 +33,16 @@ abstract class AppColors {
   static const Color positiveText = Color(0xFF2E7D32);
   static const Color positiveTextDark = Color.fromARGB(255, 66, 158, 106);
   static const Color negativeText = Color(0xFFC62828);
+  static const Color infoText = Color(0xFF1565C0);
+  static const Color infoBackground = Color(0xFFE3F2FD);
+
+  // --- Vaccine status pills ---
+  static const Color vaccineStatusCompletedText = positiveText;
+  static const Color vaccineStatusCompletedBg = positiveBackground;
+  static const Color vaccineStatusUpcomingText = infoText;
+  static const Color vaccineStatusUpcomingBg = infoBackground;
+  static const Color vaccineStatusOverdueText = negativeText;
+  static const Color vaccineStatusOverdueBg = negativeBackground;
   static const Color negativeTextDark = Color(0xFFEF9A9A);
 
   // --- Neutral / grey scale ---

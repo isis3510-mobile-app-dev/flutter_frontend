@@ -12,6 +12,7 @@ import '../presentation/pages/auth/auth_page.dart';
 import '../presentation/pages/home/home_page.dart';
 import '../presentation/pages/pets/models/pet_ui_model.dart';
 import '../presentation/pages/pets/add_pet/add_pet_screen.dart';
+import '../presentation/pages/pets/pet_detail/pet_detail_args.dart';
 import '../presentation/pages/pets/pet_detail/pet_detail_screen.dart';
 import '../presentation/pages/pets/pets_page.dart';
 import '../presentation/pages/profile/edit_profile_page.dart';
@@ -80,7 +81,8 @@ class Routes {
         return _buildRoute(const AddVaccinePage(), settings);
 
       case nfc:
-        return _buildRoute(const NfcPage(), settings);
+        final initialPetId = settings.arguments is String ? settings.arguments as String : null;
+        return _buildRoute(NfcPage(initialPetId: initialPetId), settings);
 
       case records:
         return _buildRecordsRoute(settings);
@@ -132,13 +134,23 @@ class Routes {
   }
 
   static MaterialPageRoute _buildPetDetailRoute(RouteSettings settings) {
-    final pet = settings.arguments;
+    final argument = settings.arguments;
 
-    if (pet is! PetUiModel) {
+    if (argument is PetDetailArgs) {
+      return _buildRoute(
+        PetDetailScreen(
+          pet: argument.pet,
+          initialTabIndex: argument.initialTabIndex,
+        ),
+        settings,
+      );
+    }
+
+    if (argument is! PetUiModel) {
       return _buildRoute(const PetsPage(), settings);
     }
 
-    return _buildRoute(PetDetailScreen(pet: pet), settings);
+    return _buildRoute(PetDetailScreen(pet: argument), settings);
   }
 
   static MaterialPageRoute _buildAddPetRoute(RouteSettings settings) {
