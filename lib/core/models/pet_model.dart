@@ -26,15 +26,17 @@ class PetVaccinationModel {
     required this.lotNumber,
     required this.status,
     required this.administeredBy,
+    required this.clinicName,
     required this.attachedDocuments,
   });
 
   final String vaccineId;
-  final DateTime? dateGiven;
-  final DateTime? nextDueDate;
+  final DateTime dateGiven;
+  final DateTime nextDueDate;
   final String lotNumber;
   final String status;
   final String administeredBy;
+  final String clinicName;
   final List<PetDocumentModel> attachedDocuments;
 
   factory PetVaccinationModel.fromJson(Map<String, dynamic> json) {
@@ -47,6 +49,7 @@ class PetVaccinationModel {
       lotNumber: _readString(json['lotNumber']),
       status: _readString(json['status']),
       administeredBy: _readString(json['administeredBy']),
+      clinicName: _readString(json['clinicName']),
       attachedDocuments: attachedDocumentsJson == null
           ? const []
           : attachedDocumentsJson
@@ -141,12 +144,12 @@ Map<String, dynamic> _asStringDynamicMap(dynamic value) {
   return const <String, dynamic>{};
 }
 
-DateTime? _parseDate(dynamic value) {
+DateTime _parseDate(dynamic value) {
   if (value is! String || value.trim().isEmpty) {
-    return null;
+    return DateTime(0);
   }
 
-  return DateTime.tryParse(value);
+  return DateTime.tryParse(value) ?? DateTime(0);
 }
 
 double? _readDouble(dynamic value) {
