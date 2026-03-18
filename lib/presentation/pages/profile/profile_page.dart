@@ -9,6 +9,7 @@ import 'package:flutter_frontend/core/services/auth_service.dart';
 import 'package:flutter_frontend/core/services/profile_photo_service.dart';
 import 'package:flutter_frontend/core/services/user_service.dart';
 import 'package:flutter_frontend/app/routes.dart';
+import 'package:flutter_frontend/app/theme_controller.dart';
 import 'package:flutter_frontend/shared/widgets/petcare_bottom_nav_bar.dart';
 import 'package:flutter_frontend/shared/widgets/quick_actions_fab.dart';
 import 'widgets/profile_header.dart';
@@ -37,14 +38,12 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _isLoadingProfile = false;
 
   // Preference states
-  late bool _darkModeEnabled;
   late bool _notificationsEnabled;
   late bool _offlineModeEnabled;
 
   @override
   void initState() {
     super.initState();
-    _darkModeEnabled = false;
     _notificationsEnabled = true;
     _offlineModeEnabled = false;
     _loadProfile();
@@ -121,11 +120,70 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  void _handleDarkModeToggle(bool value) {
-    setState(() {
-      _darkModeEnabled = value;
-    });
-    // TODO: Implement theme switching logic
+  Future<void> _showThemeModePicker() async {
+    final themeController = ThemeControllerScope.of(context);
+    final selected = await showModalBottomSheet<AppThemePreference>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        final currentPreference = themeController.preference;
+
+        Widget option(
+          AppThemePreference preference, {
+          required String title,
+          String? subtitle,
+        }) {
+          return ListTile(
+            title: Text(title),
+            subtitle: subtitle == null ? null : Text(subtitle),
+            trailing: preference == currentPreference
+                ? const Icon(Icons.check, color: AppColors.primary)
+                : null,
+            onTap: () => Navigator.of(context).pop(preference),
+          );
+        }
+
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: Text(
+                  AppStrings.profileThemeModePickerTitle,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+              option(
+                AppThemePreference.light,
+                title: AppStrings.profileThemeLight,
+                subtitle: AppStrings.profileThemeLightSubtitle,
+              ),
+              option(
+                AppThemePreference.dark,
+                title: AppStrings.profileThemeDark,
+                subtitle: AppStrings.profileThemeDarkSubtitle,
+              ),
+              option(
+                AppThemePreference.schedule,
+                title: AppStrings.profileThemeSchedule,
+                subtitle: AppStrings.profileThemeScheduleSubtitle,
+              ),
+              option(
+                AppThemePreference.sensor,
+                title: AppStrings.profileThemeSensor,
+                subtitle: AppStrings.profileThemeSensorSubtitle,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (selected == null) {
+      return;
+    }
+
+    await themeController.setPreference(selected);
   }
 
   void _handleNotificationsToggle(bool value) {
@@ -216,6 +274,45 @@ class _ProfilePageState extends State<ProfilePage> {
       return AppStrings.validationRequired;
     }
     return null;
+  }
+
+  String _themePreferenceLabel(ThemeController themeController) {
+    return switch (themeController.preference) {
+      AppThemePreference.light => AppStrings.profileThemeLight,
+      AppThemePreference.dark => AppStrings.profileThemeDark,
+      AppThemePreference.schedule => AppStrings.profileThemeSchedule,
+      AppThemePreference.sensor => AppStrings.profileThemeSensor,
+    };
+  }
+
+  String _themePreferenceSubtitle(ThemeController themeController) {
+    final activeTheme = themeController.isDarkModeEnabled
+        ? AppStrings.profileThemeStatusDark
+        : AppStrings.profileThemeStatusLight;
+
+    if (themeController.preference == AppThemePreference.light ||
+        themeController.preference == AppThemePreference.dark) {
+      return activeTheme;
+    }
+
+    final source = switch (themeController.activeThemeSource) {
+      ThemeSource.manual => AppStrings.profileThemeSourceManual,
+      ThemeSource.ambientLight => AppStrings.profileThemeSourceSensor,
+      ThemeSource.schedule =>
+        themeController.preference == AppThemePreference.sensor
+            ? AppStrings.profileThemeSourceFallback
+            : AppStrings.profileThemeSourceSchedule,
+    };
+
+    if (themeController.preference == AppThemePreference.sensor) {
+      final lux = themeController.lastAmbientLux;
+      final luxLabel = lux == null
+          ? AppStrings.profileThemeLuxUnavailable
+          : '${lux.toStringAsFixed(1)} lx';
+      return '$source • $luxLabel • $activeTheme';
+    }
+
+    return '$source • $activeTheme';
   }
 
   Future<String?> _showSingleFieldEditor({
@@ -384,6 +481,8 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final themeController = ThemeControllerScope.of(context);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SingleChildScrollView(
@@ -500,11 +599,12 @@ class _ProfilePageState extends State<ProfilePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ProfileToggleItem(
+                  ProfileMenuItem(
                     imageAssetPath: AppAssets.iconProfileDarkMode,
-                    title: AppStrings.profileDarkMode,
-                    value: _darkModeEnabled,
-                    onChanged: _handleDarkModeToggle,
+                    title: AppStrings.profileThemeMode,
+                    subtitle:
+                        '${_themePreferenceLabel(themeController)} • ${_themePreferenceSubtitle(themeController)}',
+                    onTap: _showThemeModePicker,
                   ),
                   Divider(
                     height: AppDimensions.strokeThin,
