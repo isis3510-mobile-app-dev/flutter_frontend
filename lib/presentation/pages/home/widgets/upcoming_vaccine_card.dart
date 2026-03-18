@@ -40,7 +40,7 @@ class UpcomingVaccineCard extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.symmetric(
           horizontal: AppDimensions.pageHorizontalPadding,
-          vertical: AppDimensions.spaceM,
+          vertical: AppDimensions.spaceS,
         ),
         decoration: BoxDecoration(
           color: backgroundColor,
@@ -56,14 +56,14 @@ class UpcomingVaccineCard extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(
             horizontal: AppDimensions.spaceL,
-            vertical: AppDimensions.spaceL,
+            vertical: AppDimensions.spaceM,
           ),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
-                width: 41,
-                height: 41,
+                width: 38,
+                height: 38,
                 decoration: BoxDecoration(
                   color: isDark
                       ? AppColors.petCardQuickActionBgDark
@@ -73,8 +73,8 @@ class UpcomingVaccineCard extends StatelessWidget {
                 child: Center(
                   child: SvgPicture.asset(
                     AppAssets.iconVaccine,
-                    width: 20,
-                    height: 20,
+                    width: 18,
+                    height: 18,
                     colorFilter: ColorFilter.mode(
                       isDark ? AppColors.primaryVariant : AppColors.primary,
                       BlendMode.srcIn,
@@ -102,7 +102,7 @@ class UpcomingVaccineCard extends StatelessWidget {
                       vaccineName,
                       style: TextStyle(
                         color: textColor,
-                        fontSize: 16,
+                        fontSize: 14,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -111,7 +111,7 @@ class UpcomingVaccineCard extends StatelessWidget {
                       '$petName • $date',
                       style: TextStyle(
                         color: subtextColor,
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: FontWeight.w500,
                       ),
                     ),

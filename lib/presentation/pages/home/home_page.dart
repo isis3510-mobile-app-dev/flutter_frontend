@@ -45,7 +45,7 @@ class _HomePageState extends State<HomePage> {
   String _userName = '';
   List<PetUiModel> _pets = const [];
   List<_HomeEventEntry> _upcomingEvents = const [];
-  _UpcomingVaccineData? _nextVaccine;
+  List<_UpcomingVaccineData> _upcomingVaccines = const [];
   _OverdueVaccineData? _overdueVaccineData;
   bool _isLoading = false;
   String? _errorMessage;
@@ -212,6 +212,7 @@ class _HomePageState extends State<HomePage> {
       final vaccineNamesById = Map<String, String>.fromEntries(vaccineNameEntries);
 
       final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
       final overdueVaccines = allVaccinations.where((entry) {
         final due = entry.vaccination.nextDueDate;
         return due.year > 1 && due.isBefore(now);
@@ -222,7 +223,11 @@ class _HomePageState extends State<HomePage> {
 
       final upcomingVaccines = allVaccinations.where((entry) {
         final due = entry.vaccination.nextDueDate;
-        return due.year > 1 && due.isAfter(now);
+        if (due.year <= 1) {
+          return false;
+        }
+        final dueDay = DateTime(due.year, due.month, due.day);
+        return !dueDay.isBefore(today);
       }).toList(growable: false)
         ..sort(
           (a, b) => a.vaccination.nextDueDate.compareTo(b.vaccination.nextDueDate),
@@ -255,12 +260,9 @@ class _HomePageState extends State<HomePage> {
                 ),
                 entry: overdueVaccines.first,
               );
-        _nextVaccine = upcomingVaccines.isEmpty
-            ? null
-            : _UpcomingVaccineData.fromEntry(
-                upcomingVaccines.first,
-                vaccineNamesById,
-              );
+        _upcomingVaccines = upcomingVaccines
+            .map((entry) => _UpcomingVaccineData.fromEntry(entry, vaccineNamesById))
+            .toList(growable: false);
       });
     } on ApiException catch (error) {
       if (!mounted) {
@@ -331,8 +333,9 @@ class _HomePageState extends State<HomePage> {
   Widget _buildVaccinesSection() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final titleColor = isDark ? AppColors.onBackgroundDark : AppColors.onSurface;
+    final visibleVaccines = _upcomingVaccines.take(3).toList(growable: false);
 
-    if (_overdueVaccineData == null && _nextVaccine == null) {
+    if (_overdueVaccineData == null && visibleVaccines.isEmpty) {
       return const SizedBox.shrink();
     }
 
@@ -388,15 +391,15 @@ class _HomePageState extends State<HomePage> {
               _overdueVaccineData!.vaccineName,
             ),
           ),
-        if (_nextVaccine != null)
+        for (final vaccine in visibleVaccines)
           UpcomingVaccineCard(
-            vaccineName: _nextVaccine!.vaccineName,
-            petName: _nextVaccine!.petName,
-            date: _formatDate(_nextVaccine!.date),
-            daysUntil: _nextVaccine!.daysUntil,
+            vaccineName: vaccine.vaccineName,
+            petName: vaccine.petName,
+            date: _formatDate(vaccine.date),
+            daysUntil: vaccine.daysUntil,
             onTap: () => _editVaccine(
-              _nextVaccine!.entry,
-              _nextVaccine!.vaccineName,
+              vaccine.entry,
+              vaccine.vaccineName,
             ),
           ),
       ],
@@ -543,6 +546,7 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildPetsHorizontalList() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final visiblePets = _pets.take(5).toList(growable: false);
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(
@@ -550,7 +554,7 @@ class _HomePageState extends State<HomePage> {
       ),
       child: Row(
         children: [
-          ..._pets.map(
+          ...visiblePets.map(
             (pet) => Padding(
               padding: const EdgeInsets.only(
                 right: AppDimensions.spaceM,
