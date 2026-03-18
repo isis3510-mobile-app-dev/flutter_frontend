@@ -4,17 +4,22 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../../core/constants/app_colors.dart';
 import '../../../../../core/constants/app_dimensions.dart';
 import '../../../../../core/constants/app_strings.dart';
+import '../../../../../core/models/pet_model.dart';
 import '../../models/pet_ui_model.dart';
 
 class OverviewTab extends StatelessWidget {
   const OverviewTab({
     super.key,
     required this.pet,
+    required this.petDetails,
     required this.onToggleLostMode,
+    required this.onToggleNfc,
   });
 
   final PetUiModel pet;
+  final PetModel? petDetails;
   final VoidCallback onToggleLostMode;
+  final VoidCallback onToggleNfc;
 
   static String _formatDate(DateTime date) {
     const months = [
@@ -78,13 +83,18 @@ class OverviewTab extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppDimensions.spaceM),
-          _HealthSummaryCard(isDark: isDark),
+          _HealthSummaryCard(
+            isDark: isDark,
+            pet: pet,
+            petDetails: petDetails,
+          ),
           const SizedBox(height: AppDimensions.spaceM),
           _StatusRow(
             isNfcActive: pet.isNfcSynced,
             isLost: pet.status == 'lost',
             isDark: isDark,
             onToggleLostMode: onToggleLostMode,
+            onToggleNfc: onToggleNfc,
           ),
         ],
       ),
@@ -217,15 +227,36 @@ class _InfoCell extends StatelessWidget {
 }
 
 class _HealthSummaryCard extends StatelessWidget {
-  const _HealthSummaryCard({required this.isDark});
+  const _HealthSummaryCard({
+    required this.isDark,
+    required this.pet,
+    required this.petDetails,
+  });
 
   final bool isDark;
+  final PetUiModel pet;
+  final PetModel? petDetails;
 
   @override
   Widget build(BuildContext context) {
     final bgColor = isDark
         ? AppColors.petDetailHealthSummaryBgDark
         : AppColors.petDetailHealthSummaryBg;
+
+    final vaccinations = petDetails?.vaccinations ?? const [];
+    final totalVaccines = vaccinations.length;
+    final upcoming = vaccinations
+        .where((v) => v.nextDueDate.isAfter(DateTime.now()))
+        .toList(growable: false)
+      ..sort((a, b) => a.nextDueDate.compareTo(b.nextDueDate));
+    final nextDue = upcoming.isEmpty ? null : upcoming.first;
+
+    final allergy = pet.knownAllergies.trim().isEmpty
+        ? AppStrings.valueNotAvailable
+        : pet.knownAllergies;
+    final vetName = pet.defaultVet.trim().isEmpty
+        ? AppStrings.valueNotAvailable
+        : pet.defaultVet;
 
     return Container(
       decoration: BoxDecoration(
@@ -251,7 +282,33 @@ class _HealthSummaryCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'TODO: Health summary integration pending.',
+            'Vaccines recorded: $totalVaccines',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: isDark ? AppColors.onSurfaceDark : AppColors.grey700,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            nextDue != null
+                ? 'Next due: ${_formatShortDate(nextDue.nextDueDate)}'
+                : 'Next due: ${AppStrings.valueNotAvailable}',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: isDark ? AppColors.onSurfaceDark : AppColors.grey700,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Known allergies: $allergy',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: isDark ? AppColors.onSurfaceDark : AppColors.grey700,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Default vet: $vetName',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: isDark ? AppColors.onSurfaceDark : AppColors.grey700,
               fontWeight: FontWeight.w500,
@@ -261,6 +318,14 @@ class _HealthSummaryCard extends StatelessWidget {
       ),
     );
   }
+
+  String _formatShortDate(DateTime date) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
 }
 
 class _StatusRow extends StatelessWidget {
@@ -269,12 +334,14 @@ class _StatusRow extends StatelessWidget {
     required this.isLost,
     required this.isDark,
     required this.onToggleLostMode,
+    required this.onToggleNfc,
   });
 
   final bool isNfcActive;
   final bool isLost;
   final bool isDark;
   final VoidCallback onToggleLostMode;
+  final VoidCallback onToggleNfc;
 
   @override
   Widget build(BuildContext context) {
@@ -302,6 +369,7 @@ class _StatusRow extends StatelessWidget {
             isActive: isNfcActive,
             borderColor: borderColor,
             isDark: isDark,
+            onTap: onToggleNfc,
           ),
         ),
       ],
