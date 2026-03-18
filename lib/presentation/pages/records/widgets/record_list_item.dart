@@ -11,6 +11,10 @@ class RecordListItem extends StatelessWidget {
     required this.icon,
     required this.iconBackground,
     required this.iconColor,
+    this.statusLabel,
+    this.statusBackgroundColor,
+    this.statusTextColor,
+    this.showTrailingChevron = true,
     this.onTap,
   });
 
@@ -20,6 +24,10 @@ class RecordListItem extends StatelessWidget {
   final IconData icon;
   final Color iconBackground;
   final Color iconColor;
+  final String? statusLabel;
+  final Color? statusBackgroundColor;
+  final Color? statusTextColor;
+  final bool showTrailingChevron;
   final VoidCallback? onTap;
 
   @override
@@ -82,10 +90,32 @@ class RecordListItem extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(
-                Icons.chevron_right,
-                color: AppColors.grey700,
-              ),
+              if (statusLabel != null && statusLabel!.trim().isNotEmpty) ...[
+                const SizedBox(width: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: statusBackgroundColor ?? AppColors.grey100,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    statusLabel!,
+                    style: context.textTheme.bodySmall?.copyWith(
+                      color: statusTextColor ?? AppColors.grey700,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+              if (showTrailingChevron)
+                const Icon(
+                  Icons.chevron_right,
+                  color: AppColors.grey700,
+                ),
             ],
           ),
         ),

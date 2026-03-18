@@ -50,6 +50,8 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
 
   int _step = 0;
 
+  bool get _isEditing => widget.prefill != null;
+
   @override
   void initState() {
     super.initState();
@@ -345,9 +347,12 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
   }
 
   Future<void> _pickDate() async {
+    final initialDate =
+        _parseDateInput(_dateController.text.trim()) ?? DateTime.now();
+
     final pickedDate = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: initialDate,
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
@@ -423,25 +428,30 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
     setState(() => _isSubmitting = true);
 
     try {
-      final effectiveVaccineId = widget.prefill != null
-          ? (_originalVaccineId ?? _selectedVaccineId)
-          : _selectedVaccineId;
-      final effectiveDateGiven = widget.prefill != null
-          ? (_originalDateGiven ?? dateGiven)
-          : dateGiven;
+      final selectedPetId = _selectedPetId?.trim() ?? '';
+      final selectedVaccineId =
+          (_selectedVaccineId ?? _originalVaccineId)?.trim() ?? '';
+
+      if (selectedPetId.isEmpty || selectedVaccineId.isEmpty) {
+        throw const FormatException('Missing vaccine or pet selection.');
+      }
 
       final vaccine = _vaccines.firstWhere(
-        (item) => item.id == effectiveVaccineId,
+        (item) => item.id == selectedVaccineId,
         orElse: () => const VaccineModel(id: '', schema: '', name: ''),
       );
       final intervalDays = vaccine.intervalDays;
+      final originalDateGiven = _originalDateGiven ?? dateGiven;
+      final isDateChanged = !_isSameCalendarDay(originalDateGiven, dateGiven);
       final nextDueDate = intervalDays > 0
-          ? effectiveDateGiven.add(Duration(days: intervalDays))
+          ? dateGiven.add(Duration(days: intervalDays))
           : null;
 
       final payload = <String, dynamic>{
-        'vaccineId': effectiveVaccineId,
-        'dateGiven': _formatDateForApi(effectiveDateGiven),
+        'vaccineId': selectedVaccineId,
+        'dateGiven': _formatDateForApi(
+          _isEditing ? originalDateGiven : dateGiven,
+        ),
         'nextDueDate': nextDueDate == null ? null : _formatDateForApi(nextDueDate),
         'lotNumber': '',
         'status': 'completed',
@@ -450,14 +460,18 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
         'attachedDocuments': const [],
       };
 
-      if (widget.prefill == null) {
+      if (_isEditing && isDateChanged) {
+        payload['newDateGiven'] = _formatDateForApi(dateGiven);
+      }
+
+      if (!_isEditing) {
         await _petService.addVaccination(
-          petId: _selectedPetId!,
+          petId: selectedPetId,
           data: payload,
         );
       } else {
-        await _petService.updateVaccination(
-          petId: _selectedPetId!,
+        await _petService.updateVaccinationByVaccineId(
+          petId: selectedPetId,
           data: payload,
         );
       }
@@ -467,7 +481,7 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            widget.prefill == null
+            !_isEditing
                 ? 'Vaccine saved successfully.'
                 : 'Vaccine updated successfully.',
           ),
@@ -488,9 +502,12 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
   @override
   Widget build(BuildContext context) {
     final stepContent = _buildStepContent();
+    final showBackButton = _step > 0;
 
     return Scaffold(
-      appBar: AppBar(title: const Text(AppStrings.addVaccineTitle)),
+      appBar: AppBar(
+        title: Text(_isEditing ? 'Edit Vaccine' : AppStrings.addVaccineTitle),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -520,8 +537,9 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
           padding: const EdgeInsets.only(top: 24),
           child: Row(
             children: [
-              if (_step > 0)
-                Expanded(
+              if (showBackButton)
+                Flexible(
+                  flex: 4,
                   child: FullWidthButton(
                     text: AppStrings.semanticBackButton,
                     onPressed: _back,
@@ -530,11 +548,12 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
                     textColor: AppColors.primary,
                   ),
                 ),
-              if (_step > 0) const SizedBox(width: 12),
-              Expanded(
+              if (showBackButton) const SizedBox(width: 12),
+              Flexible(
+                flex: showBackButton ? 6 : 1,
                 child: FullWidthButton(
                   text: _step == 2
-                      ? (widget.prefill == null
+                      ? (!_isEditing
                           ? AppStrings.semanticAddVaccineButton
                           : AppStrings.semanticUpdateVaccineButton)
                       : AppStrings.semanticContinueButton,
@@ -559,7 +578,7 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
                 : AppStrings.hintVaccineName,
             value: _selectedVaccineName,
             items: _vaccineNameOptions,
-            enabled: !_isLoadingVaccines,
+            enabled: !_isLoadingVaccines && !_isEditing,
             onChanged: (value) {
               setState(() {
                 _selectedVaccineName = value;
@@ -601,7 +620,7 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
                     : AppStrings.hintProductName,
             value: _selectedProductName,
             items: _productOptions,
-            enabled: _selectedVaccineName != null && _productOptions.isNotEmpty,
+            enabled: _selectedVaccineName != null && _productOptions.isNotEmpty && !_isEditing,
             onChanged: (value) {
               setState(() {
                 _selectedProductName = value;
@@ -639,7 +658,7 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
                 : AppStrings.hintPetName,
             value: _selectedPetName,
             items: _petNameOptions,
-            enabled: !_isLoadingPets && _petNameOptions.isNotEmpty,
+            enabled: !_isLoadingPets && _petNameOptions.isNotEmpty && !_isEditing,
             onChanged: (value) {
               setState(() {
                 _selectedPetName = value;
@@ -791,9 +810,8 @@ String _formatDateForInput(DateTime date) {
 }
 
 String _formatDateForApi(DateTime date) {
-  final month = date.month.toString().padLeft(2, '0');
-  final day = date.day.toString().padLeft(2, '0');
-  return '${date.year}-$month-$day';
+  // Format as ISO8601 with Z suffix: 2026-03-18T00:00:00Z
+  return '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}T00:00:00Z';
 }
 
 DateTime? _parseDateInput(String value) {
@@ -812,6 +830,10 @@ DateTime? _parseDateInput(String value) {
   } catch (_) {
     return null;
   }
+}
+
+bool _isSameCalendarDay(DateTime a, DateTime b) {
+  return a.year == b.year && a.month == b.month && a.day == b.day;
 }
 
 class _AppDropdownField extends StatelessWidget {
@@ -845,7 +867,7 @@ class _AppDropdownField extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         DropdownButtonFormField<String>(
-          value: value,
+          initialValue: value,
           onChanged: enabled ? onChanged : null,
           validator: validator,
           icon: const Padding(

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/core/constants/app_colors.dart';
+import 'package:flutter_frontend/core/models/event_model.dart';
 import 'package:flutter_frontend/core/models/pet_model.dart';
 import 'package:flutter_frontend/core/network/api_exception.dart';
+import 'package:flutter_frontend/core/services/event_service.dart';
 import 'package:flutter_frontend/core/services/pet_service.dart';
 import 'package:flutter_frontend/core/services/user_service.dart';
 import 'package:flutter_frontend/core/services/vaccine_service.dart';
@@ -33,6 +35,7 @@ class _RecordsPageState extends State<RecordsPage> {
   final UserService _userService = UserService();
   final PetService _petService = PetService();
   final VaccineService _vaccineService = VaccineService();
+  final EventService _eventService = EventService();
 
   bool _isLoading = false;
 
@@ -99,12 +102,27 @@ class _RecordsPageState extends State<RecordsPage> {
         }
       }
 
+      final vaccineRecords = _buildVaccineRecords(pets, vaccineInfoMap);
+      final eventRecords = <_RecordEntry>[];
+
+      try {
+        final events = await _eventService.getEvents();
+        eventRecords.addAll(_buildEventRecords(events, pets));
+      } catch (_) {
+        // Keep vaccine records visible even if events fail to load.
+      }
+
+      final combinedRecords = <_RecordEntry>[
+        ...vaccineRecords,
+        ...eventRecords,
+      ]..sort((a, b) => b.sortDate.compareTo(a.sortDate));
+
       if (!mounted) {
         return;
       }
 
       setState(() {
-        _records = _buildVaccineRecords(pets, vaccineInfoMap);
+        _records = combinedRecords;
       });
     } on ApiException catch (error) {
       if (!mounted) return;
@@ -125,6 +143,7 @@ class _RecordsPageState extends State<RecordsPage> {
     final records = <_RecordEntry>[];
     for (final pet in pets) {
       for (final vaccine in pet.vaccinations) {
+        final vaccineStatus = _resolveVaccineStatus(vaccine);
         records.add(
           _RecordEntry(
             type: _RecordType.vaccine,
@@ -137,6 +156,7 @@ class _RecordsPageState extends State<RecordsPage> {
             sortDate: vaccine.dateGiven,
             vaccination: vaccine,
             pet: pet,
+            vaccineStatus: vaccineStatus,
           ),
         );
       }
@@ -144,6 +164,104 @@ class _RecordsPageState extends State<RecordsPage> {
 
     records.sort((a, b) => b.sortDate.compareTo(a.sortDate));
     return records;
+  }
+
+  List<_RecordEntry> _buildEventRecords(List<EventModel> events, List<PetModel> pets) {
+    final petsById = <String, PetModel>{
+      for (final pet in pets) pet.id: pet,
+    };
+
+    final petNamesById = <String, String>{
+      for (final pet in pets) pet.id: pet.name,
+    };
+
+    final records = <_RecordEntry>[];
+    for (final event in events) {
+      final petName = petNamesById[event.petId] ?? AppStrings.valueNotAvailable;
+      final pet = petsById[event.petId];
+      records.add(
+        _RecordEntry(
+          type: _RecordType.event,
+          title: _buildEventTitle(event),
+          subtitle: _buildEventSubtitle(petName, event),
+          meta: _formatDate(event.date),
+          icon: Icons.event_note_outlined,
+          iconBackground: AppColors.negativeBackground,
+          iconColor: AppColors.warning,
+          sortDate: event.date,
+          event: event,
+          pet: pet,
+        ),
+      );
+    }
+
+    return records;
+  }
+
+  String _buildEventTitle(EventModel event) {
+    final title = event.title.trim();
+    if (title.isNotEmpty) {
+      return title;
+    }
+
+    final eventType = event.eventType.trim();
+    if (eventType.isNotEmpty) {
+      return eventType;
+    }
+
+    return AppStrings.valueNotAvailable;
+  }
+
+  String _buildEventSubtitle(String petName, EventModel event) {
+    final provider = event.provider.trim();
+    final clinic = event.clinic.trim();
+    final source = provider.isNotEmpty
+        ? provider
+        : clinic.isNotEmpty
+            ? clinic
+            : AppStrings.valueNotAvailable;
+    final normalizedPetName = petName.trim().isNotEmpty
+        ? petName.trim()
+        : AppStrings.valueNotAvailable;
+
+    return '$normalizedPetName - $source';
+  }
+
+  _VaccineStatus _resolveVaccineStatus(PetVaccinationModel vaccine) {
+    if (_isRealDate(vaccine.nextDueDate)) {
+      final today = _dateOnly(DateTime.now());
+      final nextDueDate = _dateOnly(vaccine.nextDueDate);
+
+      if (nextDueDate.isBefore(today)) {
+        return _VaccineStatus.overdue();
+      }
+
+      final daysUntilDue = nextDueDate.difference(today).inDays;
+      if (daysUntilDue <= 30) {
+        return _VaccineStatus.upcoming();
+      }
+
+      return _VaccineStatus.completed();
+    }
+
+    final normalizedStatus = vaccine.status.trim().toLowerCase();
+    if (normalizedStatus == 'overdue') {
+      return _VaccineStatus.overdue();
+    }
+
+    if (normalizedStatus == 'upcoming') {
+      return _VaccineStatus.upcoming();
+    }
+
+    return _VaccineStatus.completed();
+  }
+
+  bool _isRealDate(DateTime date) {
+    return date.year > 1900;
+  }
+
+  DateTime _dateOnly(DateTime date) {
+    return DateTime(date.year, date.month, date.day);
   }
 
   String _formatDate(DateTime date) {
@@ -176,6 +294,11 @@ class _RecordsPageState extends State<RecordsPage> {
 
   Future<void> navigateToDetail(_RecordEntry record) async {
     if (record.type == _RecordType.vaccine) {
+      if (record.vaccination == null || record.pet == null) {
+        _showUnavailableMessage();
+        return;
+      }
+
       final result = await Navigator.of(
         context,
       ).push(
@@ -193,9 +316,26 @@ class _RecordsPageState extends State<RecordsPage> {
       }
       return;
     } else if (record.type == _RecordType.event) {
-      Navigator.of(
+      if (record.event == null) {
+        _showUnavailableMessage();
+        return;
+      }
+
+      final result = await Navigator.of(
         context,
-      ).push(MaterialPageRoute(builder: (context) => const DetailPage(type: 'event',)));
+      ).push(
+        MaterialPageRoute(
+          builder: (context) => DetailPage(
+            type: 'event',
+            event: record.event,
+            pet: record.pet,
+          ),
+        ),
+      );
+
+      if (result == true) {
+        _loadRecords();
+      }
       return;
     }
     return;
@@ -241,8 +381,11 @@ class _RecordsPageState extends State<RecordsPage> {
     return pet?.toString() ?? '';
   }
 
-  void _goToAddEvent() {
-    Navigator.of(context).pushNamed(Routes.addEvent);
+  Future<void> _goToAddEvent() async {
+    final result = await Navigator.of(context).pushNamed(Routes.addEvent);
+    if (result == true) {
+      _loadRecords();
+    }
   }
   
   void _goToAddPet() {
@@ -312,6 +455,10 @@ class _RecordsPageState extends State<RecordsPage> {
                       icon: record.icon,
                       iconBackground: record.iconBackground,
                       iconColor: record.iconColor,
+                      statusLabel: record.vaccineStatus?.label,
+                      statusBackgroundColor: record.vaccineStatus?.backgroundColor,
+                      statusTextColor: record.vaccineStatus?.textColor,
+                      showTrailingChevron: record.type != _RecordType.vaccine,
                       onTap: () => navigateToDetail(record),
                     ),
                   const SizedBox(height: 12),
@@ -341,8 +488,10 @@ class _RecordEntry {
     required this.iconBackground,
     required this.iconColor,
     required this.sortDate,
-    required this.vaccination,
-    required this.pet,
+    this.vaccination,
+    this.pet,
+    this.event,
+    this.vaccineStatus,
   });
 
   final _RecordType type;
@@ -353,6 +502,35 @@ class _RecordEntry {
   final Color iconBackground;
   final Color iconColor;
   final DateTime sortDate;
-  final PetVaccinationModel vaccination;
-  final PetModel pet;
+  final PetVaccinationModel? vaccination;
+  final PetModel? pet;
+  final EventModel? event;
+  final _VaccineStatus? vaccineStatus;
+}
+
+class _VaccineStatus {
+  _VaccineStatus({
+    required this.label,
+    required this.backgroundColor,
+    required this.textColor,
+  });
+
+  _VaccineStatus.overdue()
+      : label = 'overdue',
+        backgroundColor = AppColors.negativeBackground,
+        textColor = AppColors.error;
+
+  _VaccineStatus.upcoming()
+      : label = 'upcoming',
+        backgroundColor = Color(0xFFE3F2FD),
+        textColor = Color(0xFF1976D2);
+
+  _VaccineStatus.completed()
+      : label = 'completed',
+        backgroundColor = AppColors.positiveBackground,
+        textColor = AppColors.success;
+
+  final String label;
+  final Color backgroundColor;
+  final Color textColor;
 }
