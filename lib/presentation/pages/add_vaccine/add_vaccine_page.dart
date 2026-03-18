@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/core/constants/app_colors.dart';
 import 'package:flutter_frontend/core/constants/app_strings.dart';
 import 'package:flutter_frontend/core/models/pet_model.dart';
 import 'package:flutter_frontend/core/models/vaccine_model.dart';
 import 'package:flutter_frontend/core/services/pet_service.dart';
 import 'package:flutter_frontend/core/services/user_service.dart';
 import 'package:flutter_frontend/core/services/vaccine_service.dart';
-import 'package:flutter_frontend/presentation/widgets/stepper.dart' as app_stepper;
-import 'package:flutter_frontend/shared/widgets/form_field.dart';
-import 'package:flutter_frontend/shared/widgets/full_width_button.dart';
-
+import 'package:flutter_frontend/presentation/pages/add_flow/utils/date_input.dart';
+import 'package:flutter_frontend/presentation/pages/add_flow/widgets/add_flow_scaffold.dart';
+import 'package:flutter_frontend/presentation/pages/add_vaccine/widgets/add_vaccine_step_basic.dart';
+import 'package:flutter_frontend/presentation/pages/add_vaccine/widgets/add_vaccine_step_details.dart';
+import 'package:flutter_frontend/presentation/pages/add_vaccine/widgets/add_vaccine_step_overview.dart';
 import 'add_vaccine_args.dart';
 
 class AddVaccinePage extends StatefulWidget {
@@ -44,8 +44,7 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
   String? _selectedVaccineId;
   String? _selectedPetName;
   String? _selectedPetId;
-  String? _originalVaccineId;
-  DateTime? _originalDateGiven;
+  String? _editingVaccinationId;
   AddVaccineArgs? _pendingPrefill;
 
   int _step = 0;
@@ -89,11 +88,11 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
       _administeredByController.text = prefill.administeredBy!.trim();
     }
     if (prefill.dateGiven != null) {
-      _dateController.text = _formatDateForInput(prefill.dateGiven!);
-      _originalDateGiven = prefill.dateGiven;
+      _dateController.text = formatDateForInput(prefill.dateGiven!);
     }
-    if (prefill.vaccineId != null && prefill.vaccineId!.trim().isNotEmpty) {
-      _originalVaccineId = prefill.vaccineId!.trim();
+    if (prefill.vaccinationId != null &&
+        prefill.vaccinationId!.trim().isNotEmpty) {
+      _editingVaccinationId = prefill.vaccinationId!.trim();
     }
 
     if (_vaccines.isNotEmpty) {
@@ -356,10 +355,7 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
       return;
     }
 
-    final day = pickedDate.day.toString().padLeft(2, '0');
-    final month = pickedDate.month.toString().padLeft(2, '0');
-    final year = pickedDate.year.toString();
-    _dateController.text = '$day/$month/$year';
+    _dateController.text = formatDateForInput(pickedDate);
   }
 
   void _continue() {
@@ -398,17 +394,14 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
       return;
     }
 
-    final hasOriginalVaccineId =
-        _originalVaccineId != null && _originalVaccineId!.trim().isNotEmpty;
-    if (!hasOriginalVaccineId &&
-        (_selectedVaccineId == null || _selectedVaccineId!.trim().isEmpty)) {
+    if (_selectedVaccineId == null || _selectedVaccineId!.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Select a valid vaccine product.')),
       );
       return;
     }
 
-    final dateGiven = _parseDateInput(_dateController.text.trim());
+    final dateGiven = parseDateInput(_dateController.text.trim());
     if (dateGiven == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Enter a valid date.')),
@@ -423,26 +416,19 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
     setState(() => _isSubmitting = true);
 
     try {
-      final effectiveVaccineId = widget.prefill != null
-          ? (_originalVaccineId ?? _selectedVaccineId)
-          : _selectedVaccineId;
-      final effectiveDateGiven = widget.prefill != null
-          ? (_originalDateGiven ?? dateGiven)
-          : dateGiven;
-
       final vaccine = _vaccines.firstWhere(
-        (item) => item.id == effectiveVaccineId,
+        (item) => item.id == _selectedVaccineId,
         orElse: () => const VaccineModel(id: '', schema: '', name: ''),
       );
       final intervalDays = vaccine.intervalDays;
       final nextDueDate = intervalDays > 0
-          ? effectiveDateGiven.add(Duration(days: intervalDays))
+          ? dateGiven.add(Duration(days: intervalDays))
           : null;
 
       final payload = <String, dynamic>{
-        'vaccineId': effectiveVaccineId,
-        'dateGiven': _formatDateForApi(effectiveDateGiven),
-        'nextDueDate': nextDueDate == null ? null : _formatDateForApi(nextDueDate),
+        'vaccineId': _selectedVaccineId,
+        'dateGiven': formatDateForApi(dateGiven),
+        'nextDueDate': nextDueDate == null ? null : formatDateForApi(nextDueDate),
         'lotNumber': '',
         'status': 'completed',
         'administeredBy': _administeredByController.text.trim(),
@@ -456,8 +442,13 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
           data: payload,
         );
       } else {
+        if (_editingVaccinationId == null ||
+            _editingVaccinationId!.trim().isEmpty) {
+          throw Exception('Missing vaccination id for update.');
+        }
         await _petService.updateVaccination(
           petId: _selectedPetId!,
+          vaccinationId: _editingVaccinationId!,
           data: payload,
         );
       }
@@ -487,64 +478,24 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
 
   @override
   Widget build(BuildContext context) {
-    final stepContent = _buildStepContent();
-
-    return Scaffold(
-      appBar: AppBar(title: const Text(AppStrings.addVaccineTitle)),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                app_stepper.Stepper(
-                  steps: [
-                    AppStrings.stepBasicInfo,
-                    AppStrings.stepDetails,
-                    AppStrings.stepOverview
-                  ],
-                  currentStep: _step,
-                ),
-                const SizedBox(height: 28),
-                ...stepContent,
-              ],
-            ),
-          ),
-        ),
-      ),
-      bottomNavigationBar: SafeArea(
-        minimum: const EdgeInsets.only(left: 24, right: 24, bottom: 60),
-        child: Padding(
-          padding: const EdgeInsets.only(top: 24),
-          child: Row(
-            children: [
-              if (_step > 0)
-                Expanded(
-                  child: FullWidthButton(
-                    text: AppStrings.semanticBackButton,
-                    onPressed: _back,
-                    backgroundColor: AppColors.surface,
-                    borderColor: AppColors.primary,
-                    textColor: AppColors.primary,
-                  ),
-                ),
-              if (_step > 0) const SizedBox(width: 12),
-              Expanded(
-                child: FullWidthButton(
-                  text: _step == 2
-                      ? (widget.prefill == null
-                          ? AppStrings.semanticAddVaccineButton
-                          : AppStrings.semanticUpdateVaccineButton)
-                      : AppStrings.semanticContinueButton,
-                  onPressed: _step == 2 ? _submit : _continue,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    return AddFlowScaffold(
+      title: AppStrings.addVaccineTitle,
+      formKey: _formKey,
+      steps: const [
+        AppStrings.stepBasicInfo,
+        AppStrings.stepDetails,
+        AppStrings.stepOverview,
+      ],
+      currentStep: _step,
+      stepContent: _buildStepContent(),
+      primaryButtonText: _step == 2
+          ? (widget.prefill == null
+              ? AppStrings.semanticAddVaccineButton
+              : AppStrings.semanticUpdateVaccineButton)
+          : AppStrings.semanticContinueButton,
+      onPrimaryPressed: _step == 2 ? _submit : _continue,
+      onBackPressed: _back,
+      backButtonText: AppStrings.semanticBackButton,
     );
   }
 
@@ -552,15 +503,16 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
     switch (_step) {
       case 0:
         return [
-          _AppDropdownField(
-            label: '${AppStrings.labelVaccineName} *',
-            hintText: _isLoadingVaccines
-                ? 'Loading vaccines...'
-                : AppStrings.hintVaccineName,
-            value: _selectedVaccineName,
-            items: _vaccineNameOptions,
-            enabled: !_isLoadingVaccines,
-            onChanged: (value) {
+          AddVaccineStepBasic(
+            isLoadingVaccines: _isLoadingVaccines,
+            isLoadingPets: _isLoadingPets,
+            selectedVaccineName: _selectedVaccineName,
+            selectedProductName: _selectedProductName,
+            selectedPetName: _selectedPetName,
+            vaccineNameOptions: _vaccineNameOptions,
+            productOptions: _productOptions,
+            petNameOptions: _petNameOptions,
+            onVaccineChanged: (value) {
               setState(() {
                 _selectedVaccineName = value;
                 _selectedProductName = null;
@@ -569,40 +521,7 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
                 _productController.text = '';
               });
             },
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return AppStrings.validationRequired;
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 18),
-          AppFormField(
-            label: '${AppStrings.labelDate} *',
-            hintText: AppStrings.hintDate,
-            icon: Icons.calendar_today_outlined,
-            controller: _dateController,
-            readOnly: true,
-            onTap: _pickDate,
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return AppStrings.validationInvalidDate;
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 18),
-          _AppDropdownField(
-            label: AppStrings.labelProductName,
-            hintText: _selectedVaccineName == null
-                ? 'Select a vaccine first'
-                : _productOptions.isEmpty
-                    ? 'No products available'
-                    : AppStrings.hintProductName,
-            value: _selectedProductName,
-            items: _productOptions,
-            enabled: _selectedVaccineName != null && _productOptions.isNotEmpty,
-            onChanged: (value) {
+            onProductChanged: (value) {
               setState(() {
                 _selectedProductName = value;
                 _productController.text = value ?? '';
@@ -621,26 +540,7 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
                 }
               });
             },
-            validator: (value) {
-              if (_productOptions.isEmpty) {
-                return null;
-              }
-              if (value == null || value.trim().isEmpty) {
-                return AppStrings.validationRequired;
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 18),
-          _AppDropdownField(
-            label: AppStrings.labelPetName,
-            hintText: _isLoadingPets
-                ? 'Loading pets...'
-                : AppStrings.hintPetName,
-            value: _selectedPetName,
-            items: _petNameOptions,
-            enabled: !_isLoadingPets && _petNameOptions.isNotEmpty,
-            onChanged: (value) {
+            onPetChanged: (value) {
               setState(() {
                 _selectedPetName = value;
                 _petNameController.text = value ?? '';
@@ -673,217 +573,28 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
                 }
               });
             },
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return AppStrings.validationRequired;
-              }
-              return null;
-            },
+            onPickDate: _pickDate,
+            dateController: _dateController,
           ),
         ];
       case 1:
         return [
-          AppFormField(
-            label: AppStrings.labelAdministeredBy,
-            hintText: AppStrings.hintAdministeredBy,
-            controller: _administeredByController,
-          ),
-          const SizedBox(height: 18),
-          Text(
-            AppStrings.labelAdditionalFiles,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: AppColors.onSurface,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Center(
-            child: Container(
-              width: 140,
-              height: 140,
-              decoration: BoxDecoration(
-                color: AppColors.primaryVariant,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: AppColors.primary, width: 1.2),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.file_upload_outlined,
-                    color: AppColors.primary,
-                    size: 48,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    AppStrings.uploadDocuments,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Center(
-            child: Text(
-              AppStrings.uploadHint,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w400,
-                color: AppColors.grey700,
-              ),
-            ),
+          AddVaccineStepDetails(
+            administeredByController: _administeredByController,
           ),
         ];
       case 2:
       default:
         return [
-          AppFormField(
-            label: AppStrings.labelVaccineName,
-            hintText: AppStrings.hintNotProvided,
-            controller: _vaccineController,
-            readOnly: true,
-          ),
-          const SizedBox(height: 18),
-          AppFormField(
-            label: AppStrings.labelDate,
-            hintText: AppStrings.hintNotProvided,
-            controller: _dateController,
-            readOnly: true,
-          ),
-          const SizedBox(height: 18),
-          AppFormField(
-            label: AppStrings.labelProductName,
-            hintText: AppStrings.hintNotProvided,
-            controller: _productController,
-            readOnly: true,
-          ),
-          const SizedBox(height: 18),
-          AppFormField(
-            label: AppStrings.labelPetName,
-            hintText: AppStrings.hintNotProvided,
-            controller: _petNameController,
-            readOnly: true,
-          ),
-          const SizedBox(height: 18),
-          AppFormField(
-            label: AppStrings.labelAdministeredBy,
-            hintText: AppStrings.hintNotProvided,
-            controller: _administeredByController,
-            readOnly: true,
+          AddVaccineStepOverview(
+            vaccineController: _vaccineController,
+            dateController: _dateController,
+            productController: _productController,
+            petNameController: _petNameController,
+            administeredByController: _administeredByController,
           ),
         ];
     }
   }
 }
 
-String _formatDateForInput(DateTime date) {
-  final day = date.day.toString().padLeft(2, '0');
-  final month = date.month.toString().padLeft(2, '0');
-  final year = date.year.toString();
-  return '$day/$month/$year';
-}
-
-String _formatDateForApi(DateTime date) {
-  final month = date.month.toString().padLeft(2, '0');
-  final day = date.day.toString().padLeft(2, '0');
-  return '${date.year}-$month-$day';
-}
-
-DateTime? _parseDateInput(String value) {
-  final parts = value.split('/');
-  if (parts.length != 3) {
-    return null;
-  }
-  final day = int.tryParse(parts[0]);
-  final month = int.tryParse(parts[1]);
-  final year = int.tryParse(parts[2]);
-  if (day == null || month == null || year == null) {
-    return null;
-  }
-  try {
-    return DateTime(year, month, day);
-  } catch (_) {
-    return null;
-  }
-}
-
-class _AppDropdownField extends StatelessWidget {
-  const _AppDropdownField({
-    required this.label,
-    required this.hintText,
-    required this.items,
-    this.value,
-    this.onChanged,
-    this.validator,
-    this.enabled = true,
-  });
-
-  final String label;
-  final String hintText;
-  final List<String> items;
-  final String? value;
-  final ValueChanged<String?>? onChanged;
-  final FormFieldValidator<String>? validator;
-  final bool enabled;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          label,
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        const SizedBox(height: 6),
-        DropdownButtonFormField<String>(
-          value: value,
-          onChanged: enabled ? onChanged : null,
-          validator: validator,
-          icon: const Padding(
-            padding: EdgeInsets.only(right: 10),
-            child: Icon(Icons.arrow_drop_down),
-          ),
-          items: items
-              .map(
-                (item) => DropdownMenuItem<String>(
-                  value: item,
-                  child: Text(item),
-                ),
-              )
-              .toList(growable: false),
-          decoration: InputDecoration(
-            hintText: hintText,
-            hintStyle: Theme.of(context)
-                .textTheme
-                .bodyMedium
-                ?.copyWith(color: AppColors.grey500),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 18,
-              vertical: 18,
-            ),
-            enabledBorder: _dropdownBorder,
-            focusedBorder: _dropdownBorder,
-            disabledBorder: _dropdownBorder,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-const OutlineInputBorder _dropdownBorder = OutlineInputBorder(
-  borderRadius: BorderRadius.all(Radius.circular(18)),
-  borderSide: BorderSide(
-    color: AppColors.grey500,
-    width: 1.5,
-  ),
-);

@@ -55,14 +55,9 @@ class DetailPage extends StatelessWidget {
     }
 
     try {
-      final payload = <String, dynamic>{
-        'vaccineId': vaccination!.vaccineId,
-        'dateGiven': _formatDateForApi(vaccination!.dateGiven),
-      };
-
       await PetService().deleteVaccination(
         petId: pet!.id,
-        data: payload,
+        vaccinationId: vaccination!.id,
       );
 
       if (!context.mounted) return;
@@ -83,6 +78,7 @@ class DetailPage extends StatelessWidget {
       Navigator.of(context).pushNamed(
         Routes.addVaccine,
         arguments: AddVaccineArgs(
+          vaccinationId: vaccination?.id,
           vaccineId: vaccination?.vaccineId,
           vaccineName: vaccineName,
           dateGiven: vaccination?.dateGiven,
@@ -346,11 +342,6 @@ String _formatDate(DateTime date) {
   return '$month ${date.day}, ${date.year}';
 }
 
-String _formatDateForApi(DateTime date) {
-  final month = date.month.toString().padLeft(2, '0');
-  final day = date.day.toString().padLeft(2, '0');
-  return '${date.year}-$month-$day';
-}
 class _InfoCard extends StatelessWidget {
   // ignore: unused_element_parameter
   const _InfoCard({this.title, required this.child, this.backgroundColor = AppColors.secondary});

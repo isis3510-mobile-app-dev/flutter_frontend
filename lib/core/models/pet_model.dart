@@ -20,6 +20,7 @@ class PetDocumentModel {
 
 class PetVaccinationModel {
   const PetVaccinationModel({
+    required this.id,
     required this.vaccineId,
     required this.dateGiven,
     required this.nextDueDate,
@@ -30,6 +31,7 @@ class PetVaccinationModel {
     required this.attachedDocuments,
   });
 
+  final String id;
   final String vaccineId;
   final DateTime dateGiven;
   final DateTime nextDueDate;
@@ -43,6 +45,7 @@ class PetVaccinationModel {
     final attachedDocumentsJson = json['attachedDocuments'] as List<dynamic>?;
 
     return PetVaccinationModel(
+      id: _readString(json['id']),
       vaccineId: _readString(json['vaccineId']),
       dateGiven: _parseDate(json['dateGiven']),
       nextDueDate: _parseDate(json['nextDueDate']),
