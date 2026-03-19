@@ -124,56 +124,277 @@ class _ProfilePageState extends State<ProfilePage> {
     final themeController = ThemeControllerScope.of(context);
     final selected = await showModalBottomSheet<AppThemePreference>(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? AppColors.secondaryDark
+          : AppColors.secondary,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppDimensions.radiusXL),
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
       showDragHandle: true,
       builder: (context) {
         final currentPreference = themeController.preference;
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final textTheme = Theme.of(context).textTheme;
+        final titleColor = isDark
+            ? AppColors.onSurfaceDark
+            : AppColors.onSurface;
+        final subtitleColor = isDark ? AppColors.grey300 : AppColors.grey700;
+        final selectedBackground = isDark
+            ? AppColors.quickActionIconBackgroundDark
+            : AppColors.primaryVariant;
+        final selectedForeground = isDark
+            ? AppColors.quickActionIconTintDark
+            : AppColors.primary;
+        final cardBackground = isDark
+            ? AppColors.backgroundDark
+            : AppColors.secondary;
+        final dividerColor = isDark
+            ? AppColors.petFilterInactiveBorderDark
+            : AppColors.grey300;
 
         Widget option(
           AppThemePreference preference, {
           required String title,
-          String? subtitle,
+          required String subtitle,
+          IconData? icon,
+          String? iconLabel,
         }) {
-          return ListTile(
-            title: Text(title),
-            subtitle: subtitle == null ? null : Text(subtitle),
-            trailing: preference == currentPreference
-                ? const Icon(Icons.check, color: AppColors.primary)
-                : null,
-            onTap: () => Navigator.of(context).pop(preference),
+          assert(
+            icon != null || iconLabel != null,
+            'Either icon or iconLabel must be provided.',
+          );
+          final isSelected = preference == currentPreference;
+
+          return Padding(
+            padding: const EdgeInsets.only(bottom: AppDimensions.spaceS),
+            child: Material(
+              color: AppColors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+                onTap: () => Navigator.of(context).pop(preference),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppDimensions.spaceM,
+                    vertical: AppDimensions.spaceM,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isSelected ? selectedBackground : cardBackground,
+                    borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+                    border: Border.all(
+                      color: isSelected ? selectedForeground : dividerColor,
+                      width: isSelected
+                          ? AppDimensions.strokeMedium
+                          : AppDimensions.strokeThin,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 220),
+                        width: AppDimensions.iconL + AppDimensions.spaceS,
+                        height: AppDimensions.iconL + AppDimensions.spaceS,
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? selectedForeground
+                              : (isDark
+                                    ? AppColors.secondaryDark
+                                    : AppColors.grey100),
+                          shape: BoxShape.circle,
+                        ),
+                        child: iconLabel != null
+                            ? Center(
+                                child: Text(
+                                  iconLabel,
+                                  style: textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                    color: isSelected
+                                        ? AppColors.onPrimary
+                                        : (isDark
+                                              ? AppColors.onSurfaceDark
+                                              : AppColors.onSurface),
+                                  ),
+                                ),
+                              )
+                            : Icon(
+                                icon!,
+                                size: AppDimensions.iconM,
+                                color: isSelected
+                                    ? AppColors.onPrimary
+                                    : (isDark
+                                          ? AppColors.onSurfaceDark
+                                          : AppColors.onSurface),
+                              ),
+                      ),
+                      const SizedBox(width: AppDimensions.spaceM),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              style: textTheme.titleMedium?.copyWith(
+                                color: titleColor,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: AppDimensions.spaceXXS),
+                            Text(
+                              subtitle,
+                              style: textTheme.bodySmall?.copyWith(
+                                color: subtitleColor,
+                                height: 1.25,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: AppDimensions.spaceS),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 220),
+                        width: AppDimensions.iconM + AppDimensions.spaceXS,
+                        height: AppDimensions.iconM + AppDimensions.spaceXS,
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? selectedForeground
+                              : AppColors.transparent,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isSelected
+                                ? selectedForeground
+                                : dividerColor,
+                            width: AppDimensions.strokeMedium,
+                          ),
+                        ),
+                        child: isSelected
+                            ? const Icon(
+                                Icons.check_rounded,
+                                size: AppDimensions.iconS,
+                                color: AppColors.onPrimary,
+                              )
+                            : null,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           );
         }
 
+        final bottomPadding = MediaQuery.of(context).viewPadding.bottom;
+
         return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                title: Text(
-                  AppStrings.profileThemeModePickerTitle,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppDimensions.spaceM,
+                  ),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(AppDimensions.spaceM),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? AppColors.quickActionIconBackgroundDark
+                          : AppColors.primaryVariant,
+                      borderRadius: BorderRadius.circular(
+                        AppDimensions.radiusL,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: AppDimensions.iconL + AppDimensions.spaceS,
+                          height: AppDimensions.iconL + AppDimensions.spaceS,
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? AppColors.primary
+                                : AppColors.onPrimary,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.palette_outlined,
+                            size: AppDimensions.iconM,
+                            color: isDark
+                                ? AppColors.onPrimary
+                                : AppColors.primary,
+                          ),
+                        ),
+                        const SizedBox(width: AppDimensions.spaceM),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                AppStrings.profileThemeModePickerTitle,
+                                style: textTheme.titleMedium?.copyWith(
+                                  color: titleColor,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: AppDimensions.spaceXXS),
+                              Text(
+                                '${AppStrings.profileThemeMode}: ${_themePreferenceLabel(themeController)}',
+                                style: textTheme.bodySmall?.copyWith(
+                                  color: subtitleColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-              option(
-                AppThemePreference.light,
-                title: AppStrings.profileThemeLight,
-                subtitle: AppStrings.profileThemeLightSubtitle,
-              ),
-              option(
-                AppThemePreference.dark,
-                title: AppStrings.profileThemeDark,
-                subtitle: AppStrings.profileThemeDarkSubtitle,
-              ),
-              option(
-                AppThemePreference.schedule,
-                title: AppStrings.profileThemeSchedule,
-                subtitle: AppStrings.profileThemeScheduleSubtitle,
-              ),
-              option(
-                AppThemePreference.sensor,
-                title: AppStrings.profileThemeSensor,
-                subtitle: AppStrings.profileThemeSensorSubtitle,
-              ),
-            ],
+                const SizedBox(height: AppDimensions.spaceM),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    AppDimensions.spaceM,
+                    0,
+                    AppDimensions.spaceM,
+                    AppDimensions.spaceM + bottomPadding,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      option(
+                        AppThemePreference.light,
+                        title: AppStrings.profileThemeLight,
+                        subtitle: AppStrings.profileThemeLightSubtitle,
+                        icon: Icons.wb_sunny_rounded,
+                      ),
+                      option(
+                        AppThemePreference.dark,
+                        title: AppStrings.profileThemeDark,
+                        subtitle: AppStrings.profileThemeDarkSubtitle,
+                        icon: Icons.dark_mode_rounded,
+                      ),
+                      option(
+                        AppThemePreference.schedule,
+                        title: AppStrings.profileThemeSchedule,
+                        subtitle: AppStrings.profileThemeScheduleSubtitle,
+                        icon: Icons.schedule_rounded,
+                      ),
+                      option(
+                        AppThemePreference.sensor,
+                        title: AppStrings.profileThemeSensor,
+                        subtitle: AppStrings.profileThemeSensorSubtitle,
+                        iconLabel: 'A',
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -495,7 +716,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Text(
                   AppStrings.profileSubtitleAccount.toUpperCase(),
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: isDark ? AppColors.onSurfaceDark : AppColors.onSurface,
+                    color: isDark
+                        ? AppColors.onSurfaceDark
+                        : AppColors.onSurface,
                     fontWeight: FontWeight.w600,
                     letterSpacing: AppDimensions.letterSpacingSection,
                   ),
@@ -567,7 +790,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Text(
                   AppStrings.profileSubtitlePreferences.toUpperCase(),
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: isDark ? AppColors.onSurfaceDark : AppColors.onSurface,
+                    color: isDark
+                        ? AppColors.onSurfaceDark
+                        : AppColors.onSurface,
                     fontWeight: FontWeight.w600,
                     letterSpacing: AppDimensions.letterSpacingSection,
                   ),
@@ -643,7 +868,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Text(
                   AppStrings.profileSubtitleSupport.toUpperCase(),
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: isDark ? AppColors.onSurfaceDark : AppColors.onSurface,
+                    color: isDark
+                        ? AppColors.onSurfaceDark
+                        : AppColors.onSurface,
                     fontWeight: FontWeight.w600,
                     letterSpacing: AppDimensions.letterSpacingSection,
                   ),
