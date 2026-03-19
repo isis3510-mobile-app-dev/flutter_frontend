@@ -57,10 +57,7 @@ class _PetDetailScreenState extends State<PetDetailScreen>
     final result = await Navigator.pushNamed(
       context,
       Routes.addEvent,
-      arguments: AddEventArgs(
-        petId: _pet.id,
-        petName: _pet.name,
-      ),
+      arguments: AddEventArgs(petId: _pet.id, petName: _pet.name),
     );
     if (result == true) {
       _hasMutatedPet = true;
@@ -150,11 +147,8 @@ class _PetDetailScreenState extends State<PetDetailScreen>
 
     final result = await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => DetailPage(
-          type: 'event',
-          event: event,
-          pet: _petDetails,
-        ),
+        builder: (context) =>
+            DetailPage(type: 'event', event: event, pet: _petDetails),
       ),
     );
 
@@ -173,9 +167,7 @@ class _PetDetailScreenState extends State<PetDetailScreen>
         builder: (dialogContext) {
           return AlertDialog(
             title: const Text(AppStrings.petLostConfirmTitle),
-            content: Text(
-              '${AppStrings.petLostConfirmMessage} (${_pet.name})',
-            ),
+            content: Text('${AppStrings.petLostConfirmMessage} (${_pet.name})'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -222,16 +214,16 @@ class _PetDetailScreenState extends State<PetDetailScreen>
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     } catch (_) {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AppStrings.petsLoadError)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text(AppStrings.petsLoadError)));
     }
   }
 
@@ -247,9 +239,9 @@ class _PetDetailScreenState extends State<PetDetailScreen>
           return;
         }
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('NFC desactivated')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('NFC desactivated')));
 
         _hasMutatedPet = true;
         await _loadPetDetail();
@@ -272,16 +264,16 @@ class _PetDetailScreenState extends State<PetDetailScreen>
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     } catch (_) {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AppStrings.petsLoadError)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text(AppStrings.petsLoadError)));
     }
   }
 
@@ -317,12 +309,16 @@ class _PetDetailScreenState extends State<PetDetailScreen>
                 onTap: () => Navigator.pop(bottomSheetContext, _PetAction.edit),
               ),
               ListTile(
-                leading: const Icon(Icons.delete_outline, color: AppColors.error),
+                leading: const Icon(
+                  Icons.delete_outline,
+                  color: AppColors.error,
+                ),
                 title: const Text(
                   AppStrings.petDetailMenuDelete,
                   style: TextStyle(color: AppColors.error),
                 ),
-                onTap: () => Navigator.pop(bottomSheetContext, _PetAction.delete),
+                onTap: () =>
+                    Navigator.pop(bottomSheetContext, _PetAction.delete),
               ),
             ],
           ),
@@ -348,9 +344,7 @@ class _PetDetailScreenState extends State<PetDetailScreen>
       builder: (dialogContext) {
         return AlertDialog(
           title: const Text(AppStrings.petDeleteConfirmTitle),
-          content: Text(
-            '${AppStrings.petDeleteConfirmMessage} (${_pet.name})',
-          ),
+          content: Text('${AppStrings.petDeleteConfirmMessage} (${_pet.name})'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -386,16 +380,16 @@ class _PetDetailScreenState extends State<PetDetailScreen>
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     } catch (_) {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AppStrings.petsLoadError)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text(AppStrings.petsLoadError)));
     }
   }
 
@@ -462,7 +456,6 @@ class _PetDetailScreenState extends State<PetDetailScreen>
         _PetDetailHeader(
           pet: _pet,
           onBack: _goBack,
-          onShare: () {},
           onEdit: _openEditPet,
           onMore: _showPetActionsMenu,
         ),
@@ -508,14 +501,12 @@ class _PetDetailHeader extends StatelessWidget {
   const _PetDetailHeader({
     required this.pet,
     required this.onBack,
-    required this.onShare,
     required this.onEdit,
     required this.onMore,
   });
 
   final PetUiModel pet;
   final VoidCallback onBack;
-  final VoidCallback onShare;
   final VoidCallback onEdit;
   final VoidCallback onMore;
 
@@ -543,12 +534,7 @@ class _PetDetailHeader extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _ActionBar(
-                  onBack: onBack,
-                  onShare: onShare,
-                  onEdit: onEdit,
-                  onMore: onMore,
-                ),
+                _ActionBar(onBack: onBack, onEdit: onEdit, onMore: onMore),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(
                     AppDimensions.pageHorizontalPadding,
@@ -580,13 +566,11 @@ class _PetDetailHeader extends StatelessWidget {
 class _ActionBar extends StatelessWidget {
   const _ActionBar({
     required this.onBack,
-    required this.onShare,
     required this.onEdit,
     required this.onMore,
   });
 
   final VoidCallback onBack;
-  final VoidCallback onShare;
   final VoidCallback onEdit;
   final VoidCallback onMore;
 
@@ -602,15 +586,6 @@ class _ActionBar extends StatelessWidget {
             onPressed: onBack,
           ),
           const Spacer(),
-          IconButton(
-            icon: const Icon(
-              Icons.ios_share_outlined,
-              color: Colors.white,
-              size: 20,
-            ),
-            tooltip: AppStrings.petDetailShareSemantics,
-            onPressed: onShare,
-          ),
           IconButton(
             icon: const Icon(
               Icons.edit_outlined,
