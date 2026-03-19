@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter_frontend/core/constants/app_colors.dart';
 import 'package:flutter_frontend/core/constants/app_strings.dart';
 import 'package:flutter_frontend/core/models/attachment_models.dart';
 import 'package:flutter_frontend/core/models/event_model.dart';
@@ -136,14 +137,13 @@ class _AddEventPageState extends State<AddEventPage> {
     _attachedDocuments
       ..clear()
       ..addAll(
-        (prefill.attachedDocuments ?? const <EventDocumentModel>[])
-            .map(
-              (document) => EditableAttachmentModel(
-                fileName: document.fileName,
-                fileUri: document.fileUri,
-                documentId: document.documentId,
-              ),
-            ),
+        (prefill.attachedDocuments ?? const <EventDocumentModel>[]).map(
+          (document) => EditableAttachmentModel(
+            fileName: document.fileName,
+            fileUri: document.fileUri,
+            documentId: document.documentId,
+          ),
+        ),
       );
 
     if (_pets.isNotEmpty) {
@@ -205,7 +205,9 @@ class _AddEventPageState extends State<AddEventPage> {
         }
         if (_followUpDateController.text.trim().isEmpty &&
             event.followUpDate != null) {
-          _followUpDateController.text = formatDateForInput(event.followUpDate!);
+          _followUpDateController.text = formatDateForInput(
+            event.followUpDate!,
+          );
         }
 
         _attachedDocuments
@@ -244,15 +246,17 @@ class _AddEventPageState extends State<AddEventPage> {
           .where((id) => id.isNotEmpty)
           .toList(growable: false);
 
-      final pets = <PetModel>[];
-      for (final petId in petIds) {
-        try {
-          final pet = await _petService.getPetById(petId);
-          pets.add(pet);
-        } catch (_) {
-          // Skip missing/invalid pet ids to keep the flow working.
-        }
-      }
+      final petResults = await Future.wait(
+        petIds.map((petId) async {
+          try {
+            return await _petService.getPetById(petId);
+          } catch (_) {
+            // Skip missing/invalid pet ids to keep the flow working.
+            return null;
+          }
+        }),
+      );
+      final pets = petResults.whereType<PetModel>().toList(growable: false);
 
       if (!mounted) {
         return;
@@ -272,9 +276,9 @@ class _AddEventPageState extends State<AddEventPage> {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AppStrings.errorGeneric)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text(AppStrings.errorGeneric)));
     } finally {
       if (mounted) {
         setState(() => _isLoadingPets = false);
@@ -469,8 +473,42 @@ class _AddEventPageState extends State<AddEventPage> {
         .where((name) => name.isNotEmpty)
         .toSet()
         .toList();
+    final selectedName = _selectedPetName?.trim() ?? '';
+    if (selectedName.isNotEmpty && !names.contains(selectedName)) {
+      names.add(selectedName);
+    }
     names.sort();
     return names;
+  }
+
+  Widget _pickerThemeBuilder(BuildContext context, Widget? child) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colorScheme = isDark
+        ? const ColorScheme.dark(
+            primary: AppColors.primary,
+            surface: AppColors.secondaryDark,
+            onSurface: AppColors.onSurfaceDark,
+            onPrimary: AppColors.onPrimary,
+          )
+        : const ColorScheme.light(
+            primary: AppColors.primary,
+            surface: AppColors.secondary,
+            onSurface: AppColors.onSurface,
+            onPrimary: AppColors.onPrimary,
+          );
+
+    return Theme(
+      data: Theme.of(context).copyWith(
+        colorScheme: colorScheme,
+        dialogTheme: DialogThemeData(
+          backgroundColor: isDark
+              ? AppColors.secondaryDark
+              : AppColors.secondary,
+          surfaceTintColor: Colors.transparent,
+        ),
+      ),
+      child: child ?? const SizedBox.shrink(),
+    );
   }
 
   Future<void> _pickDate() async {
@@ -479,6 +517,7 @@ class _AddEventPageState extends State<AddEventPage> {
       initialDate: DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
+      builder: _pickerThemeBuilder,
     );
 
     if (pickedDate == null) {
@@ -489,12 +528,15 @@ class _AddEventPageState extends State<AddEventPage> {
   }
 
   Future<void> _pickFollowUpDate() async {
-    final existingFollowUp = parseDateInput(_followUpDateController.text.trim());
+    final existingFollowUp = parseDateInput(
+      _followUpDateController.text.trim(),
+    );
     final pickedDate = await showDatePicker(
       context: context,
       initialDate: existingFollowUp ?? DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
+      builder: _pickerThemeBuilder,
     );
 
     if (pickedDate == null) {
@@ -530,6 +572,7 @@ class _AddEventPageState extends State<AddEventPage> {
     final pickedTime = await showTimePicker(
       context: context,
       initialTime: existingTime ?? TimeOfDay.now(),
+      builder: _pickerThemeBuilder,
     );
 
     if (pickedTime == null) {
@@ -590,16 +633,18 @@ class _AddEventPageState extends State<AddEventPage> {
 
     if (resolvedOwnerId == null || resolvedOwnerId.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not resolve owner id. Please try again.')),
+        const SnackBar(
+          content: Text('Could not resolve owner id. Please try again.'),
+        ),
       );
       return;
     }
 
     final selectedDate = parseDateInput(_dateController.text.trim());
     if (selectedDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter a valid date.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Enter a valid date.')));
       return;
     }
 
@@ -721,9 +766,9 @@ class _AddEventPageState extends State<AddEventPage> {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AppStrings.errorGeneric)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text(AppStrings.errorGeneric)));
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);
@@ -735,7 +780,9 @@ class _AddEventPageState extends State<AddEventPage> {
     final petId = _selectedPetId?.trim() ?? '';
     if (petId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Select a pet before uploading documents.')),
+        const SnackBar(
+          content: Text('Select a pet before uploading documents.'),
+        ),
       );
       return;
     }
@@ -787,9 +834,9 @@ class _AddEventPageState extends State<AddEventPage> {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AppStrings.errorGeneric)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text(AppStrings.errorGeneric)));
     } finally {
       if (mounted) {
         setState(() => _isUploadingAttachments = false);
@@ -831,7 +878,8 @@ class _AddEventPageState extends State<AddEventPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isEditing = _editingEventId != null && _editingEventId!.trim().isNotEmpty;
+    final isEditing =
+        _editingEventId != null && _editingEventId!.trim().isNotEmpty;
 
     return AddFlowScaffold(
       title: AppStrings.addEventTitle,
@@ -845,8 +893,8 @@ class _AddEventPageState extends State<AddEventPage> {
       stepContent: _buildStepContent(),
       primaryButtonText: _step == 2
           ? (isEditing
-            ? AppStrings.actionEdit
-            : AppStrings.semanticAddEventButton)
+                ? AppStrings.actionEdit
+                : AppStrings.semanticAddEventButton)
           : AppStrings.semanticContinueButton,
       onPrimaryPressed: _step == 2 ? _submit : _continue,
       onBackPressed: _back,

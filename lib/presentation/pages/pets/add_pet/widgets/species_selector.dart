@@ -17,6 +17,8 @@ class SpeciesSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -24,7 +26,9 @@ class SpeciesSelector extends StatelessWidget {
           label: AppStrings.addPetSpeciesDog,
           isSelected: selected == PetSpecies.dog,
           icon: Image.asset(
-            selected == PetSpecies.dog
+            isDark
+                ? 'assets/images/dogSecondary.png'
+                : selected == PetSpecies.dog
                 ? 'assets/images/dogSecondary.png'
                 : 'assets/images/dogPrimary.png',
             width: 18,
@@ -37,7 +41,9 @@ class SpeciesSelector extends StatelessWidget {
           label: AppStrings.addPetSpeciesCat,
           isSelected: selected == PetSpecies.cat,
           icon: Image.asset(
-            selected == PetSpecies.cat
+            isDark
+                ? 'assets/images/catSecondary.png'
+                : selected == PetSpecies.cat
                 ? 'assets/images/catSecondary.png'
                 : 'assets/images/catPrimary.png',
             width: 18,

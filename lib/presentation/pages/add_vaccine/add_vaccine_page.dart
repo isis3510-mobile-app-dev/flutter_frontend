@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter_frontend/core/constants/app_colors.dart';
 import 'package:flutter_frontend/core/constants/app_strings.dart';
 import 'package:flutter_frontend/core/models/attachment_models.dart';
 import 'package:flutter_frontend/core/models/pet_model.dart';
@@ -107,14 +108,13 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
     _attachedDocuments
       ..clear()
       ..addAll(
-        (prefill.attachedDocuments ?? const <PetDocumentModel>[])
-            .map(
-              (document) => EditableAttachmentModel(
-                fileName: document.fileName,
-                fileUri: document.fileUri,
-                documentId: document.documentId,
-              ),
-            ),
+        (prefill.attachedDocuments ?? const <PetDocumentModel>[]).map(
+          (document) => EditableAttachmentModel(
+            fileName: document.fileName,
+            fileUri: document.fileUri,
+            documentId: document.documentId,
+          ),
+        ),
       );
     _didHydrateExistingAttachments = _attachedDocuments.isNotEmpty;
 
@@ -197,9 +197,9 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
       }
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AppStrings.errorGeneric)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text(AppStrings.errorGeneric)));
     } finally {
       if (mounted) {
         setState(() => _isLoadingVaccines = false);
@@ -217,15 +217,17 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
           .where((id) => id.isNotEmpty)
           .toList(growable: false);
 
-      final pets = <PetModel>[];
-      for (final petId in petIds) {
-        try {
-          final pet = await _petService.getPetById(petId);
-          pets.add(pet);
-        } catch (_) {
-          // Skip missing/invalid pet ids to avoid crashing the flow.
-        }
-      }
+      final petResults = await Future.wait(
+        petIds.map((petId) async {
+          try {
+            return await _petService.getPetById(petId);
+          } catch (_) {
+            // Skip missing/invalid pet ids to avoid crashing the flow.
+            return null;
+          }
+        }),
+      );
+      final pets = petResults.whereType<PetModel>().toList(growable: false);
       if (!mounted) return;
       setState(() {
         _pets
@@ -238,9 +240,9 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
       }
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AppStrings.errorGeneric)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text(AppStrings.errorGeneric)));
     } finally {
       if (mounted) {
         setState(() => _isLoadingPets = false);
@@ -341,11 +343,7 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
     if (prefill.vaccineId != null && prefill.vaccineId!.trim().isNotEmpty) {
       matched = _vaccines.firstWhere(
         (vaccine) => vaccine.id == prefill.vaccineId,
-        orElse: () => const VaccineModel(
-          id: '',
-          schema: '',
-          name: '',
-        ),
+        orElse: () => const VaccineModel(id: '', schema: '', name: ''),
       );
       if (matched.id.isNotEmpty) {
         _setSelectedVaccine(matched);
@@ -358,11 +356,7 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
 
       final firstMatch = _vaccines.firstWhere(
         (vaccine) => vaccine.name == name,
-        orElse: () => const VaccineModel(
-          id: '',
-          schema: '',
-          name: '',
-        ),
+        orElse: () => const VaccineModel(id: '', schema: '', name: ''),
       );
       if (firstMatch.id.isNotEmpty) {
         _setSelectedVaccine(firstMatch, keepProduct: true);
@@ -418,8 +412,42 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
         .where((name) => name.isNotEmpty)
         .toSet()
         .toList();
+    final selectedName = _selectedPetName?.trim() ?? '';
+    if (selectedName.isNotEmpty && !names.contains(selectedName)) {
+      names.add(selectedName);
+    }
     names.sort();
     return names;
+  }
+
+  Widget _pickerThemeBuilder(BuildContext context, Widget? child) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colorScheme = isDark
+        ? const ColorScheme.dark(
+            primary: AppColors.primary,
+            surface: AppColors.secondaryDark,
+            onSurface: AppColors.onSurfaceDark,
+            onPrimary: AppColors.onPrimary,
+          )
+        : const ColorScheme.light(
+            primary: AppColors.primary,
+            surface: AppColors.secondary,
+            onSurface: AppColors.onSurface,
+            onPrimary: AppColors.onPrimary,
+          );
+
+    return Theme(
+      data: Theme.of(context).copyWith(
+        colorScheme: colorScheme,
+        dialogTheme: DialogThemeData(
+          backgroundColor: isDark
+              ? AppColors.secondaryDark
+              : AppColors.secondary,
+          surfaceTintColor: Colors.transparent,
+        ),
+      ),
+      child: child ?? const SizedBox.shrink(),
+    );
   }
 
   Future<void> _pickDate() async {
@@ -428,6 +456,7 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
       initialDate: DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
+      builder: _pickerThemeBuilder,
     );
 
     if (pickedDate == null) {
@@ -490,9 +519,9 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
 
     final dateGiven = parseDateInput(_dateController.text.trim());
     if (dateGiven == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter a valid date.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Enter a valid date.')));
       return;
     }
 
@@ -539,7 +568,9 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
       final payload = <String, dynamic>{
         'vaccineId': _selectedVaccineId,
         'dateGiven': formatDateForApi(dateGiven),
-        'nextDueDate': nextDueDate == null ? null : formatDateForApi(nextDueDate),
+        'nextDueDate': nextDueDate == null
+            ? null
+            : formatDateForApi(nextDueDate),
         'lotNumber': '',
         'status': 'completed',
         'administeredBy': _administeredByController.text.trim(),
@@ -550,10 +581,7 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
       };
 
       if (widget.prefill == null) {
-        await _petService.addVaccination(
-          petId: _selectedPetId!,
-          data: payload,
-        );
+        await _petService.addVaccination(petId: _selectedPetId!, data: payload);
       } else {
         if (_editingVaccinationId == null ||
             _editingVaccinationId!.trim().isEmpty) {
@@ -579,9 +607,9 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
       );
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AppStrings.errorGeneric)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text(AppStrings.errorGeneric)));
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);
@@ -593,7 +621,9 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
     final petId = _selectedPetId?.trim() ?? '';
     if (petId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Select a pet before uploading documents.')),
+        const SnackBar(
+          content: Text('Select a pet before uploading documents.'),
+        ),
       );
       return;
     }
@@ -644,9 +674,9 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AppStrings.errorGeneric)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text(AppStrings.errorGeneric)));
     } finally {
       if (mounted) {
         setState(() => _isUploadingAttachments = false);
@@ -679,8 +709,8 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
       stepContent: _buildStepContent(),
       primaryButtonText: _step == 2
           ? (widget.prefill == null
-              ? AppStrings.semanticAddVaccineButton
-              : AppStrings.semanticUpdateVaccineButton)
+                ? AppStrings.semanticAddVaccineButton
+                : AppStrings.semanticUpdateVaccineButton)
           : AppStrings.semanticContinueButton,
       onPrimaryPressed: _step == 2 ? _submit : _continue,
       onBackPressed: _back,
@@ -719,11 +749,8 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
                     (vaccine) =>
                         vaccine.name == _selectedVaccineName &&
                         vaccine.productName == value,
-                    orElse: () => const VaccineModel(
-                      id: '',
-                      schema: '',
-                      name: '',
-                    ),
+                    orElse: () =>
+                        const VaccineModel(id: '', schema: '', name: ''),
                   );
                   _selectedVaccineId = match.id.isEmpty ? null : match.id;
                 }

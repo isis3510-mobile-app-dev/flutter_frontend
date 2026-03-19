@@ -41,7 +41,10 @@ class _AuthPageState extends State<AuthPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
+      backgroundColor: isDark ? AppColors.backgroundDark : AppColors.background,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -102,16 +105,24 @@ class _AuthPageState extends State<AuthPage> {
   }
 
   Widget _buildHeader(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final titleColor = isDark
+        ? AppColors.onBackgroundDark
+        : AppColors.onBackground;
+    final subtitleColor = isDark ? AppColors.grey500 : AppColors.grey700;
+
     return Column(
       children: [
         DecoratedBox(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             boxShadow: [
               BoxShadow(
-                color: AppColors.shadowSoft,
+                color: isDark
+                    ? Colors.black.withValues(alpha: 0.18)
+                    : AppColors.shadowSoft,
                 blurRadius: AppDimensions.spaceL,
                 spreadRadius: AppDimensions.strokeThin,
-                offset: Offset(0, AppDimensions.spaceS),
+                offset: const Offset(0, AppDimensions.spaceS),
               ),
             ],
           ),
@@ -124,16 +135,12 @@ class _AuthPageState extends State<AuthPage> {
         const SizedBox(height: AppDimensions.spaceM),
         Text(
           AppStrings.authAppName,
-          style: context.textTheme.headlineMedium?.copyWith(
-            color: AppColors.onBackground,
-          ),
+          style: context.textTheme.headlineMedium?.copyWith(color: titleColor),
         ),
         const SizedBox(height: AppDimensions.spaceS),
         Text(
           AppStrings.authSubtitle,
-          style: context.textTheme.bodyMedium?.copyWith(
-            color: AppColors.grey700,
-          ),
+          style: context.textTheme.bodyMedium?.copyWith(color: subtitleColor),
           textAlign: TextAlign.center,
         ),
       ],
@@ -474,19 +481,21 @@ class _ContinueWithDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final dividerColor = isDark ? AppColors.grey700 : AppColors.grey300;
+    final textColor = isDark ? AppColors.grey500 : AppColors.grey500;
+
     return Row(
       children: [
-        const Expanded(child: Divider(thickness: 1, color: AppColors.grey300)),
+        Expanded(child: Divider(thickness: 1, color: dividerColor)),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppDimensions.spaceM),
           child: Text(
             text,
-            style: context.textTheme.bodyMedium?.copyWith(
-              color: AppColors.grey500,
-            ),
+            style: context.textTheme.bodyMedium?.copyWith(color: textColor),
           ),
         ),
-        const Expanded(child: Divider(thickness: 1, color: AppColors.grey300)),
+        Expanded(child: Divider(thickness: 1, color: dividerColor)),
       ],
     );
   }

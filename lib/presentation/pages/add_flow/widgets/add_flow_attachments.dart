@@ -18,17 +18,33 @@ class AddFlowAttachmentsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final hasAttachments = attachments.isNotEmpty;
+    final titleColor = isDark ? AppColors.onSurfaceDark : AppColors.onSurface;
+    final uploadBackground = isDark
+        ? AppColors.quickActionIconBackgroundDark
+        : AppColors.primaryVariant;
+    final uploadTextColor = isDark
+        ? AppColors.primaryVariant
+        : AppColors.primary;
+    final helperColor = isDark ? AppColors.grey500 : AppColors.grey700;
+    final attachmentBackground = isDark
+        ? AppColors.secondaryDark
+        : AppColors.secondary;
+    final attachmentBorder = isDark ? AppColors.grey700 : AppColors.grey300;
+    final attachmentText = isDark
+        ? AppColors.onSurfaceDark
+        : AppColors.onSurface;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
           AppStrings.labelAdditionalFiles,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: AppColors.onSurface,
+            color: titleColor,
           ),
         ),
         const SizedBox(height: 12),
@@ -40,7 +56,7 @@ class AddFlowAttachmentsSection extends StatelessWidget {
               width: 140,
               height: 140,
               decoration: BoxDecoration(
-                color: AppColors.primaryVariant,
+                color: uploadBackground,
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(color: AppColors.primary, width: 1.2),
               ),
@@ -55,17 +71,17 @@ class AddFlowAttachmentsSection extends StatelessWidget {
                         )
                       : Icon(
                           Icons.file_upload_outlined,
-                          color: AppColors.primary,
+                          color: uploadTextColor,
                           size: 48,
                         ),
                   const SizedBox(height: 8),
                   Text(
                     AppStrings.uploadDocuments,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
+                      color: uploadTextColor,
                     ),
                   ),
                 ],
@@ -77,10 +93,10 @@ class AddFlowAttachmentsSection extends StatelessWidget {
         Center(
           child: Text(
             AppStrings.uploadHint,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w400,
-              color: AppColors.grey700,
+              color: helperColor,
             ),
           ),
         ),
@@ -91,28 +107,36 @@ class AddFlowAttachmentsSection extends StatelessWidget {
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: attachmentBackground,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.grey300),
+                  border: Border.all(color: attachmentBorder),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.insert_drive_file_outlined, size: 18),
+                    Icon(
+                      Icons.insert_drive_file_outlined,
+                      size: 18,
+                      color: helperColor,
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         fileName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: attachmentText),
                       ),
                     ),
                     IconButton(
                       onPressed: onRemoveAttachment == null
                           ? null
                           : () => onRemoveAttachment!(index),
-                      icon: const Icon(Icons.close_rounded),
+                      icon: Icon(Icons.close_rounded, color: helperColor),
                       tooltip: 'Remove attachment',
                     ),
                   ],

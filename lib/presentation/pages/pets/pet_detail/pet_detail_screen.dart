@@ -471,7 +471,6 @@ class _PetDetailScreenState extends State<PetDetailScreen>
         _PetDetailHeader(
           pet: _pet,
           onBack: _goBack,
-          onShare: () {},
           onEdit: _openEditPet,
           onMore: _showPetActionsMenu,
         ),
@@ -518,14 +517,12 @@ class _PetDetailHeader extends StatelessWidget {
   const _PetDetailHeader({
     required this.pet,
     required this.onBack,
-    required this.onShare,
     required this.onEdit,
     required this.onMore,
   });
 
   final PetUiModel pet;
   final VoidCallback onBack;
-  final VoidCallback onShare;
   final VoidCallback onEdit;
   final VoidCallback onMore;
 
@@ -553,12 +550,7 @@ class _PetDetailHeader extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _ActionBar(
-                  onBack: onBack,
-                  onShare: onShare,
-                  onEdit: onEdit,
-                  onMore: onMore,
-                ),
+                _ActionBar(onBack: onBack, onEdit: onEdit, onMore: onMore),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(
                     AppDimensions.pageHorizontalPadding,
@@ -590,13 +582,11 @@ class _PetDetailHeader extends StatelessWidget {
 class _ActionBar extends StatelessWidget {
   const _ActionBar({
     required this.onBack,
-    required this.onShare,
     required this.onEdit,
     required this.onMore,
   });
 
   final VoidCallback onBack;
-  final VoidCallback onShare;
   final VoidCallback onEdit;
   final VoidCallback onMore;
 
@@ -612,15 +602,6 @@ class _ActionBar extends StatelessWidget {
             onPressed: onBack,
           ),
           const Spacer(),
-          IconButton(
-            icon: const Icon(
-              Icons.ios_share_outlined,
-              color: Colors.white,
-              size: 20,
-            ),
-            tooltip: AppStrings.petDetailShareSemantics,
-            onPressed: onShare,
-          ),
           IconButton(
             icon: const Icon(
               Icons.edit_outlined,
@@ -752,30 +733,15 @@ class _PetInfo extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 5),
-        Row(
-          children: [
-            Image.asset(
-              pet.species.toLowerCase() == 'cat'
-                  ? 'assets/images/catPrimary.png'
-                  : 'assets/images/dogPrimary.png',
-              width: 14,
-              height: 14,
-              errorBuilder: (_, _, _) => const SizedBox.shrink(),
-            ),
-            const SizedBox(width: 5),
-            Expanded(
-              child: Text(
-                '${pet.breed} · ${pet.species}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.82),
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-            ),
-          ],
+        Text(
+          '${pet.breed} · ${pet.species}',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.82),
+            fontSize: 13.5,
+            fontWeight: FontWeight.w400,
+          ),
         ),
         const SizedBox(height: 10),
         _PetMetaRow(pet: pet),

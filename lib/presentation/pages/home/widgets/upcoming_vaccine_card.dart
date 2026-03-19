@@ -27,7 +27,9 @@ class UpcomingVaccineCard extends StatelessWidget {
     final backgroundColor = isDark
         ? AppColors.secondaryDark
         : AppColors.secondary;
-    final textColor = isDark ? AppColors.onBackgroundDark : AppColors.onSecondary;
+    final textColor = isDark
+        ? AppColors.onBackgroundDark
+        : AppColors.onSecondary;
     final subtextColor = isDark ? AppColors.grey500 : AppColors.grey700;
     final timeLabel = switch (daysUntil) {
       < 0 => '${daysUntil.abs()}d',
@@ -45,10 +47,13 @@ class UpcomingVaccineCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: backgroundColor,
           borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+          border: isDark ? Border.all(color: AppColors.grey700) : null,
           boxShadow: [
             BoxShadow(
-              color: AppColors.shadowSoft,
-              blurRadius: 4,
+              color: isDark
+                  ? Colors.black.withValues(alpha: 0.16)
+                  : AppColors.shadowSoft,
+              blurRadius: isDark ? 8 : 4,
               offset: const Offset(0, 2),
             ),
           ],
@@ -125,13 +130,15 @@ class UpcomingVaccineCard extends StatelessWidget {
                   vertical: AppDimensions.spaceXS,
                 ),
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.timeBackgroundDark : AppColors.timeBackground,
+                  color: isDark
+                      ? AppColors.timeBackgroundDark
+                      : AppColors.timeBackground,
                   borderRadius: BorderRadius.circular(AppDimensions.radiusM),
                 ),
                 child: Text(
                   timeLabel,
                   style: TextStyle(
-                    color: isDark? AppColors.timeTextDark : AppColors.timeText,
+                    color: isDark ? AppColors.timeTextDark : AppColors.timeText,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),

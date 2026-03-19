@@ -8,11 +8,7 @@ import '../../pets/models/pet_ui_model.dart';
 /// Individual pet card displayed in the horizontal pets list.
 /// Shows only pet image with status badge, name appears below.
 class PetCard extends StatelessWidget {
-  const PetCard({
-    super.key,
-    required this.pet,
-    this.onTap,
-  });
+  const PetCard({super.key, required this.pet, this.onTap});
 
   final PetUiModel pet;
   final VoidCallback? onTap;
@@ -22,6 +18,9 @@ class PetCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? AppColors.onBackgroundDark : AppColors.onSurface;
     final effectivePhotoPath = pet.effectivePhotoPath;
+    final cardBackground = isDark
+        ? AppColors.petCardQuickActionBgDark
+        : AppColors.petCardQuickActionBg;
 
     return GestureDetector(
       onTap: onTap,
@@ -36,26 +35,27 @@ class PetCard extends StatelessWidget {
                 width: 65,
                 height: 65,
                 decoration: BoxDecoration(
-                  color: isDark
-                      ? AppColors.petCardQuickActionBgDark
-                      : AppColors.petCardQuickActionBg,
+                  color: cardBackground,
                   borderRadius: BorderRadius.circular(AppDimensions.radiusL),
                   image: pet.hasPhoto
                       ? DecorationImage(
                           image: pet.isPhotoRemote
                               ? NetworkImage(effectivePhotoPath!)
                               : FileImage(File(effectivePhotoPath!))
-                                  as ImageProvider,
+                                    as ImageProvider,
                           fit: BoxFit.cover,
                         )
                       : null,
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.shadowSoft,
-                      blurRadius: 4,
+                      color: isDark
+                          ? Colors.black.withValues(alpha: 0.18)
+                          : AppColors.shadowSoft,
+                      blurRadius: isDark ? 8 : 4,
                       offset: const Offset(0, 2),
                     ),
                   ],
+                  border: isDark ? Border.all(color: AppColors.grey700) : null,
                 ),
                 child: !pet.hasPhoto
                     ? Icon(
@@ -120,6 +120,8 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       width: 20,
       height: 20,
@@ -127,16 +129,12 @@ class _StatusBadge extends StatelessWidget {
         color: _getBackgroundColor(),
         borderRadius: BorderRadius.circular(AppDimensions.radiusS),
         border: Border.all(
-          color: Colors.white,
+          color: isDark ? AppColors.backgroundDark : Colors.white,
           width: 1.2,
         ),
       ),
       child: Center(
-        child: Icon(
-          _getIconData(),
-          size: 9,
-          color: _getTextColor(),
-        ),
+        child: Icon(_getIconData(), size: 9, color: _getTextColor()),
       ),
     );
   }

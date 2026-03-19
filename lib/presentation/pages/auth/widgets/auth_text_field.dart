@@ -25,6 +25,14 @@ class AuthTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final fillColor = isDark ? AppColors.secondaryDark : AppColors.secondary;
+    final borderColor = isDark ? AppColors.grey700 : AppColors.grey300;
+    final textColor = isDark ? AppColors.onSurfaceDark : AppColors.onSurface;
+    final hintColor = isDark
+        ? AppColors.onSurfaceDark.withValues(alpha: 0.55)
+        : AppColors.grey500;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -34,20 +42,18 @@ class AuthTextField extends StatelessWidget {
           controller: controller,
           keyboardType: keyboardType,
           obscureText: isPassword && obscureText,
-          style: context.textTheme.bodyMedium,
+          style: context.textTheme.bodyMedium?.copyWith(color: textColor),
           decoration: InputDecoration(
             hintText: hintText,
-            hintStyle: context.textTheme.bodyMedium?.copyWith(
-              color: AppColors.grey500,
-            ),
+            hintStyle: context.textTheme.bodyMedium?.copyWith(color: hintColor),
             filled: true,
-            fillColor: AppColors.secondary,
+            fillColor: fillColor,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: AppDimensions.spaceM,
               vertical: AppDimensions.spaceM,
             ),
-            enabledBorder: _fieldBorder,
-            focusedBorder: _fieldBorder,
+            enabledBorder: _fieldBorder(borderColor),
+            focusedBorder: _focusedFieldBorder,
             suffixIcon: isPassword
                 ? IconButton(
                     onPressed: onToggleVisibility,
@@ -56,7 +62,7 @@ class AuthTextField extends StatelessWidget {
                           ? Icons.visibility_outlined
                           : Icons.visibility_off_outlined,
                     ),
-                    color: AppColors.grey500,
+                    color: hintColor,
                   )
                 : null,
           ),
@@ -66,10 +72,15 @@ class AuthTextField extends StatelessWidget {
   }
 }
 
-const OutlineInputBorder _fieldBorder = OutlineInputBorder(
+OutlineInputBorder _fieldBorder(Color color) => OutlineInputBorder(
+  borderRadius: const BorderRadius.all(Radius.circular(AppDimensions.radiusL)),
+  borderSide: BorderSide(color: color, width: AppDimensions.strokeThin),
+);
+
+const OutlineInputBorder _focusedFieldBorder = OutlineInputBorder(
   borderRadius: BorderRadius.all(Radius.circular(AppDimensions.radiusL)),
   borderSide: BorderSide(
-    color: AppColors.grey300,
+    color: AppColors.primary,
     width: AppDimensions.strokeThin,
   ),
 );

@@ -21,6 +21,15 @@ class StepMedical extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final almostDoneBackground = isDark
+        ? AppColors.addPetPhotoBackgroundDark
+        : AppColors.addPetPhotoBackground;
+    final almostDoneTitleColor = isDark
+        ? AppColors.onSurfaceDark
+        : AppColors.addPetBannerText;
+    final almostDoneBodyColor = isDark
+        ? AppColors.onSurfaceDark.withValues(alpha: 0.84)
+        : AppColors.addPetBannerText;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -32,10 +41,9 @@ class StepMedical extends StatelessWidget {
             vertical: 14,
           ),
           decoration: BoxDecoration(
-            color: isDark
-                ? AppColors.addPetPhotoBackgroundDark
-                : AppColors.addPetPhotoBackground,
+            color: almostDoneBackground,
             borderRadius: BorderRadius.circular(18),
+            border: isDark ? Border.all(color: AppColors.grey700) : null,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -43,7 +51,7 @@ class StepMedical extends StatelessWidget {
               Text(
                 AppStrings.addPetAlmostDoneTitle,
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: AppColors.addPetBannerText,
+                  color: almostDoneTitleColor,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -51,7 +59,7 @@ class StepMedical extends StatelessWidget {
               Text(
                 AppStrings.addPetAlmostDoneMessage,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.addPetBannerText,
+                  color: almostDoneBodyColor,
                   height: 1.35,
                 ),
               ),

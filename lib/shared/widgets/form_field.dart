@@ -32,14 +32,19 @@ class AppFormField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final fillColor = isDark ? AppColors.secondaryDark : AppColors.secondary;
+    final borderColor = isDark ? AppColors.grey700 : AppColors.grey500;
+    final hintColor = isDark
+        ? AppColors.onSurfaceDark.withValues(alpha: 0.55)
+        : AppColors.grey500;
+    final textColor = isDark ? AppColors.onSurfaceDark : AppColors.onSurface;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          label,
-          style: context.textTheme.titleMedium,
-        ),
+        Text(label, style: context.textTheme.titleMedium),
         const SizedBox(height: 6),
         TextFormField(
           controller: controller,
@@ -50,24 +55,28 @@ class AppFormField extends StatelessWidget {
           readOnly: readOnly,
           obscureText: obscureText,
           keyboardType: keyboardType,
-          style: context.textTheme.bodyMedium,
+          style: context.textTheme.bodyMedium?.copyWith(color: textColor),
           decoration: InputDecoration(
             hintText: hintText,
-            hintStyle: context.textTheme.bodyMedium?.copyWith(color: AppColors.grey500),
+            hintStyle: context.textTheme.bodyMedium?.copyWith(color: hintColor),
+            filled: true,
+            fillColor: fillColor,
             suffixIcon: icon == null
                 ? null
                 : Padding(
                     padding: const EdgeInsets.only(right: 14),
                     child: Icon(icon),
                   ),
-            suffixIconColor: AppColors.grey500,
+            suffixIconColor: hintColor,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 18,
               vertical: 18,
             ),
-            enabledBorder: _border,
-            focusedBorder: _border,
-            disabledBorder: _border,
+            enabledBorder: _border(borderColor),
+            focusedBorder: _focusedBorder,
+            disabledBorder: _border(borderColor),
+            errorBorder: _errorBorder,
+            focusedErrorBorder: _errorBorder,
           ),
         ),
       ],
@@ -75,10 +84,17 @@ class AppFormField extends StatelessWidget {
   }
 }
 
-const OutlineInputBorder _border = OutlineInputBorder(
+OutlineInputBorder _border(Color color) => OutlineInputBorder(
+  borderRadius: const BorderRadius.all(Radius.circular(18)),
+  borderSide: BorderSide(color: color, width: 1.5),
+);
+
+const OutlineInputBorder _focusedBorder = OutlineInputBorder(
   borderRadius: BorderRadius.all(Radius.circular(18)),
-  borderSide: BorderSide(
-    color: AppColors.grey500,
-    width: 1.5,
-  ),
+  borderSide: BorderSide(color: AppColors.primary, width: 1.5),
+);
+
+const OutlineInputBorder _errorBorder = OutlineInputBorder(
+  borderRadius: BorderRadius.all(Radius.circular(18)),
+  borderSide: BorderSide(color: AppColors.error, width: 1.5),
 );

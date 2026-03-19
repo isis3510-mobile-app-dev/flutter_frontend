@@ -22,7 +22,15 @@ class HomeHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? AppColors.onBackgroundDark : AppColors.onBackground;
+    final textColor = isDark
+        ? AppColors.onBackgroundDark
+        : AppColors.onBackground;
+    final nfcBackground = isDark
+        ? AppColors.quickActionIconBackgroundDark
+        : AppColors.primaryVariant;
+    final nfcIconColor = isDark
+        ? AppColors.primaryVariant
+        : AppColors.quickActionIconTint;
 
     return Padding(
       padding: const EdgeInsets.symmetric(
@@ -61,8 +69,8 @@ class HomeHeader extends StatelessWidget {
                       child: Container(
                         width: 40,
                         height: 40,
-                        decoration: const BoxDecoration(
-                          color: AppColors.primaryVariant,
+                        decoration: BoxDecoration(
+                          color: nfcBackground,
                           shape: BoxShape.circle,
                         ),
                         child: Center(
@@ -70,6 +78,10 @@ class HomeHeader extends StatelessWidget {
                             AppAssets.iconNfc,
                             width: 18,
                             height: 18,
+                            colorFilter: ColorFilter.mode(
+                              nfcIconColor,
+                              BlendMode.srcIn,
+                            ),
                           ),
                         ),
                       ),
@@ -90,16 +102,20 @@ class HomeHeader extends StatelessWidget {
 }
 
 class _NotificationButton extends StatelessWidget {
-  const _NotificationButton({
-    required this.hasNotification,
-    this.onTap,
-  });
+  const _NotificationButton({required this.hasNotification, this.onTap});
 
   final bool hasNotification;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDark
+        ? AppColors.secondaryDark
+        : AppColors.secondary;
+    final borderColor = isDark ? AppColors.grey700 : AppColors.grey300;
+    final iconColor = isDark ? AppColors.onBackgroundDark : AppColors.onSurface;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -109,14 +125,56 @@ class _NotificationButton extends StatelessWidget {
           width: 44,
           height: 44,
           child: Center(
-            child: SvgPicture.asset(
-              hasNotification
-                  ? AppAssets.iconNotificationActive
-                  : AppAssets.iconNotification,
+            child: Container(
               width: 40,
               height: 40,
+              decoration: BoxDecoration(
+                color: backgroundColor,
+                shape: BoxShape.circle,
+                border: Border.all(color: borderColor),
+              ),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Center(
+                    child: Icon(
+                      Icons.notifications_none_rounded,
+                      size: 20,
+                      color: iconColor,
+                    ),
+                  ),
+                  if (hasNotification)
+                    const Positioned(
+                      top: 8,
+                      right: 8,
+                      child: _NotificationDot(),
+                    ),
+                ],
+              ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NotificationDot extends StatelessWidget {
+  const _NotificationDot();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 10,
+      height: 10,
+      decoration: BoxDecoration(
+        color: AppColors.error,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? AppColors.secondaryDark
+              : AppColors.secondary,
+          width: 1.5,
         ),
       ),
     );

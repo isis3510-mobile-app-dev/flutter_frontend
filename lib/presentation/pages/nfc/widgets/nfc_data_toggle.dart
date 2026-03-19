@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
+import '../../../../shared/widgets/app_toggle_switch.dart';
 
 class NfcDataToggle extends StatelessWidget {
   const NfcDataToggle({
@@ -21,6 +22,18 @@ class NfcDataToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDark
+        ? AppColors.secondaryDark
+        : AppColors.surface;
+    final borderColor = isDark
+        ? AppColors.petFilterInactiveBorderDark
+        : AppColors.petFilterInactiveBorder;
+    final titleColor = enabled
+        ? (isDark ? AppColors.onSurfaceDark : AppColors.onSurface)
+        : (isDark ? AppColors.grey500 : AppColors.grey700);
+    final subtitleColor = isDark ? AppColors.grey500 : AppColors.grey700;
+
     return Container(
       margin: const EdgeInsets.only(bottom: AppDimensions.spaceS),
       padding: const EdgeInsets.symmetric(
@@ -28,12 +41,9 @@ class NfcDataToggle extends StatelessWidget {
         vertical: AppDimensions.spaceS,
       ),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(AppDimensions.radiusM),
-        border: Border.all(
-          color: AppColors.petFilterInactiveBorder,
-          width: AppDimensions.strokeThin,
-        ),
+        border: Border.all(color: borderColor, width: AppDimensions.strokeThin),
       ),
       child: Row(
         children: [
@@ -44,7 +54,7 @@ class NfcDataToggle extends StatelessWidget {
                 Text(
                   title,
                   style: TextStyle(
-                    color: enabled ? AppColors.onSurface : AppColors.grey700,
+                    color: titleColor,
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
@@ -53,8 +63,8 @@ class NfcDataToggle extends StatelessWidget {
                   const SizedBox(height: AppDimensions.spaceXXS),
                   Text(
                     subtitle!,
-                    style: const TextStyle(
-                      color: AppColors.grey700,
+                    style: TextStyle(
+                      color: subtitleColor,
                       fontSize: 12,
                       fontWeight: FontWeight.w400,
                     ),
@@ -64,22 +74,7 @@ class NfcDataToggle extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppDimensions.spaceS),
-          Checkbox(
-            value: value,
-            onChanged: enabled
-                ? (newValue) {
-                    if (newValue != null && onChanged != null) {
-                      onChanged!(newValue);
-                    }
-                  }
-                : null,
-            activeColor: AppColors.primary,
-            side: const BorderSide(
-              color: AppColors.petFilterInactiveBorder,
-              width: AppDimensions.strokeRegular,
-            ),
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
+          AppToggleSwitch(value: value, enabled: enabled, onChanged: onChanged),
         ],
       ),
     );
