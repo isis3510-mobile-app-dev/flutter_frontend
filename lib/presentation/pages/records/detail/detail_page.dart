@@ -11,6 +11,7 @@ import 'package:flutter_frontend/core/utils/context_extensions.dart';
 import 'package:flutter_frontend/presentation/pages/add_event/add_event_args.dart';
 import 'package:flutter_frontend/presentation/pages/add_vaccine/add_vaccine_args.dart';
 import 'package:flutter_frontend/shared/widgets/full_width_button.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class DetailPage extends StatefulWidget {
   const DetailPage({
@@ -35,10 +36,12 @@ class DetailPage extends StatefulWidget {
 class _DetailPageState extends State<DetailPage> {
   final PetService _petService = PetService();
   final VaccineService _vaccineService = VaccineService();
+  final EventService _eventService = EventService();
 
   PetVaccinationModel? _vaccination;
   PetModel? _pet;
   String? _vaccineName;
+  EventModel? _event;
 
   @override
   void initState() {
@@ -46,6 +49,13 @@ class _DetailPageState extends State<DetailPage> {
     _vaccination = widget.vaccination;
     _pet = widget.pet;
     _vaccineName = widget.vaccineName;
+    _event = widget.event;
+    if (widget.type == 'vaccine') {
+      _refreshVaccination();
+    }
+    if (widget.type == 'event') {
+      _refreshEvent();
+    }
   }
 
   Future<void> _refreshVaccination() async {
@@ -117,7 +127,7 @@ class _DetailPageState extends State<DetailPage> {
 
     try {
       if (isEvent) {
-        await EventService().deleteEvent(widget.event!.id);
+        await _eventService.deleteEvent(_event!.id);
       } else {
         await PetService().deleteVaccination(
           petId: _pet!.id,
@@ -156,6 +166,7 @@ class _DetailPageState extends State<DetailPage> {
           petId: _pet?.id,
           petName: _pet?.name,
           administeredBy: _vaccination?.administeredBy,
+          attachedDocuments: _vaccination?.attachedDocuments,
         ),
       );
       if (result == true) {
@@ -165,23 +176,78 @@ class _DetailPageState extends State<DetailPage> {
       final result = await Navigator.of(context).pushNamed(
         Routes.addEvent,
         arguments: AddEventArgs(
-          eventId: widget.event?.id,
+          eventId: _event?.id,
           petId: _pet?.id,
           petName: _pet?.name,
-          title: widget.event?.title,
-          description: widget.event?.description,
-          date: widget.event?.date,
-          eventType: widget.event?.eventType,
-          price: widget.event?.price,
-          provider: widget.event?.provider,
-          clinic: widget.event?.clinic,
-          followUpDate: widget.event?.followUpDate,
+          title: _event?.title,
+          description: _event?.description,
+          date: _event?.date,
+          eventType: _event?.eventType,
+          price: _event?.price,
+          provider: _event?.provider,
+          clinic: _event?.clinic,
+          followUpDate: _event?.followUpDate,
+          attachedDocuments: _event?.attachedDocuments,
         ),
       );
 
-      if (result == true && context.mounted) {
-        Navigator.of(context).pop(true);
+      if (result == true) {
+        await _refreshEvent();
       }
+    }
+  }
+
+  Future<void> _refreshEvent() async {
+    if (widget.type != 'event' || _event == null || _event!.id.trim().isEmpty) {
+      return;
+    }
+
+    try {
+      final updatedEvent = await _eventService.getEventById(_event!.id);
+
+      if (!mounted) return;
+      setState(() {
+        _event = updatedEvent;
+      });
+    } catch (_) {
+      // Keep existing data if refresh fails.
+    }
+  }
+
+  Future<void> _openDocument(String url) async {
+    final uri = Uri.tryParse(url.trim());
+    if (uri == null) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(AppStrings.errorGeneric)),
+      );
+      return;
+    }
+
+    try {
+      final opened = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (opened || !mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open this document.')),
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Document opening is not available right now.'),
+        ),
+      );
     }
   }
 
@@ -197,7 +263,7 @@ class _DetailPageState extends State<DetailPage> {
       'event' => (
           Icons.event_note_outlined,
           AppStrings.eventDetailsTitle,
-          AppStrings.eventNotesTitle
+          AppStrings.eventDocumentsTitle
         ),
       _ => (
           Icons.info_outline,
@@ -242,36 +308,33 @@ class _DetailPageState extends State<DetailPage> {
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final displayEventTitle = widget.event?.title.trim().isNotEmpty == true
-      ? widget.event!.title.trim()
+    final displayEventTitle = _event?.title.trim().isNotEmpty == true
+      ? _event!.title.trim()
       : AppStrings.valueNotAvailable;
-    final displayEventType = _formatEventType(widget.event?.eventType ?? 'general');
-    final displayEventDate = _isValidDate(widget.event?.date)
-      ? _formatDate(widget.event!.date)
+    final displayEventType = _formatEventType(_event?.eventType ?? 'general');
+    final displayEventDate = _isValidDate(_event?.date)
+      ? _formatDate(_event!.date)
       : AppStrings.valueNotAvailable;
-    final displayEventFollowUp = _isValidDate(widget.event?.followUpDate)
-      ? _formatDate(widget.event!.followUpDate!)
+    final displayEventFollowUp = _isValidDate(_event?.followUpDate)
+      ? _formatDate(_event!.followUpDate!)
       : AppStrings.hintNotProvided;
-    final displayEventProvider = widget.event?.provider.trim().isNotEmpty == true
-      ? widget.event!.provider.trim()
+    final displayEventProvider = _event?.provider.trim().isNotEmpty == true
+      ? _event!.provider.trim()
       : AppStrings.valueNotAvailable;
-    final displayEventClinic = widget.event?.clinic.trim().isNotEmpty == true
-      ? widget.event!.clinic.trim()
+    final displayEventClinic = _event?.clinic.trim().isNotEmpty == true
+      ? _event!.clinic.trim()
       : AppStrings.valueNotAvailable;
-    final displayEventPrice = widget.event?.price == null
+    final displayEventPrice = _event?.price == null
       ? AppStrings.hintNotProvided
-      : '\$${widget.event!.price!.toStringAsFixed(2)}';
-    final displayEventNotes = widget.event?.description.trim().isNotEmpty == true
-      ? widget.event!.description.trim()
+      : '\$${_event!.price!.toStringAsFixed(2)}';
+    final displayEventNotes = _event?.description.trim().isNotEmpty == true
+      ? _event!.description.trim()
       : AppStrings.eventNoNotes;
+    final vaccineDocuments = _vaccination?.attachedDocuments ?? const <PetDocumentModel>[];
+    final eventDocuments = _event?.attachedDocuments ?? const <EventDocumentModel>[];
 
     final mainTitle = isVaccine ? displayVaccineName : displayEventTitle;
     final statusText = isVaccine ? displayVaccineStatus : displayEventType;
-    final statusBackground =
-      isVaccine ? AppColors.positiveBackground : AppColors.primaryVariant;
-    final statusTextColor = isVaccine ? AppColors.success : AppColors.primary;
-    final statusIcon = isVaccine ? Icons.check : Icons.label_rounded;
-
     final timelineTitle = isVaccine ? AppStrings.vaccineTimelineTitle : 'Schedule';
     final firstTimelineLabel =
       isVaccine ? AppStrings.vaccineDateGivenLabel : AppStrings.labelDate;
@@ -284,12 +347,9 @@ class _DetailPageState extends State<DetailPage> {
     final providerFirstValue = isVaccine ? displayVet : displayEventProvider;
     final providerSecondValue = isVaccine ? displayClinic : displayEventClinic;
 
-    final lastCardValue =
-        isVaccine ? AppStrings.vaccineNoDocuments : displayEventNotes;
-
     final hasMutableData =
       (isVaccine && _vaccination != null && _pet != null) ||
-      (isEvent && widget.event != null);
+      (isEvent && _event != null);
 
     void showMissingDataMessage() {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -441,17 +501,50 @@ class _DetailPageState extends State<DetailPage> {
                 ),
               ),
               const SizedBox(height: 16),
+              if (isEvent) ...[
+                _InfoCard(
+                  backgroundColor: isDark ? AppColors.secondaryDark : AppColors.secondary,
+                  borderColor: isDark ? AppColors.grey700 : AppColors.grey300,
+                  title: AppStrings.eventNotesTitle,
+                  child: Text(
+                    displayEventNotes,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: AppColors.grey700,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
               _InfoCard(
                 backgroundColor: isDark ? AppColors.secondaryDark : AppColors.secondary,
                 borderColor: isDark ? AppColors.grey700 : AppColors.grey300,
                 title: lastCardTitle,
-                child: Text(
-                  lastCardValue,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppColors.grey700,
-                  ),
-                ),
+                child: isVaccine
+                    ? _DocumentsList(
+                        documents: vaccineDocuments
+                            .map(
+                              (doc) => _DocumentItem(
+                                name: doc.fileName,
+                                url: doc.fileUri,
+                              ),
+                            )
+                            .toList(growable: false),
+                        emptyLabel: AppStrings.vaccineNoDocuments,
+                        onOpenDocument: _openDocument,
+                      )
+                    : _DocumentsList(
+                        documents: eventDocuments
+                            .map(
+                              (doc) => _DocumentItem(
+                                name: doc.fileName,
+                                url: doc.fileUri,
+                              ),
+                            )
+                            .toList(growable: false),
+                        emptyLabel: AppStrings.vaccineNoDocuments,
+                        onOpenDocument: _openDocument,
+                      ),
               ),
             ],
           ),
@@ -496,6 +589,92 @@ class _DetailPageState extends State<DetailPage> {
           ),
         )
       ),
+    );
+  }
+}
+
+class _DocumentItem {
+  const _DocumentItem({
+    required this.name,
+    required this.url,
+  });
+
+  final String name;
+  final String url;
+}
+
+class _DocumentsList extends StatelessWidget {
+  const _DocumentsList({
+    required this.documents,
+    required this.emptyLabel,
+    required this.onOpenDocument,
+  });
+
+  final List<_DocumentItem> documents;
+  final String emptyLabel;
+  final Future<void> Function(String url) onOpenDocument;
+
+  @override
+  Widget build(BuildContext context) {
+    if (documents.isEmpty) {
+      return Text(
+        emptyLabel,
+        style: const TextStyle(
+          fontSize: 14,
+          color: AppColors.grey700,
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: List.generate(documents.length, (index) {
+        final document = documents[index];
+        final name = document.name.trim().isEmpty
+            ? 'Document ${index + 1}'
+            : document.name.trim();
+        return Padding(
+          padding: EdgeInsets.only(bottom: index == documents.length - 1 ? 0 : 10),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: document.url.trim().isEmpty
+                ? null
+                : () => onOpenDocument(document.url),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(top: 2),
+                    child: Icon(
+                      Icons.insert_drive_file_outlined,
+                      size: 18,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      name,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AppColors.grey700,
+                      ),
+                    ),
+                  ),
+                  if (document.url.trim().isNotEmpty)
+                    const Icon(
+                      Icons.open_in_new_rounded,
+                      size: 18,
+                      color: AppColors.primary,
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }),
     );
   }
 }

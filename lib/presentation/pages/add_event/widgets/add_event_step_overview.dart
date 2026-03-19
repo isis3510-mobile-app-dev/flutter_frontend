@@ -15,6 +15,7 @@ class AddEventStepOverview extends StatelessWidget {
     required this.clinicController,
     required this.followUpDateController,
     required this.descriptionController,
+    required this.attachmentNames,
   });
 
   final TextEditingController eventController;
@@ -27,6 +28,7 @@ class AddEventStepOverview extends StatelessWidget {
   final TextEditingController clinicController;
   final TextEditingController followUpDateController;
   final TextEditingController descriptionController;
+  final List<String> attachmentNames;
 
   @override
   Widget build(BuildContext context) {
@@ -100,6 +102,17 @@ class AddEventStepOverview extends StatelessWidget {
           label: AppStrings.labelDescription,
           hintText: AppStrings.hintNotProvided,
           controller: descriptionController,
+          readOnly: true,
+        ),
+        const SizedBox(height: 18),
+        AppFormField(
+          label: AppStrings.labelAdditionalFiles,
+          hintText: attachmentNames.isEmpty
+              ? AppStrings.vaccineNoDocuments
+              : attachmentNames.join(', '),
+          controller: TextEditingController(
+            text: attachmentNames.isEmpty ? '' : attachmentNames.join(', '),
+          ),
           readOnly: true,
         ),
       ],

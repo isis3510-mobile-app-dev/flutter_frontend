@@ -92,6 +92,30 @@ class AttachmentUploadService {
     );
   }
 
+  Future<UploadedAttachmentModel> uploadPetDocument({
+    required Uint8List bytes,
+    required String petId,
+    required String fileName,
+    String category = 'general',
+  }) {
+    debugPrint(
+      '[AttachmentUploadService] uploadPetDocument petId=${petId.trim()} '
+      'category=$category bucket=${_storage.bucket}',
+    );
+
+    final storagePath = _attachmentIdService.buildPetDocumentPath(
+      petId: petId,
+      originalFileName: fileName,
+      category: category,
+    );
+
+    return _uploadBytes(
+      bytes: bytes,
+      fileName: fileName,
+      storagePath: storagePath,
+    );
+  }
+
   Future<UploadedAttachmentModel> _uploadBytes({
     required Uint8List bytes,
     required String fileName,
@@ -163,6 +187,8 @@ class AttachmentUploadService {
     switch (extension) {
       case 'png':
         return 'image/png';
+      case 'pdf':
+        return 'application/pdf';
       case 'webp':
         return 'image/webp';
       case 'heic':

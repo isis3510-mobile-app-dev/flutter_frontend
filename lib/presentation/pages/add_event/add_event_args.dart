@@ -1,3 +1,5 @@
+import 'package:flutter_frontend/core/models/event_model.dart';
+
 class AddEventArgs {
   const AddEventArgs({
     this.eventId,
@@ -11,6 +13,7 @@ class AddEventArgs {
     this.provider,
     this.clinic,
     this.followUpDate,
+    this.attachedDocuments,
   });
 
   final String? eventId;
@@ -24,4 +27,5 @@ class AddEventArgs {
   final String? provider;
   final String? clinic;
   final DateTime? followUpDate;
+  final List<EventDocumentModel>? attachedDocuments;
 }

@@ -13,6 +13,10 @@ class AddEventStepDetails extends StatelessWidget {
     required this.followUpDateController,
     required this.onPickFollowUpDate,
     required this.descriptionController,
+    required this.onAddAttachment,
+    required this.attachmentNames,
+    required this.onRemoveAttachment,
+    required this.isUploadingAttachments,
   });
 
   final TextEditingController eventTypeController;
@@ -22,6 +26,10 @@ class AddEventStepDetails extends StatelessWidget {
   final TextEditingController followUpDateController;
   final VoidCallback onPickFollowUpDate;
   final TextEditingController descriptionController;
+  final VoidCallback onAddAttachment;
+  final List<String> attachmentNames;
+  final ValueChanged<int> onRemoveAttachment;
+  final bool isUploadingAttachments;
 
   @override
   Widget build(BuildContext context) {
@@ -85,7 +93,12 @@ class AddEventStepDetails extends StatelessWidget {
           controller: descriptionController,
         ),
         const SizedBox(height: 18),
-        const AddFlowAttachmentsSection(),
+        AddFlowAttachmentsSection(
+          onTap: onAddAttachment,
+          attachments: attachmentNames,
+          onRemoveAttachment: onRemoveAttachment,
+          isUploading: isUploadingAttachments,
+        ),
       ],
     );
   }

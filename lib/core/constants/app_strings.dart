@@ -195,6 +195,7 @@ abstract class AppStrings {
   static const String vaccineAttachedDocumentTitle = 'Attached Document';
   static const String vaccineNoDocuments = 'No documents attached';
   static const String eventNotesTitle = 'Notes';
+  static const String eventDocumentsTitle = 'Documents';
   static const String eventNoNotes = 'No notes provided';
   static const String actionDelete = 'Delete';
   static const String actionEdit = 'Edit';
