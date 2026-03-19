@@ -1,12 +1,11 @@
-import 'dart:io';
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_frontend/core/constants/app_colors.dart';
 import 'package:flutter_frontend/core/constants/app_dimensions.dart';
 import 'package:flutter_frontend/core/constants/app_strings.dart';
 import 'package:flutter_frontend/core/models/user_profile.dart';
 import 'package:flutter_frontend/core/network/api_exception.dart';
+import 'package:flutter_frontend/core/services/attachment_upload_service.dart';
 import 'package:flutter_frontend/core/services/profile_photo_service.dart';
 import 'package:flutter_frontend/core/services/user_service.dart';
 import 'package:image_picker/image_picker.dart';
@@ -23,6 +22,8 @@ class EditProfilePage extends StatefulWidget {
 class _EditProfilePageState extends State<EditProfilePage> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final UserService _userService = UserService();
+  final AttachmentUploadService _attachmentUploadService =
+      AttachmentUploadService();
   final ProfilePhotoService _photoService = ProfilePhotoService();
   final ImagePicker _imagePicker = ImagePicker();
 
@@ -34,7 +35,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
   bool _isSaving = false;
   bool _isUploadingPhoto = false;
   String _profilePhotoValue = '';
-  String? _localPhotoPath;
   Uint8List? _selectedPhotoBytes;
   String? _errorMessage;
 
@@ -46,18 +46,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _phoneController = TextEditingController(text: widget.profile.phone);
     _addressController = TextEditingController(text: widget.profile.address);
     _profilePhotoValue = widget.profile.profilePhoto;
-    _loadStoredLocalPhotoPath();
-  }
-
-  Future<void> _loadStoredLocalPhotoPath() async {
-    final photoPath = await _photoService.getLocalPhotoPath();
-    if (!mounted || photoPath == null) {
-      return;
-    }
-
-    setState(() {
-      _localPhotoPath = photoPath;
-    });
   }
 
   @override
@@ -86,7 +74,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         email: _emailController.text.trim(),
         phone: _phoneController.text.trim(),
         address: _addressController.text.trim(),
-        profilePhoto: '', // Don't send photo to backend (stored locally instead)
+        profilePhoto: _profilePhotoValue.trim(),
       );
 
       if (!mounted) {
@@ -160,7 +148,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
       }
 
       final bytes = await pickedFile.readAsBytes();
-      final extension = _extensionFromName(pickedFile.name);
 
       if (!mounted) {
         return;
@@ -169,33 +156,36 @@ class _EditProfilePageState extends State<EditProfilePage> {
       setState(() {
         _isUploadingPhoto = true;
         _errorMessage = null;
+        _selectedPhotoBytes = bytes;
       });
 
-      final photoPath = await _photoService.saveImageFileLocally(
+      final uploadedPhoto = await _attachmentUploadService.uploadProfilePhoto(
         bytes: bytes,
-        directoryName: 'profile_photos',
-        fileNamePrefix: 'profile',
-        extension: extension,
+        fileName: pickedFile.name,
+        firebaseUid: widget.profile.firebaseUid,
+      );
+
+      debugPrint(
+        '[EditProfilePage] uploaded profile photo url=${uploadedPhoto.downloadUrl}',
       );
 
       if (!mounted) {
         return;
       }
 
-      // Save the photo path to SharedPreferences for persistence
-      await _photoService.saveLocalPhotoPath(photoPath);
+      await _photoService.clearLocalPhoto();
 
       setState(() {
-        _localPhotoPath = photoPath;
-        _selectedPhotoBytes = bytes;
+        _profilePhotoValue = uploadedPhoto.downloadUrl;
       });
-    } catch (e) {
+    } catch (error) {
       if (!mounted) {
         return;
       }
 
       setState(() {
-        _errorMessage = AppStrings.profilePhotoPickError;
+        _selectedPhotoBytes = null;
+        _errorMessage = '$error';
       });
     } finally {
       if (mounted) {
@@ -210,23 +200,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
     await _photoService.clearLocalPhoto();
     setState(() {
       _profilePhotoValue = '';
-      _localPhotoPath = null;
       _selectedPhotoBytes = null;
     });
-  }
-
-  String _extensionFromName(String fileName) {
-    final lower = fileName.toLowerCase();
-    if (lower.endsWith('.png')) {
-      return 'png';
-    }
-    if (lower.endsWith('.webp')) {
-      return 'webp';
-    }
-    if (lower.endsWith('.heic')) {
-      return 'heic';
-    }
-    return 'jpg';
   }
 
   bool _isHttpImageUrl(String value) {
@@ -240,12 +215,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       return MemoryImage(_selectedPhotoBytes!);
     }
 
-    // Priority 2: Locally saved photo file
-    if (_localPhotoPath != null && _localPhotoPath!.isNotEmpty) {
-      return FileImage(File(_localPhotoPath!));
-    }
-
-    // Priority 3: Photo from backend (HTTPS URL)
+    // Priority 2: Photo from backend (HTTPS URL)
     final trimmed = _profilePhotoValue.trim();
     if (_isHttpImageUrl(trimmed)) {
       return NetworkImage(trimmed);
@@ -260,9 +230,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text(AppStrings.profileEditTitle),
-      ),
+      appBar: AppBar(title: const Text(AppStrings.profileEditTitle)),
       body: SafeArea(
         child: Form(
           key: _formKey,
@@ -333,19 +301,21 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                   : _pickPhotoFromGallery,
                               icon: const Icon(Icons.photo_library_outlined),
                               label: Text(
-                                (_localPhotoPath == null || _localPhotoPath!.isEmpty) &&
-                                    _profilePhotoValue.trim().isEmpty
+                                _profilePhotoValue.trim().isEmpty &&
+                                        _selectedPhotoBytes == null
                                     ? AppStrings.profileSelectFromGallery
                                     : AppStrings.profileChangePhoto,
                               ),
                             ),
-                            if ((_localPhotoPath != null && _localPhotoPath!.isNotEmpty) ||
+                            if (_selectedPhotoBytes != null ||
                                 _profilePhotoValue.trim().isNotEmpty)
                               TextButton(
                                 onPressed: (_isSaving || _isUploadingPhoto)
                                     ? null
                                     : _removePhoto,
-                                child: const Text(AppStrings.profileRemovePhoto),
+                                child: const Text(
+                                  AppStrings.profileRemovePhoto,
+                                ),
                               ),
                           ],
                         ),
@@ -373,9 +343,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 const SizedBox(height: AppDimensions.spaceL),
                 Text(
                   AppStrings.profileReadOnlyGroupInfo,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.grey700,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: AppColors.grey700),
                 ),
                 const SizedBox(height: AppDimensions.spaceS),
                 _ReadOnlyCountTile(
@@ -391,9 +361,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   const SizedBox(height: AppDimensions.spaceM),
                   Text(
                     _errorMessage!,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.error,
-                        ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(color: AppColors.error),
                   ),
                 ],
                 const SizedBox(height: AppDimensions.spaceL),
@@ -512,17 +482,14 @@ class _ReadOnlyCountTile extends StatelessWidget {
           const Icon(Icons.lock_outline, color: AppColors.grey700),
           const SizedBox(width: AppDimensions.spaceS),
           Expanded(
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
+            child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
           ),
           Text(
             value,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.grey700,
-                  fontWeight: FontWeight.w600,
-                ),
+              color: AppColors.grey700,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),

@@ -6,6 +6,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/network/api_exception.dart';
+import '../../../../core/services/attachment_upload_service.dart';
 import '../../../../core/services/pet_service.dart';
 import '../../../../core/services/profile_photo_service.dart';
 import '../../../../core/utils/context_extensions.dart';
@@ -27,6 +28,8 @@ class AddPetScreen extends StatefulWidget {
 class _AddPetScreenState extends State<AddPetScreen> {
   final _formKey = GlobalKey<FormState>();
   final ProfilePhotoService _photoService = ProfilePhotoService();
+  final AttachmentUploadService _attachmentUploadService =
+      AttachmentUploadService();
   final ImagePicker _imagePicker = ImagePicker();
 
   final _nameController = TextEditingController();
@@ -82,7 +85,7 @@ class _AddPetScreenState extends State<AddPetScreen> {
     _dateOfBirthController.text =
         '${editingPet.birthDate.day.toString().padLeft(2, '0')}/${editingPet.birthDate.month.toString().padLeft(2, '0')}/${editingPet.birthDate.year.toString().padLeft(4, '0')}';
     _weightController.text =
-      editingPet.weight == editingPet.weight.roundToDouble()
+        editingPet.weight == editingPet.weight.roundToDouble()
         ? editingPet.weight.toInt().toString()
         : editingPet.weight.toStringAsFixed(1);
     _colorController.text = _normalizeInitialText(editingPet.color);
@@ -100,7 +103,7 @@ class _AddPetScreenState extends State<AddPetScreen> {
     }
 
     setState(() {
-      _petPhotoPath = localPath ?? editingPet.effectivePhotoPath;
+      _petPhotoPath = localPath ?? editingPet.photoUrl?.trim();
     });
   }
 
@@ -121,7 +124,7 @@ class _AddPetScreenState extends State<AddPetScreen> {
   }
 
   Map<String, dynamic> _buildPetPayload(DateTime birthDate) {
-    return {
+    final payload = <String, dynamic>{
       'name': _nameController.text.trim(),
       'species': _species == PetSpecies.cat ? 'cat' : 'dog',
       'breed': _breedController.text.trim(),
@@ -134,6 +137,13 @@ class _AddPetScreenState extends State<AddPetScreen> {
       'defaultVet': _veterinarianController.text.trim(),
       'defaultClinic': _clinicController.text.trim(),
     };
+
+    final currentPhotoPath = _petPhotoPath?.trim();
+    if (_isRemotePhotoPath(currentPhotoPath)) {
+      payload['photoUrl'] = currentPhotoPath;
+    }
+
+    return payload;
   }
 
   Future<void> _pickDateOfBirth() async {
@@ -223,7 +233,7 @@ class _AddPetScreenState extends State<AddPetScreen> {
     try {
       final petService = PetService();
       final payload = _buildPetPayload(birthDate);
-      final savedPet = _isEditMode
+      var savedPet = _isEditMode
           ? await petService.updatePet(
               petId: widget.editingPet!.id,
               data: payload,
@@ -232,12 +242,26 @@ class _AddPetScreenState extends State<AddPetScreen> {
 
       if (_petPhotoPath != null &&
           _petPhotoPath!.isNotEmpty &&
-          !(_petPhotoPath!.startsWith('http://') ||
-              _petPhotoPath!.startsWith('https://'))) {
-        await _photoService.savePetPhotoPath(
+          !_isRemotePhotoPath(_petPhotoPath)) {
+        final pickedFile = XFile(_petPhotoPath!);
+        final uploadedPhoto = await _attachmentUploadService.uploadPetPhoto(
+          bytes: await pickedFile.readAsBytes(),
           petId: savedPet.id,
-          filePath: _petPhotoPath!,
+          fileName: pickedFile.name,
         );
+
+        savedPet = await petService.updatePet(
+          petId: savedPet.id,
+          data: {...payload, 'photoUrl': uploadedPhoto.downloadUrl},
+        );
+
+        await _photoService.clearPetPhotoPath(savedPet.id);
+
+        if (mounted) {
+          setState(() {
+            _petPhotoPath = uploadedPhoto.downloadUrl;
+          });
+        }
       }
 
       if (!mounted) {
@@ -318,6 +342,11 @@ class _AddPetScreenState extends State<AddPetScreen> {
       return 'heic';
     }
     return 'jpg';
+  }
+
+  bool _isRemotePhotoPath(String? value) {
+    final trimmed = value?.trim() ?? '';
+    return trimmed.startsWith('http://') || trimmed.startsWith('https://');
   }
 
   bool _validateCurrentStep() {
@@ -428,14 +457,16 @@ class _AddPetScreenState extends State<AddPetScreen> {
                         height: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
                         ),
                       )
                     : Text(
                         _currentStep == 2
-                        ? (_isEditMode
-                            ? AppStrings.actionEdit
-                            : AppStrings.semanticAddPetButton)
+                            ? (_isEditMode
+                                  ? AppStrings.actionEdit
+                                  : AppStrings.semanticAddPetButton)
                             : AppStrings.semanticContinueButton,
                       ),
               ),

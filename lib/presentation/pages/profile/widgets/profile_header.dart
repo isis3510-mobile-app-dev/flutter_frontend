@@ -13,6 +13,7 @@ class ProfileHeader extends StatelessWidget {
   final String userEmail;
   final int petCount;
   final String? localPhotoPath;
+  final String? remotePhotoUrl;
   final VoidCallback? onEditTap;
 
   const ProfileHeader({
@@ -22,12 +23,24 @@ class ProfileHeader extends StatelessWidget {
     required this.userEmail,
     required this.petCount,
     this.localPhotoPath,
+    this.remotePhotoUrl,
     this.onEditTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final headerBgColor = AppColors.petDetailHeaderBg;
+    final remoteUri = Uri.tryParse(remotePhotoUrl?.trim() ?? '');
+    final hasRemotePhoto =
+        remoteUri != null &&
+        (remoteUri.scheme == 'http' || remoteUri.scheme == 'https');
+    final hasLocalPhoto =
+        localPhotoPath != null && localPhotoPath!.trim().isNotEmpty;
+    final ImageProvider<Object>? imageProvider = hasRemotePhoto
+        ? NetworkImage(remotePhotoUrl!.trim())
+        : hasLocalPhoto
+        ? FileImage(File(localPhotoPath!))
+        : null;
 
     return Container(
       color: headerBgColor,
@@ -47,19 +60,22 @@ class ProfileHeader extends StatelessWidget {
                     height: AppDimensions.iconXXL,
                     decoration: BoxDecoration(
                       color: AppColors.primaryVariant,
-                      borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
-                      image: (localPhotoPath != null && localPhotoPath!.isNotEmpty)
-                          ? DecorationImage(
-                              image: FileImage(File(localPhotoPath!)),
+                      borderRadius: BorderRadius.circular(
+                        AppDimensions.radiusXL,
+                      ),
+                      image: imageProvider == null
+                          ? null
+                          : DecorationImage(
+                              image: imageProvider,
                               fit: BoxFit.cover,
-                            )
-                          : null,
+                            ),
                     ),
-                    child: (localPhotoPath == null || localPhotoPath!.isEmpty)
+                    child: imageProvider == null
                         ? Center(
                             child: Text(
                               initials,
-                              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                              style: Theme.of(context).textTheme.headlineMedium
+                                  ?.copyWith(
                                     color: AppColors.primary,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -100,17 +116,17 @@ class ProfileHeader extends StatelessWidget {
                     Text(
                       userName,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            color: AppColors.onPrimary,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        color: AppColors.onPrimary,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     SizedBox(height: AppDimensions.spaceXS),
                     // User email
                     Text(
                       userEmail,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.primaryVariant,
-                          ),
+                        color: AppColors.primaryVariant,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -123,14 +139,16 @@ class ProfileHeader extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         color: AppColors.primaryVariant,
-                        borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+                        borderRadius: BorderRadius.circular(
+                          AppDimensions.radiusL,
+                        ),
                       ),
                       child: Text(
                         '$petCount ${AppStrings.nounPets}',
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w600,
-                            ),
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],

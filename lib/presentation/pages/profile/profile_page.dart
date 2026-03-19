@@ -479,6 +479,7 @@ class _ProfilePageState extends State<ProfilePage> {
               userEmail: _displayValue(_profile?.email),
               petCount: _profile?.petCount ?? 0,
               localPhotoPath: _localPhotoPath,
+              remotePhotoUrl: _profile?.profilePhoto,
               onEditTap: _handleEditProfile,
             ),
             SizedBox(height: AppDimensions.spaceL),
@@ -495,7 +496,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Text(
                   AppStrings.profileSubtitleAccount.toUpperCase(),
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: isDark ? AppColors.onSurfaceDark : AppColors.onSurface,
+                    color: isDark
+                        ? AppColors.onSurfaceDark
+                        : AppColors.onSurface,
                     fontWeight: FontWeight.w600,
                     letterSpacing: AppDimensions.letterSpacingSection,
                   ),
@@ -567,7 +570,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Text(
                   AppStrings.profileSubtitlePreferences.toUpperCase(),
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: isDark ? AppColors.onSurfaceDark : AppColors.onSurface,
+                    color: isDark
+                        ? AppColors.onSurfaceDark
+                        : AppColors.onSurface,
                     fontWeight: FontWeight.w600,
                     letterSpacing: AppDimensions.letterSpacingSection,
                   ),
@@ -643,7 +648,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Text(
                   AppStrings.profileSubtitleSupport.toUpperCase(),
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: isDark ? AppColors.onSurfaceDark : AppColors.onSurface,
+                    color: isDark
+                        ? AppColors.onSurfaceDark
+                        : AppColors.onSurface,
                     fontWeight: FontWeight.w600,
                     letterSpacing: AppDimensions.letterSpacingSection,
                   ),
