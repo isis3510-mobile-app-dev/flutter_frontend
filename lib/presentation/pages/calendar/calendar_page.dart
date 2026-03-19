@@ -5,9 +5,13 @@ import '../../../core/constants/app_assets.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_strings.dart';
+import '../../../core/models/event_model.dart';
+import '../../../core/models/pet_model.dart';
+import '../../../core/network/api_exception.dart';
+import '../../../core/services/event_service.dart';
 import '../../../core/services/pet_service.dart';
+import '../../../core/services/vaccine_service.dart';
 import '../../../shared/widgets/petcare_bottom_nav_bar.dart';
-import '../pets/data/pets_mock_data.dart';
 import '../pets/models/pet_ui_mapper.dart';
 import '../pets/models/pet_ui_model.dart';
 import 'widgets/calendar_strip.dart';
@@ -25,6 +29,10 @@ class _CalendarPageState extends State<CalendarPage> {
   static const int _currentIndex = 3;
 
   final PetService _petService = PetService();
+  final VaccineService _vaccineService = VaccineService();
+  final EventService _eventService = EventService();
+
+  bool _isLoading = false;
 
   DateTime _focusedMonth = _monthStart(DateTime.now());
   DateTime _selectedDate = _dateOnly(DateTime.now());
@@ -35,37 +43,304 @@ class _CalendarPageState extends State<CalendarPage> {
   @override
   void initState() {
     super.initState();
-    _pets = PetsMockData.all;
-    _events = _buildMockEvents(_pets);
-    _loadPets();
+    _loadCalendarData();
   }
 
-  Future<void> _loadPets() async {
+  Future<void> _loadCalendarData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
     try {
-      final pets = await _petService.getPets();
+      final results = await Future.wait<dynamic>([
+        _petService.getPets(),
+        _vaccineService.getVaccines(),
+      ]);
+
+      final pets = results[0] as List<PetModel>;
+      final vaccineCatalog = results[1] as List<dynamic>;
+
       final mappedPets = pets
           .map((pet) => pet.toUiModel())
           .toList(growable: false);
-      final nextPets = mappedPets.isEmpty ? PetsMockData.all : mappedPets;
+
+      final petVaccinations = <String, List<PetVaccinationModel>>{
+        for (final pet in pets) pet.id: pet.vaccinations,
+      };
+
+      final petEventEntries = await Future.wait(
+        pets.map((pet) async {
+          try {
+            final events = await _eventService.getEventsByPet(pet.id);
+            return MapEntry<String, List<EventModel>>(pet.id, events);
+          } catch (_) {
+            return MapEntry<String, List<EventModel>>(
+              pet.id,
+              const <EventModel>[],
+            );
+          }
+        }),
+      );
+
+      final petEvents = <String, List<EventModel>>{
+        for (final entry in petEventEntries) entry.key: entry.value,
+      };
+
+      final vaccineIds = petVaccinations.values
+          .expand((vaccinations) => vaccinations)
+          .map((vaccination) => vaccination.vaccineId.trim())
+          .where((id) => id.isNotEmpty)
+          .toSet()
+          .toList(growable: false);
+
+      final vaccineInfoMap = <String, String>{
+        for (final vaccine in vaccineCatalog)
+          if (vaccine.id.trim().isNotEmpty)
+            vaccine.id.trim(): vaccine.name.trim().isEmpty
+                ? AppStrings.valueNotAvailable
+                : vaccine.name.trim(),
+      };
+      for (final vaccineId in vaccineIds.where(
+        (id) => !vaccineInfoMap.containsKey(id),
+      )) {
+        vaccineInfoMap[vaccineId] = AppStrings.valueNotAvailable;
+      }
+
+      final calendarEvents = _buildCalendarEvents(
+        pets: pets,
+        petVaccinations: petVaccinations,
+        petEvents: petEvents,
+        vaccineInfoMap: vaccineInfoMap,
+      );
+
+      final nextSelectedDate = _resolveSelectedDateAfterLoad(calendarEvents);
 
       if (!mounted) {
         return;
       }
 
       setState(() {
-        _pets = nextPets;
-        _events = _buildMockEvents(nextPets);
+        _pets = mappedPets;
+        _events = calendarEvents;
+        _selectedDate = nextSelectedDate;
+        _focusedMonth = _monthStart(nextSelectedDate);
+      });
+    } on ApiException catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+
+      setState(() {
+        _pets = const [];
+        _events = const [];
       });
     } catch (_) {
       if (!mounted) {
         return;
       }
 
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(AppStrings.errorGeneric)),
+      );
+
       setState(() {
-        _pets = PetsMockData.all;
-        _events = _buildMockEvents(_pets);
+        _pets = const [];
+        _events = const [];
       });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
+  }
+
+  List<_CalendarEvent> _buildCalendarEvents({
+    required List<PetModel> pets,
+    required Map<String, List<PetVaccinationModel>> petVaccinations,
+    required Map<String, List<EventModel>> petEvents,
+    required Map<String, String> vaccineInfoMap,
+  }) {
+    final calendarEvents = <_CalendarEvent>[];
+
+    for (final pet in pets) {
+      final petClinic = pet.defaultClinic.trim().isNotEmpty
+          ? pet.defaultClinic.trim()
+          : AppStrings.valueNotAvailable;
+
+      final vaccinations = petVaccinations[pet.id] ?? pet.vaccinations;
+
+      for (final vaccination in vaccinations) {
+        final startsAt = _resolveVaccinationDate(vaccination);
+        if (!_isValidDate(startsAt)) {
+          continue;
+        }
+
+        final vaccineTitle =
+            vaccineInfoMap[vaccination.vaccineId.trim()] ??
+            AppStrings.valueNotAvailable;
+        final clinicName = vaccination.clinicName.trim().isNotEmpty
+            ? vaccination.clinicName.trim()
+            : petClinic;
+        final vaccinationId = vaccination.id.trim();
+
+        calendarEvents.add(
+          _CalendarEvent(
+            id: vaccinationId.isNotEmpty
+                ? 'vaccine-$vaccinationId'
+                : 'vaccine-${pet.id}-${startsAt.toIso8601String()}',
+            petId: pet.id,
+            title: vaccineTitle,
+            clinicName: clinicName,
+            startsAt: startsAt,
+            type: _CalendarEventType.vaccine,
+          ),
+        );
+      }
+
+      final events = petEvents[pet.id] ?? const <EventModel>[];
+      for (final event in events) {
+        if (!_isValidDate(event.date)) {
+          continue;
+        }
+
+        final eventId = event.id.trim().isNotEmpty
+            ? event.id.trim()
+            : '${pet.id}-${event.date.toIso8601String()}';
+        final title = event.title.trim().isNotEmpty
+            ? event.title.trim()
+            : _formatEventTypeLabel(event.eventType);
+
+        calendarEvents.add(
+          _CalendarEvent(
+            id: 'event-$eventId',
+            petId: pet.id,
+            title: title,
+            clinicName: _resolveEventLocation(
+              clinic: event.clinic,
+              provider: event.provider,
+              petDefaultClinic: petClinic,
+            ),
+            startsAt: event.date,
+            type: _mapEventType(event.eventType),
+          ),
+        );
+      }
+    }
+
+    return calendarEvents;
+  }
+
+  DateTime _resolveVaccinationDate(PetVaccinationModel vaccination) {
+    if (_isValidDate(vaccination.dateGiven)) {
+      return vaccination.dateGiven;
+    }
+
+    return vaccination.nextDueDate;
+  }
+
+  DateTime _resolveSelectedDateAfterLoad(List<_CalendarEvent> events) {
+    final currentSelected = _dateOnly(_selectedDate);
+    if (events.any((event) => _isSameDay(event.startsAt, currentSelected))) {
+      return currentSelected;
+    }
+
+    if (events.isEmpty) {
+      return currentSelected;
+    }
+
+    final eventDates = events
+        .map((event) => _dateOnly(event.startsAt))
+        .toSet()
+        .toList(growable: false)
+      ..sort((left, right) => left.compareTo(right));
+
+    final today = _dateOnly(DateTime.now());
+    for (final date in eventDates) {
+      if (!date.isBefore(today)) {
+        return date;
+      }
+    }
+
+    return eventDates.last;
+  }
+
+  String _resolveEventLocation({
+    required String clinic,
+    required String provider,
+    required String petDefaultClinic,
+  }) {
+    final clinicName = clinic.trim();
+    if (clinicName.isNotEmpty) {
+      return clinicName;
+    }
+
+    final providerName = provider.trim();
+    if (providerName.isNotEmpty) {
+      return providerName;
+    }
+
+    return petDefaultClinic;
+  }
+
+  _CalendarEventType _mapEventType(String rawType) {
+    final normalized = rawType.trim().toLowerCase();
+
+    if (normalized.contains('vaccin') || normalized.contains('vacun')) {
+      return _CalendarEventType.vaccine;
+    }
+
+    if (normalized.contains('dental')) {
+      return _CalendarEventType.dental;
+    }
+
+    if (normalized.contains('groom') ||
+        normalized.contains('bath') ||
+        normalized.contains('bano')) {
+      return _CalendarEventType.grooming;
+    }
+
+    return _CalendarEventType.appointment;
+  }
+
+  String _formatEventTypeLabel(String rawType) {
+    final normalized = rawType.trim();
+    if (normalized.isEmpty) {
+      return AppStrings.valueNotAvailable;
+    }
+
+    final words = normalized
+        .replaceAll('_', ' ')
+        .replaceAll('-', ' ')
+        .split(RegExp(r'\s+'))
+        .where((word) => word.isNotEmpty)
+        .toList(growable: false);
+
+    if (words.isEmpty) {
+      return AppStrings.valueNotAvailable;
+    }
+
+    return words
+        .map((word) {
+          if (word.length == 1) {
+            return word.toUpperCase();
+          }
+          return '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}';
+        })
+        .join(' ');
+  }
+
+  bool _isValidDate(DateTime? value) {
+    if (value == null) {
+      return false;
+    }
+
+    return value.year > 1;
   }
 
   List<_CalendarEvent> get _selectedDayEvents {
@@ -174,8 +449,11 @@ class _CalendarPageState extends State<CalendarPage> {
     Navigator.of(context).pushReplacementNamed(routeName);
   }
 
-  void _goToAddEvent() {
-    Navigator.of(context).pushNamed(Routes.addEvent);
+  Future<void> _goToAddEvent() async {
+    final result = await Navigator.of(context).pushNamed(Routes.addEvent);
+    if (result == true) {
+      _loadCalendarData();
+    }
   }
 
   @override
@@ -242,9 +520,11 @@ class _CalendarPageState extends State<CalendarPage> {
             ),
             const SizedBox(height: AppDimensions.spaceS),
             Expanded(
-              child: selectedDayEvents.isEmpty
-                  ? EmptyEventsState(onAddEvent: _goToAddEvent)
-                  : ListView.separated(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : selectedDayEvents.isEmpty
+                      ? EmptyEventsState(onAddEvent: _goToAddEvent)
+                      : ListView.separated(
                       padding: const EdgeInsets.fromLTRB(
                         AppDimensions.pageHorizontalPadding,
                         0,
@@ -338,69 +618,6 @@ class _CalendarPageState extends State<CalendarPage> {
     }
 
     return AppStrings.valueNotAvailable;
-  }
-
-  List<_CalendarEvent> _buildMockEvents(List<PetUiModel> pets) {
-    final availablePets = pets.isEmpty ? PetsMockData.all : pets;
-    final primaryPet = availablePets.first;
-    final secondaryPet = availablePets.length > 1
-        ? availablePets[1]
-        : primaryPet;
-    final tertiaryPet = availablePets.length > 2
-        ? availablePets[2]
-        : secondaryPet;
-
-    final today = _dateOnly(DateTime.now());
-    final tomorrow = _dateOnly(today.add(const Duration(days: 1)));
-    final twoDaysFromNow = _dateOnly(today.add(const Duration(days: 2)));
-    final threeDaysFromNow = _dateOnly(today.add(const Duration(days: 3)));
-
-    DateTime withTime(DateTime date, int hour, int minute) {
-      return DateTime(date.year, date.month, date.day, hour, minute);
-    }
-
-    return [
-      _CalendarEvent(
-        id: 'event-1',
-        petId: primaryPet.id,
-        title: AppStrings.calendarEventAnnualVaccination,
-        clinicName: primaryPet.defaultClinic,
-        startsAt: withTime(today, 9, 0),
-        type: _CalendarEventType.vaccine,
-      ),
-      _CalendarEvent(
-        id: 'event-2',
-        petId: secondaryPet.id,
-        title: AppStrings.calendarEventVetAppointment,
-        clinicName: secondaryPet.defaultClinic,
-        startsAt: withTime(today, 15, 30),
-        type: _CalendarEventType.appointment,
-      ),
-      _CalendarEvent(
-        id: 'event-3',
-        petId: tertiaryPet.id,
-        title: AppStrings.calendarEventGroomingSession,
-        clinicName: tertiaryPet.defaultClinic,
-        startsAt: withTime(tomorrow, 11, 0),
-        type: _CalendarEventType.grooming,
-      ),
-      _CalendarEvent(
-        id: 'event-4',
-        petId: primaryPet.id,
-        title: AppStrings.calendarEventDentalCleaning,
-        clinicName: primaryPet.defaultClinic,
-        startsAt: withTime(twoDaysFromNow, 8, 45),
-        type: _CalendarEventType.dental,
-      ),
-      _CalendarEvent(
-        id: 'event-5',
-        petId: secondaryPet.id,
-        title: AppStrings.calendarEventBoosterShot,
-        clinicName: secondaryPet.defaultClinic,
-        startsAt: withTime(threeDaysFromNow, 10, 15),
-        type: _CalendarEventType.vaccine,
-      ),
-    ];
   }
 }
 
