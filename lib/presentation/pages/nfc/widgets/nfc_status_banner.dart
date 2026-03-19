@@ -15,12 +15,20 @@ class NfcStatusBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final backgroundColor = isAttention
-        ? AppColors.petStatusAttentionBg
-        : AppColors.petStatusHealthyBg;
+        ? (isDark
+              ? AppColors.negativeBackgroundDark
+              : AppColors.petStatusAttentionBg)
+        : (isDark
+              ? AppColors.positiveBackgroundDark
+              : AppColors.petStatusHealthyBg);
     final iconColor = isAttention
-        ? AppColors.petStatusAttentionText
-        : AppColors.primary;
+        ? (isDark
+              ? AppColors.negativeTextDark
+              : AppColors.petStatusAttentionText)
+        : (isDark ? AppColors.positiveTextDark : AppColors.primary);
+    final textColor = isDark ? AppColors.onSurfaceDark : AppColors.onBackground;
 
     return Container(
       width: double.infinity,
@@ -28,6 +36,9 @@ class NfcStatusBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(AppDimensions.radiusM),
+        border: Border.all(
+          color: iconColor.withValues(alpha: isAttention ? 0.35 : 0.28),
+        ),
       ),
       child: Row(
         children: [
@@ -40,8 +51,8 @@ class NfcStatusBanner extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(
-                color: AppColors.onBackground,
+              style: TextStyle(
+                color: textColor,
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),

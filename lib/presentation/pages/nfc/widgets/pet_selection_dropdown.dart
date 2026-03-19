@@ -18,31 +18,42 @@ class PetSelectionDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final iconColor = isDark ? AppColors.onSurfaceDark : AppColors.onSurface;
+    final fillColor = isDark ? AppColors.secondaryDark : AppColors.surface;
+    final borderColor = isDark
+        ? AppColors.petFilterInactiveBorderDark
+        : AppColors.petFilterInactiveBorder;
+    final textColor = isDark ? AppColors.onSurfaceDark : AppColors.onSurface;
+
     return DropdownButtonFormField<String>(
       initialValue: selectedPetId,
       isExpanded: true,
-      icon: const Icon(
-        Icons.expand_more_rounded,
-        color: AppColors.onSurface,
+      icon: Icon(Icons.expand_more_rounded, color: iconColor),
+      dropdownColor: fillColor,
+      style: TextStyle(
+        color: textColor,
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
       ),
       decoration: InputDecoration(
         filled: true,
-        fillColor: AppColors.surface,
+        fillColor: fillColor,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AppDimensions.spaceM,
           vertical: AppDimensions.spaceS,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppDimensions.radiusM),
-          borderSide: const BorderSide(
-            color: AppColors.petFilterInactiveBorder,
+          borderSide: BorderSide(
+            color: borderColor,
             width: AppDimensions.strokeThin,
           ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppDimensions.radiusM),
-          borderSide: const BorderSide(
-            color: AppColors.petFilterInactiveBorder,
+          borderSide: BorderSide(
+            color: borderColor,
             width: AppDimensions.strokeThin,
           ),
         ),
@@ -60,8 +71,8 @@ class PetSelectionDropdown extends StatelessWidget {
               value: pet.id,
               child: Text(
                 '${pet.name} (${pet.species})',
-                style: const TextStyle(
-                  color: AppColors.onSurface,
+                style: TextStyle(
+                  color: textColor,
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),

@@ -12,6 +12,7 @@ import '../../../core/services/event_service.dart';
 import '../../../core/services/pet_service.dart';
 import '../../../core/services/vaccine_service.dart';
 import '../../../shared/widgets/petcare_bottom_nav_bar.dart';
+import '../../../shared/widgets/quick_actions_fab.dart';
 import '../pets/models/pet_ui_mapper.dart';
 import '../pets/models/pet_ui_model.dart';
 import 'widgets/calendar_strip.dart';
@@ -130,9 +131,9 @@ class _CalendarPageState extends State<CalendarPage> {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
 
       setState(() {
         _pets = const [];
@@ -143,9 +144,9 @@ class _CalendarPageState extends State<CalendarPage> {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AppStrings.errorGeneric)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text(AppStrings.errorGeneric)));
 
       setState(() {
         _pets = const [];
@@ -254,11 +255,12 @@ class _CalendarPageState extends State<CalendarPage> {
       return currentSelected;
     }
 
-    final eventDates = events
-        .map((event) => _dateOnly(event.startsAt))
-        .toSet()
-        .toList(growable: false)
-      ..sort((left, right) => left.compareTo(right));
+    final eventDates =
+        events
+            .map((event) => _dateOnly(event.startsAt))
+            .toSet()
+            .toList(growable: false)
+          ..sort((left, right) => left.compareTo(right));
 
     final today = _dateOnly(DateTime.now());
     for (final date in eventDates) {
@@ -456,6 +458,20 @@ class _CalendarPageState extends State<CalendarPage> {
     }
   }
 
+  Future<void> _goToAddPet() async {
+    final result = await Navigator.of(context).pushNamed(Routes.addPet);
+    if (result == true) {
+      _loadCalendarData();
+    }
+  }
+
+  Future<void> _goToAddVaccine() async {
+    final result = await Navigator.of(context).pushNamed(Routes.addVaccine);
+    if (result == true) {
+      _loadCalendarData();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -523,8 +539,8 @@ class _CalendarPageState extends State<CalendarPage> {
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : selectedDayEvents.isEmpty
-                      ? EmptyEventsState(onAddEvent: _goToAddEvent)
-                      : ListView.separated(
+                  ? EmptyEventsState(onAddEvent: _goToAddEvent)
+                  : ListView.separated(
                       padding: const EdgeInsets.fromLTRB(
                         AppDimensions.pageHorizontalPadding,
                         0,
@@ -556,16 +572,10 @@ class _CalendarPageState extends State<CalendarPage> {
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: FloatingActionButton(
-        onPressed: _goToAddEvent,
-        backgroundColor: isDark
-            ? AppColors.quickFabBackgroundDark
-            : AppColors.quickFabBackground,
-        foregroundColor: AppColors.quickFabIcon,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppDimensions.radiusL),
-        ),
-        child: const Icon(Icons.add),
+      floatingActionButton: QuickActionsFab(
+        onAddPet: _goToAddPet,
+        onAddVaccine: _goToAddVaccine,
+        onAddEvent: _goToAddEvent,
       ),
       bottomNavigationBar: PetcareBottomNavBar(
         currentIndex: _currentIndex,
@@ -658,7 +668,9 @@ class _CalendarFilterChip extends StatelessWidget {
                 ? null
                 : Border.fromBorderSide(
                     BorderSide(
-                      color: isDark ? AppColors.petFilterInactiveBorderDark : AppColors.petFilterInactiveBorder,
+                      color: isDark
+                          ? AppColors.petFilterInactiveBorderDark
+                          : AppColors.petFilterInactiveBorder,
                       width: AppDimensions.strokeThin,
                     ),
                   ),

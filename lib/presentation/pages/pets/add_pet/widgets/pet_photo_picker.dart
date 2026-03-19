@@ -25,6 +25,13 @@ class PetPhotoPicker extends StatelessWidget {
     final cardColor = isDark
         ? AppColors.addPetPhotoBackgroundDark
         : AppColors.addPetPhotoBackground;
+    final hintColor = isDark
+        ? AppColors.onSurfaceDark.withValues(alpha: 0.82)
+        : AppColors.grey700;
+    final actionBorderColor = isDark ? AppColors.grey700 : AppColors.grey300;
+    final actionBackground = isDark
+        ? AppColors.secondaryDark
+        : AppColors.secondary;
 
     return Center(
       child: Column(
@@ -43,8 +50,17 @@ class PetPhotoPicker extends StatelessWidget {
                   color: AppColors.addPetPhotoAccent,
                   width: 1.6,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: isDark
+                        ? Colors.black.withValues(alpha: 0.14)
+                        : AppColors.shadowSoft,
+                    blurRadius: isDark ? 8 : 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
-              child: _buildPhoto(),
+              child: _buildPhoto(context),
             ),
           ),
           const SizedBox(height: AppDimensions.spaceS),
@@ -56,11 +72,23 @@ class PetPhotoPicker extends StatelessWidget {
               children: [
                 OutlinedButton.icon(
                   onPressed: onTap,
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: actionBackground,
+                    side: BorderSide(color: actionBorderColor),
+                    foregroundColor: isDark
+                        ? AppColors.onSurfaceDark
+                        : AppColors.onSurface,
+                  ),
                   icon: const Icon(Icons.photo_library_outlined),
                   label: const Text(AppStrings.profileChangePhoto),
                 ),
                 TextButton(
                   onPressed: onRemovePhoto,
+                  style: TextButton.styleFrom(
+                    foregroundColor: isDark
+                        ? AppColors.negativeTextDark
+                        : AppColors.error,
+                  ),
                   child: const Text(AppStrings.profileRemovePhoto),
                 ),
               ],
@@ -70,18 +98,23 @@ class PetPhotoPicker extends StatelessWidget {
           Text(
             AppStrings.addPetPhotoHint,
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: isDark ? AppColors.onSurfaceDark : AppColors.grey700,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: hintColor),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildPhoto() {
+  Widget _buildPhoto(BuildContext context) {
     final value = imagePath?.trim();
     if (value == null || value.isEmpty) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      final accentColor = isDark
+          ? AppColors.primaryVariant
+          : AppColors.addPetPhotoAccent;
+
       return Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -89,19 +122,14 @@ class PetPhotoPicker extends StatelessWidget {
             'assets/icons/featureIcons/camera.svg',
             width: 26,
             height: 26,
-            colorFilter: const ColorFilter.mode(
-              AppColors.addPetPhotoAccent,
-              BlendMode.srcIn,
-            ),
+            colorFilter: ColorFilter.mode(accentColor, BlendMode.srcIn),
           ),
           const SizedBox(height: AppDimensions.spaceS),
-          Builder(
-            builder: (context) => Text(
-              AppStrings.addPetPhotoTitle,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppColors.addPetPhotoAccent,
-                fontWeight: FontWeight.w600,
-              ),
+          Text(
+            AppStrings.addPetPhotoTitle,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: accentColor,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -109,7 +137,8 @@ class PetPhotoPicker extends StatelessWidget {
     }
 
     final uri = Uri.tryParse(value);
-    final isNetwork = uri != null && (uri.scheme == 'http' || uri.scheme == 'https');
+    final isNetwork =
+        uri != null && (uri.scheme == 'http' || uri.scheme == 'https');
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppDimensions.radiusL),

@@ -17,16 +17,21 @@ class GoogleSignInButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final borderColor = isDark ? AppColors.grey700 : AppColors.grey300;
+    final backgroundColor = isDark
+        ? AppColors.secondaryDark
+        : AppColors.secondary;
+    final textColor = isDark ? AppColors.onSurfaceDark : AppColors.onSurface;
+
     return SizedBox(
       width: double.infinity,
       height: AppDimensions.buttonHeightL,
       child: OutlinedButton(
         onPressed: onPressed,
         style: OutlinedButton.styleFrom(
-          side: const BorderSide(
-            color: AppColors.grey300,
-            width: AppDimensions.strokeThin,
-          ),
+          backgroundColor: backgroundColor,
+          side: BorderSide(color: borderColor, width: AppDimensions.strokeThin),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppDimensions.radiusCircle),
           ),
@@ -42,9 +47,7 @@ class GoogleSignInButton extends StatelessWidget {
             const SizedBox(width: AppDimensions.spaceS),
             Text(
               text,
-              style: context.textTheme.labelLarge?.copyWith(
-                color: AppColors.onSurface,
-              ),
+              style: context.textTheme.labelLarge?.copyWith(color: textColor),
             ),
           ],
         ),

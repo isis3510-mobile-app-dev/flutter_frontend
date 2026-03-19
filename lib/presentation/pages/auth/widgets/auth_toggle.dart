@@ -19,11 +19,14 @@ class AuthToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       height: AppDimensions.segmentedControlHeight,
       decoration: BoxDecoration(
-        color: AppColors.grey300,
+        color: isDark ? AppColors.secondaryDark : AppColors.grey300,
         borderRadius: BorderRadius.circular(AppDimensions.radiusCircle),
+        border: isDark ? Border.all(color: AppColors.grey700) : null,
       ),
       padding: const EdgeInsets.all(AppDimensions.spaceXS),
       child: Row(
@@ -61,8 +64,12 @@ class _ToggleOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Material(
-      color: selected ? AppColors.secondary : AppColors.transparent,
+      color: selected
+          ? (isDark ? AppColors.backgroundDark : AppColors.secondary)
+          : AppColors.transparent,
       borderRadius: BorderRadius.circular(AppDimensions.radiusCircle),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppDimensions.radiusCircle),
@@ -71,7 +78,9 @@ class _ToggleOption extends StatelessWidget {
           child: Text(
             label,
             style: context.textTheme.labelLarge?.copyWith(
-              color: selected ? AppColors.primary : AppColors.grey500,
+              color: selected
+                  ? AppColors.primary
+                  : (isDark ? AppColors.grey500 : AppColors.grey500),
             ),
             textAlign: TextAlign.center,
           ),

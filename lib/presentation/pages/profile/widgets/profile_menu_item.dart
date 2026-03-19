@@ -26,8 +26,9 @@ class ProfileMenuItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final titleColor = isDestructive ? AppColors.error : 
-    (isDark? AppColors.onSurfaceDark : AppColors.onSurface);
+    final titleColor = isDestructive
+        ? AppColors.error
+        : (isDark ? AppColors.onSurfaceDark : AppColors.onSurface);
 
     return Material(
       color: Colors.transparent,
@@ -62,18 +63,19 @@ class ProfileMenuItem extends StatelessWidget {
                     Text(
                       title,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: titleColor,
-                            fontWeight: FontWeight.w500,
-                          ),
+                        color: titleColor,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                     if (subtitle != null)
                       Padding(
-                        padding: const EdgeInsets.only(top: AppDimensions.spaceXS),
+                        padding: const EdgeInsets.only(
+                          top: AppDimensions.spaceXS,
+                        ),
                         child: Text(
                           subtitle!,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: AppColors.grey500,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: AppColors.grey500),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -82,7 +84,7 @@ class ProfileMenuItem extends StatelessWidget {
                 ),
               ),
               // Chevron icon for navigation
-              if (!isDestructive)
+              if (!isDestructive && onTap != null)
                 Icon(
                   Icons.chevron_right,
                   color: AppColors.grey300,

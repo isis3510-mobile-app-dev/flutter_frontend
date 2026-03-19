@@ -114,7 +114,10 @@ class _HomePageState extends State<HomePage> {
     await _loadHomeData();
   }
 
-  Future<void> _editVaccine(_VaccinationWithPet entry, String vaccineName) async {
+  Future<void> _editVaccine(
+    _VaccinationWithPet entry,
+    String vaccineName,
+  ) async {
     final result = await Navigator.of(context).pushNamed(
       Routes.addVaccine,
       arguments: AddVaccineArgs(
@@ -194,7 +197,9 @@ class _HomePageState extends State<HomePage> {
           }
         }),
       );
-      final events = eventGroups.expand((group) => group).toList(growable: false);
+      final events = eventGroups
+          .expand((group) => group)
+          .toList(growable: false);
 
       final vaccineIds = allVaccinations
           .map((entry) => entry.vaccination.vaccineId.trim())
@@ -211,34 +216,50 @@ class _HomePageState extends State<HomePage> {
           }
         }),
       );
-      final vaccineNamesById = Map<String, String>.fromEntries(vaccineNameEntries);
+      final vaccineNamesById = Map<String, String>.fromEntries(
+        vaccineNameEntries,
+      );
 
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
-      final overdueVaccines = allVaccinations.where((entry) {
-        final due = entry.vaccination.nextDueDate;
-        return due.year > 1 && due.isBefore(now);
-      }).toList(growable: false)
-        ..sort(
-          (a, b) => a.vaccination.nextDueDate.compareTo(b.vaccination.nextDueDate),
-        );
+      final overdueVaccines =
+          allVaccinations
+              .where((entry) {
+                final due = entry.vaccination.nextDueDate;
+                return due.year > 1 && due.isBefore(now);
+              })
+              .toList(growable: false)
+            ..sort(
+              (a, b) => a.vaccination.nextDueDate.compareTo(
+                b.vaccination.nextDueDate,
+              ),
+            );
 
-      final upcomingVaccines = allVaccinations.where((entry) {
-        final due = entry.vaccination.nextDueDate;
-        if (due.year <= 1) {
-          return false;
-        }
-        final dueDay = DateTime(due.year, due.month, due.day);
-        return !dueDay.isBefore(today);
-      }).toList(growable: false)
-        ..sort(
-          (a, b) => a.vaccination.nextDueDate.compareTo(b.vaccination.nextDueDate),
-        );
+      final upcomingVaccines =
+          allVaccinations
+              .where((entry) {
+                final due = entry.vaccination.nextDueDate;
+                if (due.year <= 1) {
+                  return false;
+                }
+                final dueDay = DateTime(due.year, due.month, due.day);
+                return !dueDay.isBefore(today);
+              })
+              .toList(growable: false)
+            ..sort(
+              (a, b) => a.vaccination.nextDueDate.compareTo(
+                b.vaccination.nextDueDate,
+              ),
+            );
 
-      final upcomingEvents = events.where((entry) {
-        return entry.event.date.year > 1 && entry.event.date.isAfter(now);
-      }).toList(growable: false)
-        ..sort((a, b) => a.event.date.compareTo(b.event.date));
+      final upcomingEvents =
+          events
+              .where((entry) {
+                return entry.event.date.year > 1 &&
+                    entry.event.date.isAfter(now);
+              })
+              .toList(growable: false)
+            ..sort((a, b) => a.event.date.compareTo(b.event.date));
 
       if (!mounted) {
         return;
@@ -263,7 +284,10 @@ class _HomePageState extends State<HomePage> {
                 entry: overdueVaccines.first,
               );
         _upcomingVaccines = upcomingVaccines
-            .map((entry) => _UpcomingVaccineData.fromEntry(entry, vaccineNamesById))
+            .map(
+              (entry) =>
+                  _UpcomingVaccineData.fromEntry(entry, vaccineNamesById),
+            )
             .toList(growable: false);
       });
     } on ApiException catch (error) {
@@ -334,12 +358,12 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildVaccinesSection() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final titleColor = isDark ? AppColors.onBackgroundDark : AppColors.onSurface;
+    final titleColor = isDark
+        ? AppColors.onBackgroundDark
+        : AppColors.onSurface;
     final visibleVaccines = _upcomingVaccines.take(3).toList(growable: false);
-
-    if (_overdueVaccineData == null && visibleVaccines.isEmpty) {
-      return const SizedBox.shrink();
-    }
+    final hasNoVaccines =
+        _overdueVaccineData == null && visibleVaccines.isEmpty;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -393,16 +417,49 @@ class _HomePageState extends State<HomePage> {
               _overdueVaccineData!.vaccineName,
             ),
           ),
+        if (hasNoVaccines)
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppDimensions.pageHorizontalPadding,
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(AppDimensions.spaceL),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.secondaryDark : AppColors.secondary,
+                borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
+                border: isDark ? Border.all(color: AppColors.grey700) : null,
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.vaccines_outlined,
+                    color: isDark ? AppColors.grey500 : AppColors.grey700,
+                    size: AppDimensions.iconM,
+                  ),
+                  const SizedBox(width: AppDimensions.spaceS),
+                  Expanded(
+                    child: Text(
+                      'No upcoming vaccines yet.',
+                      style: TextStyle(
+                        color: isDark
+                            ? AppColors.onBackgroundDark
+                            : AppColors.onSecondary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         for (final vaccine in visibleVaccines)
           UpcomingVaccineCard(
             vaccineName: vaccine.vaccineName,
             petName: vaccine.petName,
             date: _formatDate(vaccine.date),
             daysUntil: vaccine.daysUntil,
-            onTap: () => _editVaccine(
-              vaccine.entry,
-              vaccine.vaccineName,
-            ),
+            onTap: () => _editVaccine(vaccine.entry, vaccine.vaccineName),
           ),
       ],
     );
@@ -411,8 +468,9 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor =
-        isDark ? AppColors.backgroundDark : AppColors.background;
+    final backgroundColor = isDark
+        ? AppColors.backgroundDark
+        : AppColors.background;
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -492,7 +550,9 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildPetsSection() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final titleColor = isDark ? AppColors.onBackgroundDark : AppColors.onSurface;
+    final titleColor = isDark
+        ? AppColors.onBackgroundDark
+        : AppColors.onSurface;
 
     return Column(
       children: [
@@ -512,8 +572,7 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               TextButton(
-                onPressed: () =>
-                    Navigator.of(context).pushNamed(Routes.pets),
+                onPressed: () => Navigator.of(context).pushNamed(Routes.pets),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -558,20 +617,13 @@ class _HomePageState extends State<HomePage> {
         children: [
           ...visiblePets.map(
             (pet) => Padding(
-              padding: const EdgeInsets.only(
-                right: AppDimensions.spaceM,
-              ),
-              child: PetCard(
-                pet: pet,
-                onTap: () => _goToPetDetail(pet),
-              ),
+              padding: const EdgeInsets.only(right: AppDimensions.spaceM),
+              child: PetCard(pet: pet, onTap: () => _goToPetDetail(pet)),
             ),
           ),
           // Add Pet Button
           Padding(
-            padding: const EdgeInsets.only(
-              right: AppDimensions.spaceM,
-            ),
+            padding: const EdgeInsets.only(right: AppDimensions.spaceM),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -590,7 +642,9 @@ class _HomePageState extends State<HomePage> {
                     color: Colors.transparent,
                     child: InkWell(
                       onTap: () => Navigator.pushNamed(context, Routes.addPet),
-                      borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+                      borderRadius: BorderRadius.circular(
+                        AppDimensions.radiusL,
+                      ),
                       child: Icon(
                         Icons.add,
                         color: AppColors.primary,
@@ -604,7 +658,9 @@ class _HomePageState extends State<HomePage> {
                   'Add Pet',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: isDark ? AppColors.onSurfaceDark : AppColors.onSurface,
+                    color: isDark
+                        ? AppColors.onSurfaceDark
+                        : AppColors.onSurface,
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                   ),
@@ -619,6 +675,14 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildEmptyPetsState() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBackground = isDark
+        ? AppColors.petCardQuickActionBgDark
+        : const Color(0x339FF2E2);
+    final titleColor = isDark ? AppColors.onSurfaceDark : AppColors.onSurface;
+    final subtitleColor = isDark
+        ? AppColors.onSurfaceDark.withValues(alpha: 0.78)
+        : AppColors.addPetBannerText;
+
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: AppDimensions.pageHorizontalPadding,
@@ -626,38 +690,59 @@ class _HomePageState extends State<HomePage> {
       child: Container(
         padding: const EdgeInsets.all(AppDimensions.spaceL),
         decoration: BoxDecoration(
-          color: isDark
-              ? AppColors.petCardQuickActionBgDark
-              : const Color(0x339FF2E2),
+          color: cardBackground,
           borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+          border: isDark ? Border.all(color: AppColors.grey700) : null,
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Text(
-              'No pets yet',
-              style: TextStyle(
-                color: isDark ? AppColors.onSurfaceDark : AppColors.onSurface,
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
+            InkWell(
+              onTap: () => Navigator.pushNamed(context, Routes.addPet),
+              borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+              child: Container(
+                width: 65,
+                height: 65,
+                decoration: BoxDecoration(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+                  border: Border.all(
+                    color: AppColors.primary,
+                    width: AppDimensions.strokeThin,
+                  ),
+                ),
+                child: Icon(
+                  Icons.add,
+                  color: AppColors.primary,
+                  size: AppDimensions.iconM,
+                ),
               ),
             ),
-            const SizedBox(height: AppDimensions.spaceS),
-            Text(
-              'Start by adding your first pet to track their health journey',
-              style: TextStyle(
-                color: isDark
-                    ? AppColors.onSurfaceDark.withValues(alpha: 0.78)
-                    : AppColors.addPetBannerText,
-                fontSize: 13,
-                fontWeight: FontWeight.w400,
+            const SizedBox(width: AppDimensions.spaceM),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'No pets yet',
+                    style: TextStyle(
+                      color: titleColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: AppDimensions.spaceXS),
+                  Text(
+                    'Add your first pet to start tracking their health.',
+                    style: TextStyle(
+                      color: subtitleColor,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w400,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: AppDimensions.spaceM),
-            ElevatedButton.icon(
-              onPressed: () => Navigator.pushNamed(context, Routes.addPet),
-              icon: const Icon(Icons.add),
-              label: const Text('Add Pet'),
             ),
           ],
         ),
@@ -667,10 +752,14 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildUpcomingEventsSection() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final eventsCardColor = isDark ? AppColors.secondaryDark : AppColors.secondary;
+    final eventsCardColor = isDark
+        ? AppColors.secondaryDark
+        : AppColors.secondary;
     final dividerColor = isDark ? AppColors.grey700 : AppColors.grey300;
     final events = _upcomingEvents.take(3).toList(growable: false);
-    final titleColor = isDark ? AppColors.onBackgroundDark : AppColors.onSurface;
+    final titleColor = isDark
+        ? AppColors.onBackgroundDark
+        : AppColors.onSurface;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -691,8 +780,7 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               TextButton(
-                onPressed: () =>
-                    _goToRecords(Routes.recordsFilterEvents),
+                onPressed: () => _goToRecords(Routes.recordsFilterEvents),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -723,30 +811,50 @@ class _HomePageState extends State<HomePage> {
           ),
           child: events.isEmpty
               ? Container(
+                  padding: const EdgeInsets.all(AppDimensions.spaceL),
                   decoration: BoxDecoration(
                     color: eventsCardColor,
                     borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
+                    border: isDark
+                        ? Border.all(color: AppColors.grey700)
+                        : null,
                   ),
-                  padding: const EdgeInsets.all(AppDimensions.spaceL),
-                  child: Text(
-                    'No upcoming events yet.',
-                    style: TextStyle(
-                      color: isDark
-                          ? AppColors.onBackgroundDark
-                          : AppColors.onSecondary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.event_busy_outlined,
+                        color: isDark ? AppColors.grey500 : AppColors.grey700,
+                        size: AppDimensions.iconM,
+                      ),
+                      const SizedBox(width: AppDimensions.spaceS),
+                      Expanded(
+                        child: Text(
+                          'No upcoming events yet.',
+                          style: TextStyle(
+                            color: isDark
+                                ? AppColors.onBackgroundDark
+                                : AppColors.onSecondary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 )
               : Container(
                   decoration: BoxDecoration(
                     color: eventsCardColor,
                     borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
+                    border: isDark
+                        ? Border.all(color: AppColors.grey700)
+                        : null,
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.shadowSoft,
-                        blurRadius: 4,
+                        color: isDark
+                            ? Colors.black.withValues(alpha: 0.18)
+                            : AppColors.shadowSoft,
+                        blurRadius: isDark ? 8 : 4,
                         offset: const Offset(0, 2),
                       ),
                     ],
@@ -779,7 +887,7 @@ class _HomePageState extends State<HomePage> {
                     }),
                   ),
                 ),
-          ),
+        ),
       ],
     );
   }

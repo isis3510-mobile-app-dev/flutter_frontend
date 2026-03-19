@@ -226,10 +226,23 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final photoProvider = _photoImageProvider();
+    final pageBackground = isDark
+        ? AppColors.backgroundDark
+        : AppColors.background;
+    final cardBackground = isDark
+        ? AppColors.secondaryDark
+        : AppColors.secondary;
+    final borderColor = isDark ? AppColors.grey700 : AppColors.grey300;
+    final helperTextColor = isDark ? AppColors.grey500 : AppColors.grey700;
+    final avatarBackground = isDark ? AppColors.grey700 : AppColors.grey100;
+    final avatarIconColor = isDark
+        ? AppColors.onSurfaceDark
+        : AppColors.grey700;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: pageBackground,
       appBar: AppBar(title: const Text(AppStrings.profileEditTitle)),
       body: SafeArea(
         child: Form(
@@ -272,21 +285,21 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 Container(
                   padding: const EdgeInsets.all(AppDimensions.spaceM),
                   decoration: BoxDecoration(
-                    color: AppColors.secondary,
+                    color: cardBackground,
                     borderRadius: BorderRadius.circular(AppDimensions.radiusL),
-                    border: Border.all(color: AppColors.grey300),
+                    border: Border.all(color: borderColor),
                   ),
                   child: Row(
                     children: [
                       CircleAvatar(
                         radius: AppDimensions.iconXL,
-                        backgroundColor: AppColors.grey100,
+                        backgroundColor: avatarBackground,
                         backgroundImage: photoProvider,
                         child: photoProvider == null
-                            ? const Icon(
+                            ? Icon(
                                 Icons.person_outline,
                                 size: AppDimensions.iconL,
-                                color: AppColors.grey700,
+                                color: avatarIconColor,
                               )
                             : null,
                       ),
@@ -345,7 +358,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   AppStrings.profileReadOnlyGroupInfo,
                   style: Theme.of(
                     context,
-                  ).textTheme.bodySmall?.copyWith(color: AppColors.grey700),
+                  ).textTheme.bodySmall?.copyWith(color: helperTextColor),
                 ),
                 const SizedBox(height: AppDimensions.spaceS),
                 _ReadOnlyCountTile(
@@ -408,6 +421,16 @@ class _ProfileFormField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final inputBackground = isDark
+        ? AppColors.secondaryDark
+        : AppColors.secondary;
+    final enabledBorderColor = isDark ? AppColors.grey700 : AppColors.grey300;
+    final textColor = isDark ? AppColors.onSurfaceDark : AppColors.onSurface;
+    final hintColor = isDark
+        ? AppColors.onSurfaceDark.withValues(alpha: 0.55)
+        : AppColors.grey700;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -418,37 +441,61 @@ class _ProfileFormField extends StatelessWidget {
           keyboardType: keyboardType,
           validator: validator,
           maxLines: maxLines,
-          decoration: const InputDecoration(
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: textColor),
+          decoration: InputDecoration(
             filled: true,
-            fillColor: AppColors.secondary,
-            contentPadding: EdgeInsets.symmetric(
+            fillColor: inputBackground,
+            hintStyle: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: hintColor),
+            contentPadding: const EdgeInsets.symmetric(
               horizontal: AppDimensions.spaceM,
               vertical: AppDimensions.spaceM,
             ),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.all(
+              borderRadius: const BorderRadius.all(
                 Radius.circular(AppDimensions.radiusL),
               ),
               borderSide: BorderSide(
-                color: AppColors.grey300,
+                color: enabledBorderColor,
                 width: AppDimensions.strokeThin,
               ),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.all(
+              borderRadius: const BorderRadius.all(
                 Radius.circular(AppDimensions.radiusL),
               ),
               borderSide: BorderSide(
-                color: AppColors.grey300,
+                color: enabledBorderColor,
                 width: AppDimensions.strokeThin,
               ),
             ),
-            focusedBorder: OutlineInputBorder(
+            focusedBorder: const OutlineInputBorder(
               borderRadius: BorderRadius.all(
                 Radius.circular(AppDimensions.radiusL),
               ),
               borderSide: BorderSide(
                 color: AppColors.primary,
+                width: AppDimensions.strokeThin,
+              ),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: const BorderRadius.all(
+                Radius.circular(AppDimensions.radiusL),
+              ),
+              borderSide: const BorderSide(
+                color: AppColors.error,
+                width: AppDimensions.strokeThin,
+              ),
+            ),
+            focusedErrorBorder: const OutlineInputBorder(
+              borderRadius: BorderRadius.all(
+                Radius.circular(AppDimensions.radiusL),
+              ),
+              borderSide: BorderSide(
+                color: AppColors.error,
                 width: AppDimensions.strokeThin,
               ),
             ),
@@ -467,27 +514,41 @@ class _ReadOnlyCountTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final tileBackground = isDark
+        ? AppColors.secondaryDark
+        : AppColors.secondary;
+    final borderColor = isDark ? AppColors.grey700 : AppColors.grey300;
+    final iconColor = isDark ? AppColors.grey500 : AppColors.grey700;
+    final textColor = isDark ? AppColors.onSurfaceDark : null;
+    final valueColor = isDark ? AppColors.onSurfaceDark : AppColors.grey700;
+
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppDimensions.spaceM,
         vertical: AppDimensions.spaceM,
       ),
       decoration: BoxDecoration(
-        color: AppColors.secondary,
+        color: tileBackground,
         borderRadius: BorderRadius.circular(AppDimensions.radiusL),
-        border: Border.all(color: AppColors.grey300),
+        border: Border.all(color: borderColor),
       ),
       child: Row(
         children: [
-          const Icon(Icons.lock_outline, color: AppColors.grey700),
+          Icon(Icons.lock_outline, color: iconColor),
           const SizedBox(width: AppDimensions.spaceS),
           Expanded(
-            child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
+            child: Text(
+              label,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: textColor),
+            ),
           ),
           Text(
             value,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppColors.grey700,
+              color: valueColor,
               fontWeight: FontWeight.w600,
             ),
           ),
