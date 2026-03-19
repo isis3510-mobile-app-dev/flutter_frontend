@@ -206,6 +206,30 @@ class _HomePageState extends State<HomePage> {
           .expand((group) => group)
           .toList(growable: false);
 
+      final smartAlertGroups = await Future.wait(
+        pets.map((pet) async {
+          try {
+            final response = await _smartFeatureService.getPetSmartSuggestions(
+              pet.id,
+            );
+            return response.suggestions
+                .map(
+                  (suggestion) => SmartAlertItem(
+                    petId: pet.id,
+                    petName: pet.name,
+                    suggestion: suggestion,
+                  ),
+                )
+                .toList(growable: false);
+          } catch (_) {
+            return const <SmartAlertItem>[];
+          }
+        }),
+      );
+      final smartAlerts = smartAlertGroups
+          .expand((group) => group)
+          .toList(growable: false);
+
       final vaccineIds = allVaccinations
           .map((entry) => entry.vaccination.vaccineId.trim())
           .where((id) => id.isNotEmpty)
@@ -648,6 +672,7 @@ class _HomePageState extends State<HomePage> {
         : AppColors.onSurface;
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(

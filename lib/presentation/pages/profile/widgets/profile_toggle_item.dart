@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/core/constants/app_colors.dart';
 import 'package:flutter_frontend/core/constants/app_dimensions.dart';
+import 'package:flutter_frontend/shared/widgets/app_toggle_switch.dart';
 
 /// A reusable toggle item for preference settings in the profile page.
 /// Displays an icon, title, optional subtitle, and a Material 3 Switch.
@@ -57,18 +58,20 @@ class ProfileToggleItem extends StatelessWidget {
                 Text(
                   title,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: isDark? AppColors.onSurfaceDark: AppColors.onSurface,
-                        fontWeight: FontWeight.w500,
-                      ),
+                    color: isDark
+                        ? AppColors.onSurfaceDark
+                        : AppColors.onSurface,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 if (subtitle != null)
                   Padding(
                     padding: const EdgeInsets.only(top: AppDimensions.spaceXS),
                     child: Text(
                       subtitle!,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.grey500,
-                      ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: AppColors.grey500),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -76,13 +79,7 @@ class ProfileToggleItem extends StatelessWidget {
               ],
             ),
           ),
-          // Material 3 Switch
-          Switch(
-            inactiveThumbColor: isDark? AppColors.grey300 : AppColors.grey700,
-            value: value,
-            onChanged: onChanged,
-            activeThumbColor: AppColors.primary,
-          ),
+          AppToggleSwitch(value: value, onChanged: onChanged),
         ],
       ),
     );

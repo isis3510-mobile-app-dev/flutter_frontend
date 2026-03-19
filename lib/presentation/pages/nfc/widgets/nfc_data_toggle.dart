@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
+import '../../../../shared/widgets/app_toggle_switch.dart';
 
 class NfcDataToggle extends StatelessWidget {
   const NfcDataToggle({
@@ -73,22 +74,7 @@ class NfcDataToggle extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppDimensions.spaceS),
-          Checkbox(
-            value: value,
-            onChanged: enabled
-                ? (newValue) {
-                    if (newValue != null && onChanged != null) {
-                      onChanged!(newValue);
-                    }
-                  }
-                : null,
-            activeColor: AppColors.primary,
-            side: BorderSide(
-              color: borderColor,
-              width: AppDimensions.strokeRegular,
-            ),
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
+          AppToggleSwitch(value: value, enabled: enabled, onChanged: onChanged),
         ],
       ),
     );
