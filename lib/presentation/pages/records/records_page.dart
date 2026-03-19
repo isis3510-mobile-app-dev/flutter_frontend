@@ -5,6 +5,7 @@ import 'package:flutter_frontend/core/models/pet_model.dart';
 import 'package:flutter_frontend/core/network/api_exception.dart';
 import 'package:flutter_frontend/core/services/event_service.dart';
 import 'package:flutter_frontend/core/services/pet_service.dart';
+import 'package:flutter_frontend/core/services/telemetry_service.dart';
 import 'package:flutter_frontend/core/services/vaccine_service.dart';
 import 'package:flutter_frontend/presentation/pages/records/widgets/record_list_item.dart';
 import '../../../app/routes.dart';
@@ -34,6 +35,7 @@ class _RecordsPageState extends State<RecordsPage> {
   final PetService _petService = PetService();
   final VaccineService _vaccineService = VaccineService();
   final EventService _eventService = EventService();
+  final TelemetryService _telemetryService = TelemetryService();
 
 
   bool _isLoading = false;
@@ -322,8 +324,14 @@ class _RecordsPageState extends State<RecordsPage> {
     }
   }
   
-  void _goToAddPet() {
-    Navigator.of(context).pushNamed(Routes.addPet);
+  Future<void> _goToAddPet() async {
+    final result = await Navigator.of(context).pushNamed(Routes.addPet);
+    if (!mounted || result != true) {
+      return;
+    }
+    await _telemetryService.logAddPetExecutionIfPending(
+      endTime: DateTime.now(),
+    );
   }
 
   @override

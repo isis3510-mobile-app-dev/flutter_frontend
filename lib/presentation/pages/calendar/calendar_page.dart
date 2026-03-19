@@ -10,6 +10,7 @@ import '../../../core/models/pet_model.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/services/event_service.dart';
 import '../../../core/services/pet_service.dart';
+import '../../../core/services/telemetry_service.dart';
 import '../../../core/services/vaccine_service.dart';
 import '../../../shared/widgets/petcare_bottom_nav_bar.dart';
 import '../../../shared/widgets/quick_actions_fab.dart';
@@ -32,6 +33,7 @@ class _CalendarPageState extends State<CalendarPage> {
   final PetService _petService = PetService();
   final VaccineService _vaccineService = VaccineService();
   final EventService _eventService = EventService();
+  final TelemetryService _telemetryService = TelemetryService();
 
   bool _isLoading = false;
 
@@ -461,7 +463,10 @@ class _CalendarPageState extends State<CalendarPage> {
   Future<void> _goToAddPet() async {
     final result = await Navigator.of(context).pushNamed(Routes.addPet);
     if (result == true) {
-      _loadCalendarData();
+      await _loadCalendarData();
+      await _telemetryService.logAddPetExecutionIfPending(
+        endTime: DateTime.now(),
+      );
     }
   }
 

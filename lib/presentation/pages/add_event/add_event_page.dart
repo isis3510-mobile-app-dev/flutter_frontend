@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_frontend/core/constants/app_colors.dart';
@@ -8,6 +10,7 @@ import 'package:flutter_frontend/core/models/pet_model.dart';
 import 'package:flutter_frontend/core/services/attachment_upload_service.dart';
 import 'package:flutter_frontend/core/services/event_service.dart';
 import 'package:flutter_frontend/core/services/pet_service.dart';
+import 'package:flutter_frontend/core/services/telemetry_service.dart';
 import 'package:flutter_frontend/core/services/user_service.dart';
 import 'package:flutter_frontend/presentation/pages/add_flow/utils/date_input.dart';
 import 'package:flutter_frontend/presentation/pages/add_flow/widgets/add_flow_scaffold.dart';
@@ -41,6 +44,7 @@ class _AddEventPageState extends State<AddEventPage> {
   final UserService _userService = UserService();
   final PetService _petService = PetService();
   final EventService _eventService = EventService();
+  final TelemetryService _telemetryService = TelemetryService();
   final AttachmentUploadService _attachmentUploadService =
       AttachmentUploadService();
   final List<PetModel> _pets = [];
@@ -59,6 +63,7 @@ class _AddEventPageState extends State<AddEventPage> {
   AddEventArgs? _pendingPrefill;
 
   int _step = 0;
+  int _addEventClickCount = 1;
 
   @override
   void initState() {
@@ -113,6 +118,10 @@ class _AddEventPageState extends State<AddEventPage> {
 
     if (prefill.eventId != null && prefill.eventId!.trim().isNotEmpty) {
       _editingEventId = prefill.eventId!.trim();
+    }
+
+    if (_editingEventId != null && _editingEventId!.trim().isNotEmpty) {
+      _addEventClickCount = 0;
     }
 
     if (prefill.eventType != null && prefill.eventType!.trim().isNotEmpty) {
@@ -748,6 +757,9 @@ class _AddEventPageState extends State<AddEventPage> {
           'ownerId': ownerId,
           'schema': 1,
         });
+        unawaited(
+          _telemetryService.logAddEventClick(nClicks: _addEventClickCount),
+        );
       } else {
         await _eventService.updateEvent(
           eventId: _editingEventId!,
@@ -782,6 +794,10 @@ class _AddEventPageState extends State<AddEventPage> {
         setState(() => _isSubmitting = false);
       }
     }
+  }
+
+  void _registerFormTap() {
+    _addEventClickCount += 1;
   }
 
   Future<void> _pickAndUploadAttachment() async {
@@ -889,24 +905,28 @@ class _AddEventPageState extends State<AddEventPage> {
     final isEditing =
         _editingEventId != null && _editingEventId!.trim().isNotEmpty;
 
-    return AddFlowScaffold(
-      title: AppStrings.addEventTitle,
-      formKey: _formKey,
-      steps: const [
-        AppStrings.stepBasicInfo,
-        AppStrings.stepDetails,
-        AppStrings.stepOverview,
-      ],
-      currentStep: _step,
-      stepContent: _buildStepContent(),
-      primaryButtonText: _step == 2
-          ? (isEditing
-                ? AppStrings.actionEdit
-                : AppStrings.semanticAddEventButton)
-          : AppStrings.semanticContinueButton,
-      onPrimaryPressed: _step == 2 ? _submit : _continue,
-      onBackPressed: _back,
-      backButtonText: AppStrings.semanticBackButton,
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: (_) => _registerFormTap(),
+      child: AddFlowScaffold(
+        title: AppStrings.addEventTitle,
+        formKey: _formKey,
+        steps: const [
+          AppStrings.stepBasicInfo,
+          AppStrings.stepDetails,
+          AppStrings.stepOverview,
+        ],
+        currentStep: _step,
+        stepContent: _buildStepContent(),
+        primaryButtonText: _step == 2
+            ? (isEditing
+                  ? AppStrings.actionEdit
+                  : AppStrings.semanticAddEventButton)
+            : AppStrings.semanticContinueButton,
+        onPrimaryPressed: _step == 2 ? _submit : _continue,
+        onBackPressed: _back,
+        backButtonText: AppStrings.semanticBackButton,
+      ),
     );
   }
 

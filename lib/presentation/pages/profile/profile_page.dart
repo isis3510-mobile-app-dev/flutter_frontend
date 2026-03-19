@@ -7,6 +7,7 @@ import 'package:flutter_frontend/core/models/user_profile.dart';
 import 'package:flutter_frontend/core/network/api_exception.dart';
 import 'package:flutter_frontend/core/services/auth_service.dart';
 import 'package:flutter_frontend/core/services/profile_photo_service.dart';
+import 'package:flutter_frontend/core/services/telemetry_service.dart';
 import 'package:flutter_frontend/core/services/user_service.dart';
 import 'package:flutter_frontend/app/routes.dart';
 import 'package:flutter_frontend/app/theme_controller.dart';
@@ -28,6 +29,7 @@ class _ProfilePageState extends State<ProfilePage> {
   final AuthService _authService = AuthService();
   final ProfilePhotoService _photoService = ProfilePhotoService();
   final UserService _userService = UserService();
+  final TelemetryService _telemetryService = TelemetryService();
 
   // Navigation
   static const _currentIndex = 4;
@@ -434,8 +436,17 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  void _goToAddPet() {
-    Navigator.pushNamed(context, Routes.addPet);
+  Future<void> _goToAddPet() async {
+    final result = await Navigator.pushNamed(context, Routes.addPet);
+    if (!mounted || result != true) {
+      return;
+    }
+    await _loadProfile();
+    if (_profile != null) {
+      await _telemetryService.logAddPetExecutionIfPending(
+        endTime: DateTime.now(),
+      );
+    }
   }
 
   void _goToAddVaccine() {

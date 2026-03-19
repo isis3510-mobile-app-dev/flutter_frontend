@@ -12,6 +12,7 @@ import '../../../core/services/event_service.dart';
 import '../../../core/services/pet_service.dart';
 import '../../../core/services/profile_photo_service.dart';
 import '../../../core/services/smart_feature_service.dart';
+import '../../../core/services/telemetry_service.dart';
 import '../../../core/services/user_service.dart';
 import '../../../core/services/vaccine_service.dart';
 import '../../../shared/widgets/smart_alert_card.dart';
@@ -45,6 +46,7 @@ class _HomePageState extends State<HomePage> {
   final VaccineService _vaccineService = VaccineService();
   final SmartFeatureService _smartFeatureService = SmartFeatureService();
   final ProfilePhotoService _photoService = ProfilePhotoService();
+  final TelemetryService _telemetryService = TelemetryService();
 
   String _userName = '';
   List<PetUiModel> _pets = const [];
@@ -87,6 +89,19 @@ class _HomePageState extends State<HomePage> {
 
   void _goToAddEvent() {
     Navigator.of(context).pushNamed(Routes.addEvent);
+  }
+
+  Future<void> _goToAddPet() async {
+    final result = await Navigator.of(context).pushNamed(Routes.addPet);
+    if (!mounted || result != true) {
+      return;
+    }
+    await _loadHomeData();
+    if (_errorMessage == null) {
+      await _telemetryService.logAddPetExecutionIfPending(
+        endTime: DateTime.now(),
+      );
+    }
   }
 
   void _goToPetDetail(PetUiModel pet) {
@@ -607,7 +622,7 @@ class _HomePageState extends State<HomePage> {
       body: SafeArea(child: _buildBody()),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: QuickActionsFab(
-        onAddPet: () => Navigator.pushNamed(context, Routes.addPet),
+        onAddPet: _goToAddPet,
         onAddVaccine: _goToAddVaccine,
         onAddEvent: _goToAddEvent,
       ),
@@ -774,7 +789,7 @@ class _HomePageState extends State<HomePage> {
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
-                      onTap: () => Navigator.pushNamed(context, Routes.addPet),
+                      onTap: _goToAddPet,
                       borderRadius: BorderRadius.circular(
                         AppDimensions.radiusL,
                       ),
@@ -830,7 +845,7 @@ class _HomePageState extends State<HomePage> {
         child: Row(
           children: [
             InkWell(
-              onTap: () => Navigator.pushNamed(context, Routes.addPet),
+              onTap: _goToAddPet,
               borderRadius: BorderRadius.circular(AppDimensions.radiusL),
               child: Container(
                 width: 65,

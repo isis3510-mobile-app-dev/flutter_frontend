@@ -9,6 +9,7 @@ import '../../../../core/network/api_exception.dart';
 import '../../../../core/services/attachment_upload_service.dart';
 import '../../../../core/services/pet_service.dart';
 import '../../../../core/services/profile_photo_service.dart';
+import '../../../../core/services/telemetry_service.dart';
 import '../../../../core/utils/context_extensions.dart';
 import '../models/pet_ui_model.dart';
 import 'add_pet_form_types.dart';
@@ -47,6 +48,7 @@ class _AddPetScreenState extends State<AddPetScreen> {
   String? _petPhotoPath;
   bool _didRemovePhoto = false;
   bool _isCreatingPet = false;
+  bool _didSubmitSuccessfully = false;
 
   bool get _isEditMode => widget.editingPet != null;
 
@@ -64,6 +66,9 @@ class _AddPetScreenState extends State<AddPetScreen> {
 
   @override
   void dispose() {
+    if (!_isEditMode && !_didSubmitSuccessfully) {
+      TelemetryService().cancelAddPetTimer();
+    }
     _nameController.dispose();
     _breedController.dispose();
     _dateOfBirthController.dispose();
@@ -195,6 +200,9 @@ class _AddPetScreenState extends State<AddPetScreen> {
 
   void _goBack() {
     if (_currentStep == 0) {
+      if (!_isEditMode) {
+        TelemetryService().cancelAddPetTimer();
+      }
       context.pop();
       return;
     }
@@ -227,6 +235,10 @@ class _AddPetScreenState extends State<AddPetScreen> {
     if (birthDate == null) {
       context.showSnackBar(AppStrings.addPetValidationRequired, isError: true);
       return;
+    }
+
+    if (!_isEditMode) {
+      TelemetryService().startAddPetTimer();
     }
 
     setState(() {
@@ -272,6 +284,10 @@ class _AddPetScreenState extends State<AddPetScreen> {
         return;
       }
 
+      if (!_isEditMode) {
+        _didSubmitSuccessfully = true;
+      }
+
       context.showSnackBar(
         _isEditMode
             ? AppStrings.editPetSavedMessage
@@ -282,10 +298,16 @@ class _AddPetScreenState extends State<AddPetScreen> {
       if (!mounted) {
         return;
       }
+      if (!_isEditMode) {
+        TelemetryService().cancelAddPetTimer();
+      }
       context.showSnackBar(error.message, isError: true);
     } catch (_) {
       if (!mounted) {
         return;
+      }
+      if (!_isEditMode) {
+        TelemetryService().cancelAddPetTimer();
       }
       context.showSnackBar(AppStrings.petsLoadError, isError: true);
     } finally {
