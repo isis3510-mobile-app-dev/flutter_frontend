@@ -10,10 +10,12 @@ import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/models/event_model.dart';
 import '../../../../core/models/pet_model.dart';
+import '../../../../core/models/smart_alert_model.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/services/event_service.dart';
 import '../../../../core/services/pet_service.dart';
 import '../../../../core/services/profile_photo_service.dart';
+import '../../../../core/services/smart_feature_service.dart';
 import '../../../../shared/widgets/quick_actions_fab.dart';
 import '../../add_event/add_event_args.dart';
 import '../../records/detail/detail_page.dart';
@@ -44,6 +46,7 @@ class _PetDetailScreenState extends State<PetDetailScreen>
   late final TabController _tabController;
   final PetService _petService = PetService();
   final EventService _eventService = EventService();
+  final SmartFeatureService _smartFeatureService = SmartFeatureService();
   final ProfilePhotoService _photoService = ProfilePhotoService();
 
   Future<void> _goToAddVaccine() async {
@@ -68,6 +71,7 @@ class _PetDetailScreenState extends State<PetDetailScreen>
   late PetUiModel _pet;
   PetModel? _petDetails;
   List<EventModel> _petEvents = const [];
+  List<SmartSuggestionModel> _smartSuggestions = const [];
   bool _isLoading = false;
   bool _hasMutatedPet = false;
   String? _errorMessage;
@@ -97,6 +101,7 @@ class _PetDetailScreenState extends State<PetDetailScreen>
       final localPath = await _photoService.getPetPhotoPath(widget.pet.id);
       final uiPet = detail.toUiModel().copyWith(localPhotoPath: localPath);
       List<EventModel> petEvents = const [];
+      List<SmartSuggestionModel> smartSuggestions = const [];
       String? eventsErrorMessage;
 
       try {
@@ -107,6 +112,15 @@ class _PetDetailScreenState extends State<PetDetailScreen>
         eventsErrorMessage = AppStrings.errorGeneric;
       }
 
+      try {
+        final smartResponse = await _smartFeatureService.getPetSmartSuggestions(
+          widget.pet.id,
+        );
+        smartSuggestions = smartResponse.suggestions;
+      } catch (_) {
+        smartSuggestions = const [];
+      }
+
       if (!mounted) {
         return;
       }
@@ -115,6 +129,7 @@ class _PetDetailScreenState extends State<PetDetailScreen>
         _petDetails = detail;
         _pet = uiPet;
         _petEvents = petEvents..sort((a, b) => b.date.compareTo(a.date));
+        _smartSuggestions = smartSuggestions;
         _eventsErrorMessage = eventsErrorMessage;
       });
     } on ApiException catch (error) {
@@ -468,6 +483,7 @@ class _PetDetailScreenState extends State<PetDetailScreen>
                 pet: _pet,
                 petDetails: _petDetails,
                 eventCount: _petEvents.length,
+                smartAlerts: _smartSuggestions,
                 onToggleLostMode: _toggleLostMode,
                 onToggleNfc: _toggleNfc,
               ),

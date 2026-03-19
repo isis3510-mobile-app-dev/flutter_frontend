@@ -19,6 +19,7 @@ abstract class AppStrings {
   static const String homeGreeting = 'Hello,';
   static const String homePetsSection = 'My Pets';
   static const String homeSeeAll = 'See all';
+  static const String homeHealthAlerts = 'Health Alerts';
   static const String homeAddPet = 'Add Pet';
   static const String homeOverdueVaccines = 'Overdue Vaccines';
   static const String homeNextVaccine = 'NEXT VACCINE';
@@ -212,11 +213,11 @@ abstract class AppStrings {
   static const String labelAdditionalFiles = 'Additional Files';
   static const String labelEventName = 'Event Name';
   static const String labelEventTime = 'Event Time';
-    static const String labelEventType = 'Event Type';
-    static const String labelEventPrice = 'Price';
-    static const String labelEventProvider = 'Provider';
-    static const String labelEventClinic = 'Clinic';
-    static const String labelEventFollowUpDate = 'Follow-up Date';
+  static const String labelEventType = 'Event Type';
+  static const String labelEventPrice = 'Price';
+  static const String labelEventProvider = 'Provider';
+  static const String labelEventClinic = 'Clinic';
+  static const String labelEventFollowUpDate = 'Follow-up Date';
   static const String labelDescription = 'Description';
 
   // --- Form field hints ---
@@ -233,17 +234,17 @@ abstract class AppStrings {
   static const String uploadHint = 'Tap to upload or take a photo';
   static const String hintEventName = 'e.g. Vet Appointment';
   static const String hintEventTime = 'e.g. 9:00 AM';
-    static const String hintEventType = 'e.g. vet_visit';
-    static const String hintEventPrice = 'e.g. 120.00';
-    static const String hintEventProvider = 'e.g. Dr. Smith';
-    static const String hintEventClinic = 'e.g. Happy Paws Clinic';
+  static const String hintEventType = 'e.g. vet_visit';
+  static const String hintEventPrice = 'e.g. 120.00';
+  static const String hintEventProvider = 'e.g. Dr. Smith';
+  static const String hintEventClinic = 'e.g. Happy Paws Clinic';
   static const String hintEventDescription =
       'Optional description of the event';
 
   // --- Validation messages ---
   static const String validationRequired = 'This field is required.';
   static const String validationInvalidDate = 'Please enter a valid date.';
-    static const String validationInvalidNumber = 'Please enter a valid number.';
+  static const String validationInvalidNumber = 'Please enter a valid number.';
 
   // --- Step names ---
   static const String stepBasicInfo = 'Basic Info';
@@ -308,6 +309,7 @@ abstract class AppStrings {
   static const String petDetailTabEvents = 'Events';
   static const String petDetailSectionPetInfo = 'Pet Information';
   static const String petDetailSectionHealthSummary = 'Health Summary';
+  static const String petDetailSectionHealthAlerts = 'Health Alerts';
   static const String petDetailFieldSpecies = 'Species';
   static const String petDetailFieldBreed = 'Breed';
   static const String petDetailFieldDob = 'Date of Birth';
@@ -331,6 +333,13 @@ abstract class AppStrings {
   static const String petDetailMoreSemantics = 'More options';
   static const String petDetailMenuEdit = 'Edit';
   static const String petDetailMenuDelete = 'Delete';
+
+  // --- Smart alerts ---
+  static const String smartAlertsPageTitle = 'All alerts';
+  static const String smartAlertsFilterAll = 'All';
+  static const String smartAlertsEmpty =
+      'No health alerts available right now.';
+  static const String smartAlertsShowLess = 'Show less';
 
   // --- Welcome pages ---
   static const String welcomeFirstTitle =

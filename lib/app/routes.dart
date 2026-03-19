@@ -8,6 +8,7 @@ import 'package:flutter_frontend/presentation/pages/calendar/calendar_page.dart'
 import 'package:flutter_frontend/presentation/pages/nfc/nfc_page.dart';
 import 'package:flutter_frontend/core/models/user_profile.dart';
 import 'package:flutter_frontend/presentation/pages/records/detail/detail_page.dart';
+import 'package:flutter_frontend/presentation/pages/smart_alerts/smart_alerts_page.dart';
 import '../presentation/pages/auth/auth_page.dart';
 import '../presentation/pages/home/home_page.dart';
 import '../presentation/pages/pets/models/pet_ui_model.dart';
@@ -40,6 +41,7 @@ class Routes {
   static const String eventDetail = 'event/detail';
   static const String nfc = '/nfc';
   static const String records = '/records';
+  static const String smartAlerts = '/alerts';
   static const String calendar = '/calendar';
   static const String profile = '/profile';
   static const String profileEdit = '/profile/edit';
@@ -81,11 +83,22 @@ class Routes {
         return _buildRoute(const AddVaccinePage(), settings);
 
       case nfc:
-        final initialPetId = settings.arguments is String ? settings.arguments as String : null;
+        final initialPetId = settings.arguments is String
+            ? settings.arguments as String
+            : null;
         return _buildRoute(NfcPage(initialPetId: initialPetId), settings);
 
       case records:
         return _buildRecordsRoute(settings);
+
+      case smartAlerts:
+        final initialPetId = settings.arguments is String
+            ? settings.arguments as String
+            : null;
+        return _buildRoute(
+          SmartAlertsPage(initialPetId: initialPetId),
+          settings,
+        );
 
       case calendar:
         return _buildRoute(const CalendarPage(), settings);

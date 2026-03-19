@@ -6,12 +6,15 @@ import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/models/event_model.dart';
 import '../../../core/models/pet_model.dart';
+import '../../../core/models/smart_alert_model.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/services/event_service.dart';
 import '../../../core/services/pet_service.dart';
 import '../../../core/services/profile_photo_service.dart';
+import '../../../core/services/smart_feature_service.dart';
 import '../../../core/services/user_service.dart';
 import '../../../core/services/vaccine_service.dart';
+import '../../../shared/widgets/smart_alert_card.dart';
 import '../../../shared/widgets/petcare_bottom_nav_bar.dart';
 import '../../../shared/widgets/quick_actions_fab.dart';
 import '../add_event/add_event_args.dart';
@@ -40,12 +43,14 @@ class _HomePageState extends State<HomePage> {
   final PetService _petService = PetService();
   final EventService _eventService = EventService();
   final VaccineService _vaccineService = VaccineService();
+  final SmartFeatureService _smartFeatureService = SmartFeatureService();
   final ProfilePhotoService _photoService = ProfilePhotoService();
 
   String _userName = '';
   List<PetUiModel> _pets = const [];
   List<_HomeEventEntry> _upcomingEvents = const [];
   List<_UpcomingVaccineData> _upcomingVaccines = const [];
+  List<SmartAlertItem> _smartAlerts = const [];
   _OverdueVaccineData? _overdueVaccineData;
   bool _isLoading = false;
   String? _errorMessage;
@@ -269,6 +274,7 @@ class _HomePageState extends State<HomePage> {
         _userName = _firstName(profile.name);
         _pets = uiPets;
         _upcomingEvents = upcomingEvents;
+        _smartAlerts = smartAlerts;
         _overdueVaccineData = overdueVaccines.isEmpty
             ? null
             : _OverdueVaccineData(
@@ -354,6 +360,92 @@ class _HomePageState extends State<HomePage> {
       'Dec',
     ];
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
+
+  SmartAlertItem _selectHomeAlertByPriority() {
+    const priorityOrder = [
+      SmartSuggestionType.danger,
+      SmartSuggestionType.warning,
+      SmartSuggestionType.info,
+    ];
+
+    for (final type in priorityOrder) {
+      for (final alert in _smartAlerts) {
+        if (alert.suggestion.type == type) {
+          return alert;
+        }
+      }
+    }
+
+    return _smartAlerts.first;
+  }
+
+  Widget _buildHealthAlertsSection() {
+    if (_smartAlerts.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final titleColor = isDark
+        ? AppColors.onBackgroundDark
+        : AppColors.onSurface;
+    final prioritizedAlert = _selectHomeAlertByPriority();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: AppDimensions.spaceL),
+        Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppDimensions.pageHorizontalPadding,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                AppStrings.homeHealthAlerts,
+                style: TextStyle(
+                  color: titleColor,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              TextButton(
+                onPressed: () =>
+                    Navigator.of(context).pushNamed(Routes.smartAlerts),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      AppStrings.homeSeeAll,
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: AppDimensions.spaceXXS),
+                    const Icon(
+                      Icons.chevron_right,
+                      color: AppColors.primary,
+                      size: 18,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        SmartAlertCard(
+          suggestion: prioritizedAlert.suggestion,
+          petName: prioritizedAlert.petName,
+          margin: const EdgeInsets.symmetric(
+            horizontal: AppDimensions.pageHorizontalPadding,
+            vertical: AppDimensions.spaceS,
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildVaccinesSection() {
@@ -538,6 +630,7 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: AppDimensions.spaceL),
           _buildPetsSection(),
+          _buildHealthAlertsSection(),
           const SizedBox(height: AppDimensions.spaceL),
           _buildVaccinesSection(),
           const SizedBox(height: AppDimensions.spaceL),
