@@ -5,14 +5,17 @@ import '../../../../../core/constants/app_colors.dart';
 import '../../../../../core/constants/app_dimensions.dart';
 import '../../../../../core/constants/app_strings.dart';
 import '../../../../../core/models/pet_model.dart';
+import '../../../../../core/models/smart_alert_model.dart';
+import '../../../../../shared/widgets/smart_alert_card.dart';
 import '../../models/pet_ui_model.dart';
 
-class OverviewTab extends StatelessWidget {
+class OverviewTab extends StatefulWidget {
   const OverviewTab({
     super.key,
     required this.pet,
     required this.petDetails,
     required this.eventCount,
+    required this.smartAlerts,
     required this.onToggleLostMode,
     required this.onToggleNfc,
   });
@@ -20,8 +23,24 @@ class OverviewTab extends StatelessWidget {
   final PetUiModel pet;
   final PetModel? petDetails;
   final int eventCount;
+  final List<SmartSuggestionModel> smartAlerts;
   final VoidCallback onToggleLostMode;
   final VoidCallback onToggleNfc;
+
+  @override
+  State<OverviewTab> createState() => _OverviewTabState();
+}
+
+class _OverviewTabState extends State<OverviewTab> {
+  bool _showAllSmartAlerts = false;
+
+  @override
+  void didUpdateWidget(covariant OverviewTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.pet.id != oldWidget.pet.id || widget.smartAlerts.length <= 2) {
+      _showAllSmartAlerts = false;
+    }
+  }
 
   static String _formatDate(DateTime date) {
     const months = [
@@ -60,25 +79,25 @@ class OverviewTab extends StatelessWidget {
             rows: [
               _InfoRow(
                 AppStrings.petDetailFieldSpecies,
-                pet.species,
+                widget.pet.species,
                 AppStrings.petDetailFieldBreed,
-                pet.breed,
+                widget.pet.breed,
               ),
               _InfoRow(
                 AppStrings.petDetailFieldDob,
-                _formatDate(pet.birthDate),
+                _formatDate(widget.pet.birthDate),
                 AppStrings.petDetailFieldAge,
-                pet.ageLabel,
+                widget.pet.ageLabel,
               ),
               _InfoRow(
                 AppStrings.petDetailFieldWeight,
-                pet.weightLabel,
+                widget.pet.weightLabel,
                 AppStrings.petDetailFieldColor,
-                pet.color,
+                widget.pet.color,
               ),
               _InfoRow(
                 AppStrings.petDetailFieldGender,
-                pet.gender,
+                widget.pet.gender,
                 AppStrings.petDetailFieldMicrochip,
                 AppStrings.valueNotAvailable,
               ),
@@ -87,17 +106,29 @@ class OverviewTab extends StatelessWidget {
           const SizedBox(height: AppDimensions.spaceM),
           _HealthSummaryCard(
             isDark: isDark,
-            pet: pet,
-            petDetails: petDetails,
-            eventCount: eventCount,
+            pet: widget.pet,
+            petDetails: widget.petDetails,
+            eventCount: widget.eventCount,
           ),
           const SizedBox(height: AppDimensions.spaceM),
+          if (widget.smartAlerts.isNotEmpty) ...[
+            _HealthAlertsSection(
+              alerts: widget.smartAlerts,
+              showAll: _showAllSmartAlerts,
+              onToggleShowAll: () {
+                setState(() {
+                  _showAllSmartAlerts = !_showAllSmartAlerts;
+                });
+              },
+            ),
+            const SizedBox(height: AppDimensions.spaceM),
+          ],
           _StatusRow(
-            isNfcActive: pet.isNfcSynced,
-            isLost: pet.status == 'lost',
+            isNfcActive: widget.pet.isNfcSynced,
+            isLost: widget.pet.status == 'lost',
             isDark: isDark,
-            onToggleLostMode: onToggleLostMode,
-            onToggleNfc: onToggleNfc,
+            onToggleLostMode: widget.onToggleLostMode,
+            onToggleNfc: widget.onToggleNfc,
           ),
         ],
       ),
@@ -250,13 +281,18 @@ class _HealthSummaryCard extends StatelessWidget {
 
     final vaccinations = petDetails?.vaccinations ?? const [];
     final totalVaccines = vaccinations.length;
-    final upcoming = vaccinations
-        .where((v) => v.nextDueDate.isAfter(DateTime.now()))
-        .toList(growable: false)
-      ..sort((a, b) => a.nextDueDate.compareTo(b.nextDueDate));
+    final upcoming =
+        vaccinations
+            .where((v) => v.nextDueDate.isAfter(DateTime.now()))
+            .toList(growable: false)
+          ..sort((a, b) => a.nextDueDate.compareTo(b.nextDueDate));
     final completedVaccines = vaccinations.length - upcoming.length;
-    final vaccineMetric = totalVaccines == 0 ? '0/0' : '$completedVaccines/$totalVaccines';
-    final summaryTitleColor = isDark ? AppColors.onSurfaceDark : AppColors.grey900;
+    final vaccineMetric = totalVaccines == 0
+        ? '0/0'
+        : '$completedVaccines/$totalVaccines';
+    final summaryTitleColor = isDark
+        ? AppColors.onSurfaceDark
+        : AppColors.grey900;
 
     return Container(
       decoration: BoxDecoration(
@@ -308,6 +344,71 @@ class _HealthSummaryCard extends StatelessWidget {
   }
 }
 
+class _HealthAlertsSection extends StatelessWidget {
+  const _HealthAlertsSection({
+    required this.alerts,
+    required this.showAll,
+    required this.onToggleShowAll,
+  });
+
+  final List<SmartSuggestionModel> alerts;
+  final bool showAll;
+  final VoidCallback onToggleShowAll;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final sectionTitleColor = isDark
+        ? AppColors.onSurfaceDark
+        : AppColors.grey900;
+    final linkColor = isDark ? AppColors.primaryVariant : AppColors.primary;
+    final visibleAlerts = showAll
+        ? alerts
+        : alerts.take(2).toList(growable: false);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          AppStrings.petDetailSectionHealthAlerts.toUpperCase(),
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: sectionTitleColor,
+            letterSpacing: 0.4,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: AppDimensions.spaceS),
+        for (final alert in visibleAlerts)
+          SmartAlertCard(
+            suggestion: alert,
+            showPetName: false,
+            margin: const EdgeInsets.only(bottom: AppDimensions.spaceS),
+          ),
+        if (alerts.length > 2)
+          Align(
+            alignment: Alignment.centerRight,
+            child: GestureDetector(
+              onTap: onToggleShowAll,
+              child: Padding(
+                padding: const EdgeInsets.only(top: AppDimensions.spaceXS),
+                child: Text(
+                  showAll
+                      ? AppStrings.smartAlertsShowLess
+                      : 'See all ${alerts.length} alerts',
+                  style: TextStyle(
+                    color: linkColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 class _HealthMetricTile extends StatelessWidget {
   const _HealthMetricTile({
     required this.isDark,
@@ -327,7 +428,9 @@ class _HealthMetricTile extends StatelessWidget {
         ? AppColors.surfaceDark.withValues(alpha: 0.55)
         : Colors.white.withValues(alpha: 0.75);
     final iconColor = AppColors.bottomNavActive;
-    final valueColor = isDark ? AppColors.onSurfaceDark : AppColors.bottomNavActive;
+    final valueColor = isDark
+        ? AppColors.onSurfaceDark
+        : AppColors.bottomNavActive;
     final labelColor = isDark ? AppColors.onSurfaceDark : AppColors.grey900;
 
     return Container(
@@ -342,11 +445,7 @@ class _HealthMetricTile extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: 22,
-            color: iconColor,
-          ),
+          Icon(icon, size: 22, color: iconColor),
           const SizedBox(height: AppDimensions.spaceS),
           Text(
             value,

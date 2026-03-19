@@ -6,12 +6,15 @@ import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/models/event_model.dart';
 import '../../../core/models/pet_model.dart';
+import '../../../core/models/smart_alert_model.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/services/event_service.dart';
 import '../../../core/services/pet_service.dart';
 import '../../../core/services/profile_photo_service.dart';
+import '../../../core/services/smart_feature_service.dart';
 import '../../../core/services/user_service.dart';
 import '../../../core/services/vaccine_service.dart';
+import '../../../shared/widgets/smart_alert_card.dart';
 import '../../../shared/widgets/petcare_bottom_nav_bar.dart';
 import '../../../shared/widgets/quick_actions_fab.dart';
 import '../add_event/add_event_args.dart';
@@ -40,12 +43,14 @@ class _HomePageState extends State<HomePage> {
   final PetService _petService = PetService();
   final EventService _eventService = EventService();
   final VaccineService _vaccineService = VaccineService();
+  final SmartFeatureService _smartFeatureService = SmartFeatureService();
   final ProfilePhotoService _photoService = ProfilePhotoService();
 
   String _userName = '';
   List<PetUiModel> _pets = const [];
   List<_HomeEventEntry> _upcomingEvents = const [];
   List<_UpcomingVaccineData> _upcomingVaccines = const [];
+  List<SmartAlertItem> _smartAlerts = const [];
   _OverdueVaccineData? _overdueVaccineData;
   bool _isLoading = false;
   String? _errorMessage;
@@ -114,7 +119,10 @@ class _HomePageState extends State<HomePage> {
     await _loadHomeData();
   }
 
-  Future<void> _editVaccine(_VaccinationWithPet entry, String vaccineName) async {
+  Future<void> _editVaccine(
+    _VaccinationWithPet entry,
+    String vaccineName,
+  ) async {
     final result = await Navigator.of(context).pushNamed(
       Routes.addVaccine,
       arguments: AddVaccineArgs(
@@ -194,7 +202,39 @@ class _HomePageState extends State<HomePage> {
           }
         }),
       );
-      final events = eventGroups.expand((group) => group).toList(growable: false);
+      final events = eventGroups
+          .expand((group) => group)
+          .toList(growable: false);
+
+      final smartAlertGroups = await Future.wait(
+        pets.map((pet) async {
+          try {
+            final response = await _smartFeatureService.getPetSmartSuggestions(
+              pet.id,
+            );
+            final petName = pet.name.trim().isNotEmpty
+                ? pet.name.trim()
+                : response.petName.trim().isNotEmpty
+                ? response.petName.trim()
+                : AppStrings.valueNotAvailable;
+
+            return response.suggestions
+                .map(
+                  (suggestion) => SmartAlertItem(
+                    petId: pet.id,
+                    petName: petName,
+                    suggestion: suggestion,
+                  ),
+                )
+                .toList(growable: false);
+          } catch (_) {
+            return const <SmartAlertItem>[];
+          }
+        }),
+      );
+      final smartAlerts = smartAlertGroups
+          .expand((group) => group)
+          .toList(growable: false);
 
       final vaccineIds = allVaccinations
           .map((entry) => entry.vaccination.vaccineId.trim())
@@ -211,34 +251,50 @@ class _HomePageState extends State<HomePage> {
           }
         }),
       );
-      final vaccineNamesById = Map<String, String>.fromEntries(vaccineNameEntries);
+      final vaccineNamesById = Map<String, String>.fromEntries(
+        vaccineNameEntries,
+      );
 
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
-      final overdueVaccines = allVaccinations.where((entry) {
-        final due = entry.vaccination.nextDueDate;
-        return due.year > 1 && due.isBefore(now);
-      }).toList(growable: false)
-        ..sort(
-          (a, b) => a.vaccination.nextDueDate.compareTo(b.vaccination.nextDueDate),
-        );
+      final overdueVaccines =
+          allVaccinations
+              .where((entry) {
+                final due = entry.vaccination.nextDueDate;
+                return due.year > 1 && due.isBefore(now);
+              })
+              .toList(growable: false)
+            ..sort(
+              (a, b) => a.vaccination.nextDueDate.compareTo(
+                b.vaccination.nextDueDate,
+              ),
+            );
 
-      final upcomingVaccines = allVaccinations.where((entry) {
-        final due = entry.vaccination.nextDueDate;
-        if (due.year <= 1) {
-          return false;
-        }
-        final dueDay = DateTime(due.year, due.month, due.day);
-        return !dueDay.isBefore(today);
-      }).toList(growable: false)
-        ..sort(
-          (a, b) => a.vaccination.nextDueDate.compareTo(b.vaccination.nextDueDate),
-        );
+      final upcomingVaccines =
+          allVaccinations
+              .where((entry) {
+                final due = entry.vaccination.nextDueDate;
+                if (due.year <= 1) {
+                  return false;
+                }
+                final dueDay = DateTime(due.year, due.month, due.day);
+                return !dueDay.isBefore(today);
+              })
+              .toList(growable: false)
+            ..sort(
+              (a, b) => a.vaccination.nextDueDate.compareTo(
+                b.vaccination.nextDueDate,
+              ),
+            );
 
-      final upcomingEvents = events.where((entry) {
-        return entry.event.date.year > 1 && entry.event.date.isAfter(now);
-      }).toList(growable: false)
-        ..sort((a, b) => a.event.date.compareTo(b.event.date));
+      final upcomingEvents =
+          events
+              .where((entry) {
+                return entry.event.date.year > 1 &&
+                    entry.event.date.isAfter(now);
+              })
+              .toList(growable: false)
+            ..sort((a, b) => a.event.date.compareTo(b.event.date));
 
       if (!mounted) {
         return;
@@ -248,6 +304,7 @@ class _HomePageState extends State<HomePage> {
         _userName = _firstName(profile.name);
         _pets = uiPets;
         _upcomingEvents = upcomingEvents;
+        _smartAlerts = smartAlerts;
         _overdueVaccineData = overdueVaccines.isEmpty
             ? null
             : _OverdueVaccineData(
@@ -263,7 +320,10 @@ class _HomePageState extends State<HomePage> {
                 entry: overdueVaccines.first,
               );
         _upcomingVaccines = upcomingVaccines
-            .map((entry) => _UpcomingVaccineData.fromEntry(entry, vaccineNamesById))
+            .map(
+              (entry) =>
+                  _UpcomingVaccineData.fromEntry(entry, vaccineNamesById),
+            )
             .toList(growable: false);
       });
     } on ApiException catch (error) {
@@ -332,9 +392,97 @@ class _HomePageState extends State<HomePage> {
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
 
+  SmartAlertItem _selectHomeAlertByPriority() {
+    const priorityOrder = [
+      SmartSuggestionType.danger,
+      SmartSuggestionType.warning,
+      SmartSuggestionType.info,
+    ];
+
+    for (final type in priorityOrder) {
+      for (final alert in _smartAlerts) {
+        if (alert.suggestion.type == type) {
+          return alert;
+        }
+      }
+    }
+
+    return _smartAlerts.first;
+  }
+
+  Widget _buildHealthAlertsSection() {
+    if (_smartAlerts.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final titleColor = isDark
+        ? AppColors.onBackgroundDark
+        : AppColors.onSurface;
+    final prioritizedAlert = _selectHomeAlertByPriority();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: AppDimensions.spaceL),
+        Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppDimensions.pageHorizontalPadding,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                AppStrings.homeHealthAlerts,
+                style: TextStyle(
+                  color: titleColor,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              TextButton(
+                onPressed: () =>
+                    Navigator.of(context).pushNamed(Routes.smartAlerts),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      AppStrings.homeSeeAll,
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: AppDimensions.spaceXXS),
+                    const Icon(
+                      Icons.chevron_right,
+                      color: AppColors.primary,
+                      size: 18,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        SmartAlertCard(
+          suggestion: prioritizedAlert.suggestion,
+          petName: prioritizedAlert.petName,
+          margin: const EdgeInsets.symmetric(
+            horizontal: AppDimensions.pageHorizontalPadding,
+            vertical: AppDimensions.spaceS,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildVaccinesSection() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final titleColor = isDark ? AppColors.onBackgroundDark : AppColors.onSurface;
+    final titleColor = isDark
+        ? AppColors.onBackgroundDark
+        : AppColors.onSurface;
     final visibleVaccines = _upcomingVaccines.take(3).toList(growable: false);
 
     if (_overdueVaccineData == null && visibleVaccines.isEmpty) {
@@ -399,10 +547,7 @@ class _HomePageState extends State<HomePage> {
             petName: vaccine.petName,
             date: _formatDate(vaccine.date),
             daysUntil: vaccine.daysUntil,
-            onTap: () => _editVaccine(
-              vaccine.entry,
-              vaccine.vaccineName,
-            ),
+            onTap: () => _editVaccine(vaccine.entry, vaccine.vaccineName),
           ),
       ],
     );
@@ -411,8 +556,9 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor =
-        isDark ? AppColors.backgroundDark : AppColors.background;
+    final backgroundColor = isDark
+        ? AppColors.backgroundDark
+        : AppColors.background;
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -480,6 +626,7 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: AppDimensions.spaceL),
           _buildPetsSection(),
+          _buildHealthAlertsSection(),
           const SizedBox(height: AppDimensions.spaceL),
           _buildVaccinesSection(),
           const SizedBox(height: AppDimensions.spaceL),
@@ -492,7 +639,9 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildPetsSection() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final titleColor = isDark ? AppColors.onBackgroundDark : AppColors.onSurface;
+    final titleColor = isDark
+        ? AppColors.onBackgroundDark
+        : AppColors.onSurface;
 
     return Column(
       children: [
@@ -512,8 +661,7 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               TextButton(
-                onPressed: () =>
-                    Navigator.of(context).pushNamed(Routes.pets),
+                onPressed: () => Navigator.of(context).pushNamed(Routes.pets),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -558,20 +706,13 @@ class _HomePageState extends State<HomePage> {
         children: [
           ...visiblePets.map(
             (pet) => Padding(
-              padding: const EdgeInsets.only(
-                right: AppDimensions.spaceM,
-              ),
-              child: PetCard(
-                pet: pet,
-                onTap: () => _goToPetDetail(pet),
-              ),
+              padding: const EdgeInsets.only(right: AppDimensions.spaceM),
+              child: PetCard(pet: pet, onTap: () => _goToPetDetail(pet)),
             ),
           ),
           // Add Pet Button
           Padding(
-            padding: const EdgeInsets.only(
-              right: AppDimensions.spaceM,
-            ),
+            padding: const EdgeInsets.only(right: AppDimensions.spaceM),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -590,7 +731,9 @@ class _HomePageState extends State<HomePage> {
                     color: Colors.transparent,
                     child: InkWell(
                       onTap: () => Navigator.pushNamed(context, Routes.addPet),
-                      borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+                      borderRadius: BorderRadius.circular(
+                        AppDimensions.radiusL,
+                      ),
                       child: Icon(
                         Icons.add,
                         color: AppColors.primary,
@@ -604,7 +747,9 @@ class _HomePageState extends State<HomePage> {
                   'Add Pet',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: isDark ? AppColors.onSurfaceDark : AppColors.onSurface,
+                    color: isDark
+                        ? AppColors.onSurfaceDark
+                        : AppColors.onSurface,
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                   ),
@@ -667,10 +812,14 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildUpcomingEventsSection() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final eventsCardColor = isDark ? AppColors.secondaryDark : AppColors.secondary;
+    final eventsCardColor = isDark
+        ? AppColors.secondaryDark
+        : AppColors.secondary;
     final dividerColor = isDark ? AppColors.grey700 : AppColors.grey300;
     final events = _upcomingEvents.take(3).toList(growable: false);
-    final titleColor = isDark ? AppColors.onBackgroundDark : AppColors.onSurface;
+    final titleColor = isDark
+        ? AppColors.onBackgroundDark
+        : AppColors.onSurface;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -691,8 +840,7 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               TextButton(
-                onPressed: () =>
-                    _goToRecords(Routes.recordsFilterEvents),
+                onPressed: () => _goToRecords(Routes.recordsFilterEvents),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -779,7 +927,7 @@ class _HomePageState extends State<HomePage> {
                     }),
                   ),
                 ),
-          ),
+        ),
       ],
     );
   }
