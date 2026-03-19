@@ -45,6 +45,7 @@ class _AddPetScreenState extends State<AddPetScreen> {
   PetSpecies? _species;
   PetGender? _gender;
   String? _petPhotoPath;
+  bool _didRemovePhoto = false;
   bool _isCreatingPet = false;
 
   bool get _isEditMode => widget.editingPet != null;
@@ -141,6 +142,8 @@ class _AddPetScreenState extends State<AddPetScreen> {
     final currentPhotoPath = _petPhotoPath?.trim();
     if (_isRemotePhotoPath(currentPhotoPath)) {
       payload['photoUrl'] = currentPhotoPath;
+    } else if (_didRemovePhoto) {
+      payload['photoUrl'] = '';
     }
 
     return payload;
@@ -260,6 +263,7 @@ class _AddPetScreenState extends State<AddPetScreen> {
         if (mounted) {
           setState(() {
             _petPhotoPath = uploadedPhoto.downloadUrl;
+            _didRemovePhoto = false;
           });
         }
       }
@@ -321,6 +325,7 @@ class _AddPetScreenState extends State<AddPetScreen> {
 
       setState(() {
         _petPhotoPath = photoPath;
+        _didRemovePhoto = false;
       });
     } catch (_) {
       if (!mounted) {
@@ -328,6 +333,22 @@ class _AddPetScreenState extends State<AddPetScreen> {
       }
       context.showSnackBar(AppStrings.profilePhotoPickError, isError: true);
     }
+  }
+
+  Future<void> _removePhoto() async {
+    final petId = widget.editingPet?.id;
+    if (petId != null) {
+      await _photoService.clearPetPhotoPath(petId);
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _petPhotoPath = null;
+      _didRemovePhoto = true;
+    });
   }
 
   String _extensionFromName(String fileName) {
@@ -490,6 +511,7 @@ class _AddPetScreenState extends State<AddPetScreen> {
             });
           },
           onPhotoTap: _pickPhotoFromGallery,
+          onRemovePhoto: _removePhoto,
           imagePath: _petPhotoPath,
         );
       case 1:

@@ -8,9 +8,15 @@ import '../../../../../core/constants/app_dimensions.dart';
 import '../../../../../core/constants/app_strings.dart';
 
 class PetPhotoPicker extends StatelessWidget {
-  const PetPhotoPicker({super.key, this.onTap, this.imagePath});
+  const PetPhotoPicker({
+    super.key,
+    this.onTap,
+    this.onRemovePhoto,
+    this.imagePath,
+  });
 
   final VoidCallback? onTap;
+  final VoidCallback? onRemovePhoto;
   final String? imagePath;
 
   @override
@@ -42,6 +48,25 @@ class PetPhotoPicker extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppDimensions.spaceS),
+          if (imagePath?.trim().isNotEmpty == true) ...[
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: AppDimensions.spaceS,
+              runSpacing: AppDimensions.spaceS,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: onTap,
+                  icon: const Icon(Icons.photo_library_outlined),
+                  label: const Text(AppStrings.profileChangePhoto),
+                ),
+                TextButton(
+                  onPressed: onRemovePhoto,
+                  child: const Text(AppStrings.profileRemovePhoto),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppDimensions.spaceS),
+          ],
           Text(
             AppStrings.addPetPhotoHint,
             textAlign: TextAlign.center,
