@@ -179,4 +179,9 @@ abstract class AppColors {
   static const Color smartAlertInfoText = Color(0xFF1565C0);
   static const Color smartAlertInfoBgDark = Color(0xFF1B334D);
   static const Color smartAlertInfoTextDark = Color(0xFF90CAF9);
+
+  static const Color smartAlertVetBg = Color(0xFFE2F6F3);
+  static const Color smartAlertVetText = Color(0xFF00695C);
+  static const Color smartAlertVetBgDark = Color(0xFF173B37);
+  static const Color smartAlertVetTextDark = Color(0xFF8CE7D8);
 }

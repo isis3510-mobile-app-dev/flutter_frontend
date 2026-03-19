@@ -23,8 +23,8 @@ class SmartAlertCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final palette = _SmartAlertPalette.fromType(
-      suggestion.type,
+    final palette = _SmartAlertPalette.resolve(
+      suggestion: suggestion,
       isDark: isDark,
     );
     final resolvedMargin =
@@ -108,6 +108,25 @@ class _SmartAlertPalette {
   final Color textColor;
   final IconData icon;
 
+  static _SmartAlertPalette resolve({
+    required SmartSuggestionModel suggestion,
+    required bool isDark,
+  }) {
+    if (_isVetSuggestion(suggestion)) {
+      return _SmartAlertPalette(
+        backgroundColor: isDark
+            ? AppColors.smartAlertVetBgDark
+            : AppColors.smartAlertVetBg,
+        textColor: isDark
+            ? AppColors.smartAlertVetTextDark
+            : AppColors.smartAlertVetText,
+        icon: Icons.medical_services_rounded,
+      );
+    }
+
+    return _SmartAlertPalette.fromType(suggestion.type, isDark: isDark);
+  }
+
   factory _SmartAlertPalette.fromType(
     SmartSuggestionType type, {
     required bool isDark,
@@ -141,5 +160,13 @@ class _SmartAlertPalette {
         icon: Icons.notifications_active_rounded,
       ),
     };
+  }
+
+  static bool _isVetSuggestion(SmartSuggestionModel suggestion) {
+    final combinedText =
+        '${suggestion.title} ${suggestion.message}'.toLowerCase();
+    return combinedText.contains('vet') ||
+        combinedText.contains('veterinarian') ||
+        combinedText.contains('checkup');
   }
 }
