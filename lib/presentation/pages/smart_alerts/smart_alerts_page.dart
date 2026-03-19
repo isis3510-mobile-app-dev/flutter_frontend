@@ -230,29 +230,32 @@ class _SmartAlertsPageState extends State<SmartAlertsPage> {
         })
         .toList(growable: false);
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppDimensions.pageHorizontalPadding,
-      ),
-      child: Row(
-        children: [
-          _AlertFilterChip(
-            label: AppStrings.smartAlertsFilterAll,
-            isSelected: _selectedPetId == null,
-            onTap: () => setState(() => _selectedPetId = null),
-          ),
-          const SizedBox(width: AppDimensions.spaceS),
-          for (final pet in petOptions) ...[
+    return SizedBox(
+      width: double.infinity,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppDimensions.pageHorizontalPadding,
+        ),
+        child: Row(
+          children: [
             _AlertFilterChip(
-              label:
-                  '${pet.name.trim().isEmpty ? AppStrings.valueNotAvailable : pet.name.trim()} (${_countForPet(pet.id)})',
-              isSelected: _selectedPetId == pet.id,
-              onTap: () => setState(() => _selectedPetId = pet.id),
+              label: AppStrings.smartAlertsFilterAll,
+              isSelected: _selectedPetId == null,
+              onTap: () => setState(() => _selectedPetId = null),
             ),
             const SizedBox(width: AppDimensions.spaceS),
+            for (final pet in petOptions) ...[
+              _AlertFilterChip(
+                label:
+                    '${pet.name.trim().isEmpty ? AppStrings.valueNotAvailable : pet.name.trim()} (${_countForPet(pet.id)})',
+                isSelected: _selectedPetId == pet.id,
+                onTap: () => setState(() => _selectedPetId = pet.id),
+              ),
+              const SizedBox(width: AppDimensions.spaceS),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
