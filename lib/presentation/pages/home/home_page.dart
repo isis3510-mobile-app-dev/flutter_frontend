@@ -103,6 +103,7 @@ class _HomePageState extends State<HomePage> {
         provider: entry.event.provider,
         clinic: entry.event.clinic,
         followUpDate: entry.event.followUpDate,
+        attachedDocuments: entry.event.attachedDocuments,
       ),
     );
 
@@ -124,6 +125,7 @@ class _HomePageState extends State<HomePage> {
         petId: entry.petId,
         petName: entry.petName,
         administeredBy: entry.vaccination.administeredBy,
+        attachedDocuments: entry.vaccination.attachedDocuments,
       ),
     );
 

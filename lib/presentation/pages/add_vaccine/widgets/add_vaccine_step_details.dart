@@ -7,9 +7,17 @@ class AddVaccineStepDetails extends StatelessWidget {
   const AddVaccineStepDetails({
     super.key,
     required this.administeredByController,
+    required this.onAddAttachment,
+    required this.attachmentNames,
+    required this.onRemoveAttachment,
+    required this.isUploadingAttachments,
   });
 
   final TextEditingController administeredByController;
+  final VoidCallback onAddAttachment;
+  final List<String> attachmentNames;
+  final ValueChanged<int> onRemoveAttachment;
+  final bool isUploadingAttachments;
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +30,12 @@ class AddVaccineStepDetails extends StatelessWidget {
           controller: administeredByController,
         ),
         const SizedBox(height: 18),
-        const AddFlowAttachmentsSection(),
+        AddFlowAttachmentsSection(
+          onTap: onAddAttachment,
+          attachments: attachmentNames,
+          onRemoveAttachment: onRemoveAttachment,
+          isUploading: isUploadingAttachments,
+        ),
       ],
     );
   }

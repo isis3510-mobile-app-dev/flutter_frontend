@@ -83,7 +83,19 @@ class PetUiModel {
     return null;
   }
 
-  PetUiModel copyWith({String? localPhotoPath}) {
+  bool get hasPhoto => effectivePhotoPath != null;
+
+  bool get isPhotoRemote {
+    final value = effectivePhotoPath;
+    if (value == null) {
+      return false;
+    }
+
+    final uri = Uri.tryParse(value);
+    return uri != null && (uri.scheme == 'http' || uri.scheme == 'https');
+  }
+
+  PetUiModel copyWith({String? localPhotoPath, String? photoUrl}) {
     return PetUiModel(
       id: id,
       userIds: userIds,
@@ -94,7 +106,7 @@ class PetUiModel {
       birthDate: birthDate,
       weight: weight,
       color: color,
-      photoUrl: photoUrl,
+      photoUrl: photoUrl ?? this.photoUrl,
       localPhotoPath: localPhotoPath ?? this.localPhotoPath,
       status: status,
       isNfcSynced: isNfcSynced,

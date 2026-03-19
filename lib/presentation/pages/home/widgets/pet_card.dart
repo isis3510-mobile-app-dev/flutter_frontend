@@ -22,9 +22,6 @@ class PetCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? AppColors.onBackgroundDark : AppColors.onSurface;
     final effectivePhotoPath = pet.effectivePhotoPath;
-    final uri = effectivePhotoPath == null ? null : Uri.tryParse(effectivePhotoPath);
-    final isNetwork = uri != null &&
-        (uri.scheme == 'http' || uri.scheme == 'https');
 
     return GestureDetector(
       onTap: onTap,
@@ -43,11 +40,11 @@ class PetCard extends StatelessWidget {
                       ? AppColors.petCardQuickActionBgDark
                       : AppColors.petCardQuickActionBg,
                   borderRadius: BorderRadius.circular(AppDimensions.radiusL),
-                  image: effectivePhotoPath != null
+                  image: pet.hasPhoto
                       ? DecorationImage(
-                          image: isNetwork
-                              ? NetworkImage(effectivePhotoPath)
-                              : FileImage(File(effectivePhotoPath))
+                          image: pet.isPhotoRemote
+                              ? NetworkImage(effectivePhotoPath!)
+                              : FileImage(File(effectivePhotoPath!))
                                   as ImageProvider,
                           fit: BoxFit.cover,
                         )
@@ -60,7 +57,7 @@ class PetCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: effectivePhotoPath == null
+                child: !pet.hasPhoto
                     ? Icon(
                         Icons.pets,
                         color: AppColors.primary,

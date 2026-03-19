@@ -10,6 +10,7 @@ class AddVaccineStepOverview extends StatelessWidget {
     required this.productController,
     required this.petNameController,
     required this.administeredByController,
+    required this.attachmentNames,
   });
 
   final TextEditingController vaccineController;
@@ -17,6 +18,7 @@ class AddVaccineStepOverview extends StatelessWidget {
   final TextEditingController productController;
   final TextEditingController petNameController;
   final TextEditingController administeredByController;
+  final List<String> attachmentNames;
 
   @override
   Widget build(BuildContext context) {
@@ -55,6 +57,17 @@ class AddVaccineStepOverview extends StatelessWidget {
           label: AppStrings.labelAdministeredBy,
           hintText: AppStrings.hintNotProvided,
           controller: administeredByController,
+          readOnly: true,
+        ),
+        const SizedBox(height: 18),
+        AppFormField(
+          label: AppStrings.labelAdditionalFiles,
+          hintText: attachmentNames.isEmpty
+              ? AppStrings.vaccineNoDocuments
+              : attachmentNames.join(', '),
+          controller: TextEditingController(
+            text: attachmentNames.isEmpty ? '' : attachmentNames.join(', '),
+          ),
           readOnly: true,
         ),
       ],

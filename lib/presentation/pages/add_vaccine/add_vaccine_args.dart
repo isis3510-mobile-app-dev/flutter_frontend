@@ -1,3 +1,5 @@
+import 'package:flutter_frontend/core/models/pet_model.dart';
+
 class AddVaccineArgs {
   const AddVaccineArgs({
     this.vaccinationId,
@@ -7,6 +9,7 @@ class AddVaccineArgs {
     this.petId,
     this.petName,
     this.administeredBy,
+    this.attachedDocuments,
   });
 
   final String? vaccinationId;
@@ -16,4 +19,5 @@ class AddVaccineArgs {
   final String? petId;
   final String? petName;
   final String? administeredBy;
+  final List<PetDocumentModel>? attachedDocuments;
 }

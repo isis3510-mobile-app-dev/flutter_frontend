@@ -15,6 +15,7 @@ class StepBasicInfo extends StatelessWidget {
     required this.species,
     required this.onSpeciesSelected,
     required this.onPhotoTap,
+    required this.onRemovePhoto,
     this.imagePath,
   });
 
@@ -23,6 +24,7 @@ class StepBasicInfo extends StatelessWidget {
   final PetSpecies? species;
   final ValueChanged<PetSpecies> onSpeciesSelected;
   final VoidCallback onPhotoTap;
+  final VoidCallback onRemovePhoto;
   final String? imagePath;
 
   @override
@@ -31,7 +33,11 @@ class StepBasicInfo extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: AppDimensions.spaceM),
-        PetPhotoPicker(onTap: onPhotoTap, imagePath: imagePath),
+        PetPhotoPicker(
+          onTap: onPhotoTap,
+          onRemovePhoto: onRemovePhoto,
+          imagePath: imagePath,
+        ),
         const SizedBox(height: AppDimensions.spaceXXL),
         PetFormField(
           label: '${AppStrings.addPetNameLabel} *',

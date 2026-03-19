@@ -700,6 +700,7 @@ class _ProfilePageState extends State<ProfilePage> {
               userEmail: _displayValue(_profile?.email),
               petCount: _profile?.petCount ?? 0,
               localPhotoPath: _localPhotoPath,
+              remotePhotoUrl: _profile?.profilePhoto,
               onEditTap: _handleEditProfile,
             ),
             SizedBox(height: AppDimensions.spaceL),

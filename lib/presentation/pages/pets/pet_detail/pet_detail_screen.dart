@@ -660,9 +660,7 @@ class _PetPhoto extends StatelessWidget {
       return _PhotoPlaceholder(species: species);
     }
 
-    final uri = Uri.tryParse(value);
-    final isNetwork = uri != null && (uri.scheme == 'http' || uri.scheme == 'https');
-    if (isNetwork) {
+    if (_isRemotePhoto(value)) {
       return Image.network(
         value,
         fit: BoxFit.cover,
@@ -675,6 +673,11 @@ class _PetPhoto extends StatelessWidget {
       fit: BoxFit.cover,
       errorBuilder: (_, _, _) => _PhotoPlaceholder(species: species),
     );
+  }
+
+  bool _isRemotePhoto(String value) {
+    final uri = Uri.tryParse(value);
+    return uri != null && (uri.scheme == 'http' || uri.scheme == 'https');
   }
 }
 

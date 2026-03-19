@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter_frontend/core/constants/app_strings.dart';
+import 'package:flutter_frontend/core/models/attachment_models.dart';
+import 'package:flutter_frontend/core/models/event_model.dart';
 import 'package:flutter_frontend/core/models/pet_model.dart';
+import 'package:flutter_frontend/core/services/attachment_upload_service.dart';
 import 'package:flutter_frontend/core/services/event_service.dart';
 import 'package:flutter_frontend/core/services/pet_service.dart';
 import 'package:flutter_frontend/core/services/user_service.dart';
@@ -36,10 +40,17 @@ class _AddEventPageState extends State<AddEventPage> {
   final UserService _userService = UserService();
   final PetService _petService = PetService();
   final EventService _eventService = EventService();
+  final AttachmentUploadService _attachmentUploadService =
+      AttachmentUploadService();
   final List<PetModel> _pets = [];
+  final List<EditableAttachmentModel> _attachedDocuments = [];
 
   bool _isLoadingPets = false;
   bool _isSubmitting = false;
+  bool _isUploadingAttachments = false;
+  bool _isLoadingExistingAttachments = false;
+  bool _didTouchAttachments = false;
+  bool _didHydrateExistingAttachments = false;
   String? _selectedPetName;
   String? _selectedPetId;
   String? _ownerId;
@@ -53,6 +64,7 @@ class _AddEventPageState extends State<AddEventPage> {
     super.initState();
     _applyPrefill(widget.prefill);
     _loadPets();
+    _loadEditingEventIfNeeded();
   }
 
   @override
@@ -121,8 +133,102 @@ class _AddEventPageState extends State<AddEventPage> {
       _followUpDateController.text = formatDateForInput(prefill.followUpDate!);
     }
 
+    _attachedDocuments
+      ..clear()
+      ..addAll(
+        (prefill.attachedDocuments ?? const <EventDocumentModel>[])
+            .map(
+              (document) => EditableAttachmentModel(
+                fileName: document.fileName,
+                fileUri: document.fileUri,
+                documentId: document.documentId,
+              ),
+            ),
+      );
+
     if (_pets.isNotEmpty) {
       _applyPetSelectionFromPrefill(prefill);
+    }
+  }
+
+  Future<void> _loadEditingEventIfNeeded({bool force = false}) async {
+    final prefill = widget.prefill;
+    if (prefill == null) {
+      return;
+    }
+
+    final eventId = prefill.eventId?.trim() ?? '';
+    if (eventId.isEmpty) {
+      return;
+    }
+
+    if (!force && (_didTouchAttachments || _didHydrateExistingAttachments)) {
+      return;
+    }
+
+    try {
+      if (mounted) {
+        setState(() {
+          _isLoadingExistingAttachments = true;
+        });
+      }
+
+      final event = await _eventService.getEventById(eventId);
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        if (_eventController.text.trim().isEmpty) {
+          _eventController.text = event.title.trim();
+        }
+        if (_eventTypeController.text.trim().isEmpty) {
+          _eventTypeController.text = event.eventType.trim();
+        }
+        if (_descriptionController.text.trim().isEmpty) {
+          _descriptionController.text = event.description.trim();
+        }
+        if (_providerController.text.trim().isEmpty) {
+          _providerController.text = event.provider.trim();
+        }
+        if (_clinicController.text.trim().isEmpty) {
+          _clinicController.text = event.clinic.trim();
+        }
+        if (_priceController.text.trim().isEmpty && event.price != null) {
+          _priceController.text = event.price!.toString();
+        }
+        if (_dateController.text.trim().isEmpty && event.date.year > 1) {
+          _dateController.text = formatDateForInput(event.date);
+          final hour = event.date.hour.toString().padLeft(2, '0');
+          final minute = event.date.minute.toString().padLeft(2, '0');
+          _timeController.text = '$hour:$minute';
+        }
+        if (_followUpDateController.text.trim().isEmpty &&
+            event.followUpDate != null) {
+          _followUpDateController.text = formatDateForInput(event.followUpDate!);
+        }
+
+        _attachedDocuments
+          ..clear()
+          ..addAll(
+            event.attachedDocuments.map(
+              (document) => EditableAttachmentModel(
+                fileName: document.fileName,
+                fileUri: document.fileUri,
+                documentId: document.documentId,
+              ),
+            ),
+          );
+        _didHydrateExistingAttachments = true;
+      });
+    } catch (_) {
+      // Keep the form usable even if hydration fails.
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingExistingAttachments = false;
+        });
+      }
     }
   }
 
@@ -398,10 +504,18 @@ class _AddEventPageState extends State<AddEventPage> {
     _followUpDateController.text = formatDateForInput(pickedDate);
   }
 
-  void _continue() {
+  Future<void> _continue() async {
     final isValid = _formKey.currentState?.validate() ?? false;
     if (!isValid) {
       return;
+    }
+
+    if (_step == 0 &&
+        _editingEventId != null &&
+        _editingEventId!.trim().isNotEmpty &&
+        !_didTouchAttachments &&
+        !_didHydrateExistingAttachments) {
+      await _loadEditingEventIfNeeded(force: true);
     }
 
     setState(() {
@@ -512,6 +626,31 @@ class _AddEventPageState extends State<AddEventPage> {
     setState(() => _isSubmitting = true);
 
     try {
+      if (_editingEventId != null &&
+          _editingEventId!.trim().isNotEmpty &&
+          !_didTouchAttachments &&
+          !_didHydrateExistingAttachments) {
+        await _loadEditingEventIfNeeded(force: true);
+      }
+
+      if (_editingEventId != null &&
+          _editingEventId!.trim().isNotEmpty &&
+          !_didTouchAttachments &&
+          !_didHydrateExistingAttachments) {
+        if (!mounted) {
+          return;
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'We could not load the existing documents for this event yet. Please try again in a moment.',
+            ),
+          ),
+        );
+        return;
+      }
+
       final title = _eventController.text.trim();
       final eventType = _eventTypeController.text.trim().isNotEmpty
           ? _eventTypeController.text.trim()
@@ -545,6 +684,9 @@ class _AddEventPageState extends State<AddEventPage> {
         'clinic': _clinicController.text.trim(),
         'description': _descriptionController.text.trim(),
         'followUpDate': followUpDateIso,
+        'attachedDocuments': _attachedDocuments
+            .map((attachment) => attachment.toPayload())
+            .toList(growable: false),
       };
 
       if (_editingEventId == null || _editingEventId!.trim().isEmpty) {
@@ -552,7 +694,6 @@ class _AddEventPageState extends State<AddEventPage> {
           ...payload,
           'ownerId': ownerId,
           'schema': 1,
-          'attachedDocuments': const <Map<String, dynamic>>[],
         });
       } else {
         await _eventService.updateEvent(
@@ -588,6 +729,83 @@ class _AddEventPageState extends State<AddEventPage> {
         setState(() => _isSubmitting = false);
       }
     }
+  }
+
+  Future<void> _pickAndUploadAttachment() async {
+    final petId = _selectedPetId?.trim() ?? '';
+    if (petId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select a pet before uploading documents.')),
+      );
+      return;
+    }
+
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        allowMultiple: true,
+        withData: true,
+        type: FileType.custom,
+        allowedExtensions: const ['pdf', 'jpg', 'jpeg', 'png', 'webp'],
+      );
+
+      if (result == null || result.files.isEmpty) {
+        return;
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() => _isUploadingAttachments = true);
+
+      final uploads = <EditableAttachmentModel>[];
+      for (final file in result.files) {
+        final bytes = file.bytes;
+        if (bytes == null || bytes.isEmpty) {
+          continue;
+        }
+
+        final uploaded = await _attachmentUploadService.uploadPetDocument(
+          bytes: bytes,
+          petId: petId,
+          fileName: file.name,
+          category: 'events',
+        );
+        uploads.add(EditableAttachmentModel.fromUploaded(uploaded));
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _attachedDocuments.addAll(uploads);
+        _didTouchAttachments = true;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(AppStrings.errorGeneric)),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isUploadingAttachments = false);
+      }
+    }
+  }
+
+  void _removeAttachmentAt(int index) {
+    if (index < 0 || index >= _attachedDocuments.length) {
+      return;
+    }
+
+    setState(() {
+      _attachedDocuments.removeAt(index);
+      _didTouchAttachments = true;
+    });
   }
 
   String _resolveEventType(String title) {
@@ -697,6 +915,13 @@ class _AddEventPageState extends State<AddEventPage> {
             followUpDateController: _followUpDateController,
             onPickFollowUpDate: _pickFollowUpDate,
             descriptionController: _descriptionController,
+            onAddAttachment: _pickAndUploadAttachment,
+            attachmentNames: _attachedDocuments
+                .map((attachment) => attachment.fileName)
+                .toList(growable: false),
+            onRemoveAttachment: _removeAttachmentAt,
+            isUploadingAttachments:
+                _isUploadingAttachments || _isLoadingExistingAttachments,
           ),
         ];
       case 2:
@@ -713,6 +938,9 @@ class _AddEventPageState extends State<AddEventPage> {
             clinicController: _clinicController,
             followUpDateController: _followUpDateController,
             descriptionController: _descriptionController,
+            attachmentNames: _attachedDocuments
+                .map((attachment) => attachment.fileName)
+                .toList(growable: false),
           ),
         ];
     }
