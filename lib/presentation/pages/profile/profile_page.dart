@@ -409,7 +409,6 @@ class _ProfilePageState extends State<ProfilePage> {
     setState(() {
       _notificationsEnabled = value;
     });
-    // TODO: Implement notifications preference storage
   }
 
   Future<void> _handleSignOut() async {
