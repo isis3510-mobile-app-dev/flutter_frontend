@@ -15,18 +15,62 @@ class TelemetryService {
   static const String _featureClicksLogsPath = '/api/feature-clicks-logs/';
 
   static const String _envNfcReadFeatureId = 'FEATURE_NFC_READ_ID';
+  static const String _envAddPetFeatureId = 'FEATURE_ADD_PET_ID';
   static const String _envAddEventRouteId = 'FEATURE_ROUTE_ADD_EVENT_ID';
 
   final ApiClient _apiClient = ApiClient();
   final UserService _userService = UserService();
 
   String? _cachedUserId;
+  DateTime? _pendingAddPetStartTime;
+
+  void startAddPetTimer() {
+    _pendingAddPetStartTime = DateTime.now();
+  }
+
+  void cancelAddPetTimer() {
+    _pendingAddPetStartTime = null;
+  }
 
   Future<void> logNfcReadExecution({
     required DateTime startTime,
     required DateTime endTime,
   }) async {
     final featureId = _readEnv(_envNfcReadFeatureId);
+    if (featureId == null) {
+      return;
+    }
+
+    final userId = await _getUserId();
+    if (userId == null) {
+      return;
+    }
+
+    final totalTimeMs = endTime.difference(startTime).inMilliseconds;
+    final payload = <String, dynamic>{
+      'schema': 1,
+      'userId': userId,
+      'featureId': featureId,
+      'startTime': startTime.toIso8601String(),
+      'endTime': endTime.toIso8601String(),
+      'totalTime': totalTimeMs,
+    };
+
+    try {
+      await _apiClient.post(_featureExecutionLogsPath, body: payload);
+    } catch (_) {
+      // Telemetry should never block the UI or crash the app.
+    }
+  }
+
+  Future<void> logAddPetExecutionIfPending({required DateTime endTime}) async {
+    final startTime = _pendingAddPetStartTime;
+    if (startTime == null) {
+      return;
+    }
+    _pendingAddPetStartTime = null;
+
+    final featureId = _readEnv(_envAddPetFeatureId);
     if (featureId == null) {
       return;
     }

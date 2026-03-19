@@ -6,6 +6,7 @@ import '../../../core/constants/app_strings.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/services/pet_service.dart';
 import '../../../core/services/profile_photo_service.dart';
+import '../../../core/services/telemetry_service.dart';
 import '../../../shared/widgets/petcare_bottom_nav_bar.dart';
 import '../../../shared/widgets/quick_actions_fab.dart';
 import 'models/pet_ui_mapper.dart';
@@ -26,6 +27,7 @@ class PetsPage extends StatefulWidget {
 class _PetsPageState extends State<PetsPage> {
   final PetService _petService = PetService();
   final ProfilePhotoService _photoService = ProfilePhotoService();
+  final TelemetryService _telemetryService = TelemetryService();
 
   List<PetUiModel> _allPets = const [];
   List<PetUiModel> _filtered = [];
@@ -128,7 +130,12 @@ class _PetsPageState extends State<PetsPage> {
     if (!mounted) {
       return;
     }
-    _loadPets();
+    await _loadPets();
+    if (_loadErrorMessage == null) {
+      await _telemetryService.logAddPetExecutionIfPending(
+        endTime: DateTime.now(),
+      );
+    }
   }
 
   void _goToAddEvent() {
