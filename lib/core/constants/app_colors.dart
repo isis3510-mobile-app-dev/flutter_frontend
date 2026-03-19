@@ -151,11 +151,32 @@ abstract class AppColors {
   static const Color overdueCardContent = Color(0xFFFF6A00);
   static const Color overdueCardBackgroundDark = Color(0xFF4B2E00);
   static const Color overdueCardBorderDark = Color(0xFF7B3D00);
-  static const Color overdueCardContentDark = Color.fromARGB(255, 208, 179, 150);
+  static const Color overdueCardContentDark = Color.fromARGB(
+    255,
+    208,
+    179,
+    150,
+  );
 
   // --- Upcoming vaccine card ---
   static const Color timeBackground = Color(0xFFE3F2FD);
   static const Color timeText = Color(0xFF1976D2);
   static const Color timeBackgroundDark = Color.fromARGB(255, 29, 69, 79);
   static const Color timeTextDark = Color(0xFF9FF2E2);
+
+  // --- Smart alerts ---
+  static const Color smartAlertDangerBg = Color(0xFFFCE7EB);
+  static const Color smartAlertDangerText = Color(0xFFC62828);
+  static const Color smartAlertDangerBgDark = Color(0xFF4B2327);
+  static const Color smartAlertDangerTextDark = Color(0xFFF8A7AF);
+
+  static const Color smartAlertWarningBg = Color(0xFFFFF4E5);
+  static const Color smartAlertWarningText = Color(0xFFE65100);
+  static const Color smartAlertWarningBgDark = Color(0xFF4D3315);
+  static const Color smartAlertWarningTextDark = Color(0xFFFFC38A);
+
+  static const Color smartAlertInfoBg = Color(0xFFE7F1FB);
+  static const Color smartAlertInfoText = Color(0xFF1565C0);
+  static const Color smartAlertInfoBgDark = Color(0xFF1B334D);
+  static const Color smartAlertInfoTextDark = Color(0xFF90CAF9);
 }
