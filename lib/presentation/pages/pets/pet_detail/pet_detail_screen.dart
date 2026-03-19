@@ -717,30 +717,15 @@ class _PetInfo extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 5),
-        Row(
-          children: [
-            Image.asset(
-              pet.species.toLowerCase() == 'cat'
-                  ? 'assets/images/catPrimary.png'
-                  : 'assets/images/dogPrimary.png',
-              width: 14,
-              height: 14,
-              errorBuilder: (_, _, _) => const SizedBox.shrink(),
-            ),
-            const SizedBox(width: 5),
-            Expanded(
-              child: Text(
-                '${pet.breed} · ${pet.species}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.82),
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-            ),
-          ],
+        Text(
+          '${pet.breed} · ${pet.species}',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.82),
+            fontSize: 13.5,
+            fontWeight: FontWeight.w400,
+          ),
         ),
         const SizedBox(height: 10),
         _PetMetaRow(pet: pet),
