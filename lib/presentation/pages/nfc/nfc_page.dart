@@ -12,6 +12,7 @@ import '../../../core/network/api_exception.dart';
 import '../../../core/services/nfc_backend_service.dart';
 import '../../../core/services/nfc_service.dart';
 import '../../../core/services/pet_service.dart';
+import '../../../core/services/telemetry_service.dart';
 import '../../../shared/widgets/petcare_bottom_nav_bar.dart';
 import '../pets/models/pet_ui_mapper.dart';
 import '../pets/models/pet_ui_model.dart';
@@ -38,6 +39,7 @@ class _NfcPageState extends State<NfcPage> {
   final NfcService _nfcService = NfcService();
   final NfcBackendService _nfcBackendService = NfcBackendService();
   final PetService _petService = PetService();
+  final TelemetryService _telemetryService = TelemetryService();
 
   List<PetUiModel> _pets = const [];
   String? _selectedPetId;
@@ -56,6 +58,7 @@ class _NfcPageState extends State<NfcPage> {
   String? _lastReadRawPayload;
   Map<String, dynamic>? _lastReadTagData;
   Map<String, dynamic>? _lastWrittenTagData;
+  DateTime? _nfcReadStart;
 
   @override
   void initState() {
@@ -173,10 +176,14 @@ class _NfcPageState extends State<NfcPage> {
       _mode = mode;
       _viewState = _NfcViewState.setup;
       _operationErrorMessage = null;
+      _nfcReadStart = null;
     });
   }
 
   Future<void> _startScanning() async {
+    if (_mode == _NfcMode.read) {
+      _nfcReadStart = DateTime.now();
+    }
     setState(() {
       _viewState = _NfcViewState.scanning;
       _operationErrorMessage = null;
@@ -234,6 +241,7 @@ class _NfcPageState extends State<NfcPage> {
           }
           _viewState = _NfcViewState.success;
         });
+        _logNfcReadIfPossible();
         return;
       }
 
@@ -301,6 +309,7 @@ class _NfcPageState extends State<NfcPage> {
       _selectedPetId = pet.id;
       _viewState = _NfcViewState.success;
     });
+    _logNfcReadIfPossible();
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -355,6 +364,7 @@ class _NfcPageState extends State<NfcPage> {
     setState(() {
       _viewState = _NfcViewState.setup;
       _operationErrorMessage = null;
+      _nfcReadStart = null;
     });
   }
 
@@ -363,6 +373,7 @@ class _NfcPageState extends State<NfcPage> {
       _mode = _NfcMode.read;
       _viewState = _NfcViewState.setup;
       _operationErrorMessage = null;
+      _nfcReadStart = null;
     });
   }
 
@@ -371,6 +382,7 @@ class _NfcPageState extends State<NfcPage> {
       _mode = _NfcMode.write;
       _viewState = _NfcViewState.setup;
       _operationErrorMessage = null;
+      _nfcReadStart = null;
     });
   }
 
@@ -379,6 +391,7 @@ class _NfcPageState extends State<NfcPage> {
       _mode = _NfcMode.read;
       _viewState = _NfcViewState.setup;
       _operationErrorMessage = null;
+      _nfcReadStart = null;
     });
   }
 
@@ -390,11 +403,27 @@ class _NfcPageState extends State<NfcPage> {
     setState(() {
       _viewState = _NfcViewState.setup;
       _operationErrorMessage = message;
+      _nfcReadStart = null;
     });
 
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _logNfcReadIfPossible() {
+    final startTime = _nfcReadStart;
+    if (startTime == null) {
+      return;
+    }
+    _nfcReadStart = null;
+    final endTime = DateTime.now();
+    unawaited(
+      _telemetryService.logNfcReadExecution(
+        startTime: startTime,
+        endTime: endTime,
+      ),
+    );
   }
 
   Map<String, dynamic> _applyWriteOptions({
