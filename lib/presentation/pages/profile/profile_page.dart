@@ -39,13 +39,11 @@ class _ProfilePageState extends State<ProfilePage> {
 
   // Preference states
   late bool _notificationsEnabled;
-  late bool _offlineModeEnabled;
 
   @override
   void initState() {
     super.initState();
     _notificationsEnabled = true;
-    _offlineModeEnabled = false;
     _loadProfile();
   }
 
@@ -411,14 +409,6 @@ class _ProfilePageState extends State<ProfilePage> {
     setState(() {
       _notificationsEnabled = value;
     });
-    // TODO: Implement notifications preference storage
-  }
-
-  void _handleOfflineModeToggle(bool value) {
-    setState(() {
-      _offlineModeEnabled = value;
-    });
-    // TODO: Implement offline mode logic
   }
 
   Future<void> _handleSignOut() async {
@@ -647,21 +637,6 @@ class _ProfilePageState extends State<ProfilePage> {
                         : AppStrings.stateDisabled,
                     value: _notificationsEnabled,
                     onChanged: _handleNotificationsToggle,
-                    isDark: isDark,
-                  ),
-                  Divider(
-                    height: AppDimensions.strokeThin,
-                    indent:
-                        AppDimensions.pageHorizontalPadding +
-                        AppDimensions.iconListItem +
-                        AppDimensions.spaceL,
-                    color: isDark ? AppColors.grey500 : AppColors.grey100,
-                  ),
-                  ProfileToggleItem(
-                    imageAssetPath: AppAssets.iconProfileOffline,
-                    title: AppStrings.profileOffline,
-                    value: _offlineModeEnabled,
-                    onChanged: _handleOfflineModeToggle,
                     isDark: isDark,
                   ),
                 ],

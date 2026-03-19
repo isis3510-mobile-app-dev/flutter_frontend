@@ -4,6 +4,7 @@ import 'package:flutter_frontend/core/models/event_model.dart';
 import 'package:flutter_frontend/core/network/api_exception.dart';
 
 import '../network/api_client.dart';
+import 'response_cache_service.dart';
 
 class EventService {
   EventService._();
@@ -13,26 +14,53 @@ class EventService {
   factory EventService() => _instance;
 
   static const String eventsPath = '/api/events/';
+  static const String _eventsByPetCachePrefix = 'events.byPet.';
+  static const Duration _eventsByPetCacheTtl = Duration(minutes: 5);
 
   final ApiClient _apiClient = ApiClient();
+  final ResponseCacheService _cache = ResponseCacheService();
 
-  Future<List<EventModel>> getEventsByPet(String petId) async {
+  Future<List<EventModel>> getEventsByPet(
+    String petId, {
+    bool forceRefresh = false,
+  }) async {
     final trimmedPetId = petId.trim();
+    final cacheKey = _eventsByPetCacheKey(trimmedPetId);
+    final cachedEntry = await _cache.get(cacheKey);
+
+    if (!forceRefresh && cachedEntry != null && cachedEntry.isFresh(_eventsByPetCacheTtl)) {
+      final cachedEvents = _tryParseEvents(cachedEntry.body);
+      if (cachedEvents != null) {
+        return cachedEvents;
+      }
+    }
+
     final encodedPetId = Uri.encodeQueryComponent(trimmedPetId);
 
-    final response = await _apiClient.get('$eventsPath?pet_id=$encodedPetId');
-    final decoded = _decodeJson(response.body);
-    final eventItems = _extractEventItems(decoded);
-
-    return eventItems
-        .map(_asStringDynamicMap)
-        .map(EventModel.fromJson)
-        .toList(growable: false);
+    try {
+      final response = await _apiClient.get('$eventsPath?pet_id=$encodedPetId');
+      final events = _parseEvents(response.body);
+      await _cache.set(cacheKey, response.body);
+      return events;
+    } catch (_) {
+      if (cachedEntry != null) {
+        final fallbackEvents = _tryParseEvents(cachedEntry.body);
+        if (fallbackEvents != null) {
+          return fallbackEvents;
+        }
+      }
+      rethrow;
+    }
   }
 
   Future<EventModel> createEvent(Map<String, dynamic> data) async {
     final response = await _apiClient.post(eventsPath, body: data);
-    return _decodeEventMap(response.body, fallbackMessage: 'Unexpected create event response.');
+    final createdEvent = _decodeEventMap(
+      response.body,
+      fallbackMessage: 'Unexpected create event response.',
+    );
+    await _invalidateEventsCache();
+    return createdEvent;
   }
 
   Future<EventModel> getEventById(String eventId) async {
@@ -48,11 +76,17 @@ class EventService {
       '$eventsPath${eventId.trim()}/',
       body: data,
     );
-    return _decodeEventMap(response.body, fallbackMessage: 'Unexpected update event response.');
+    final updatedEvent = _decodeEventMap(
+      response.body,
+      fallbackMessage: 'Unexpected update event response.',
+    );
+    await _invalidateEventsCache();
+    return updatedEvent;
   }
 
-  Future<void> deleteEvent(String eventId) {
-    return _apiClient.delete('$eventsPath${eventId.trim()}/');
+  Future<void> deleteEvent(String eventId) async {
+    await _apiClient.delete('$eventsPath${eventId.trim()}/');
+    await _invalidateEventsCache();
   }
 
   Future<Map<String, dynamic>> addEventDocument({
@@ -66,6 +100,7 @@ class EventService {
 
     final decoded = _decodeJson(response.body);
     if (decoded is Map<String, dynamic>) {
+      await _invalidateEventsCache();
       return decoded;
     }
 
@@ -73,6 +108,36 @@ class EventService {
       type: ApiErrorType.unknown,
       message: 'Unexpected add event document response.',
     );
+  }
+
+  List<EventModel> _parseEvents(String responseBody) {
+    final decoded = _decodeJson(responseBody);
+    final eventItems = _extractEventItems(decoded);
+
+    return eventItems
+        .map(_asStringDynamicMap)
+        .map(EventModel.fromJson)
+        .toList(growable: false);
+  }
+
+  List<EventModel>? _tryParseEvents(String responseBody) {
+    try {
+      return _parseEvents(responseBody);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _invalidateEventsCache() async {
+    try {
+      await _cache.clearByPrefix(_eventsByPetCachePrefix);
+    } catch (_) {
+      // Cache invalidation is best effort.
+    }
+  }
+
+  String _eventsByPetCacheKey(String petId) {
+    return '$_eventsByPetCachePrefix$petId';
   }
 
   EventModel _decodeEventMap(String responseBody, {required String fallbackMessage}) {

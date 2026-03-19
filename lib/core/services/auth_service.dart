@@ -1,6 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import 'profile_photo_service.dart';
+import 'response_cache_service.dart';
+
 class AuthService {
   AuthService._();
 
@@ -10,6 +13,8 @@ class AuthService {
 
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final ResponseCacheService _responseCacheService = ResponseCacheService();
+  final ProfilePhotoService _profilePhotoService = ProfilePhotoService();
 
   Stream<User?> get authStateChanges => _firebaseAuth.authStateChanges();
 
@@ -66,8 +71,13 @@ class AuthService {
   }
 
   Future<void> signOut() async {
-    await _firebaseAuth.signOut();
-    await _googleSignIn.signOut();
+    try {
+      await _firebaseAuth.signOut();
+      await _googleSignIn.signOut();
+    } finally {
+      await _responseCacheService.clearAll();
+      await _profilePhotoService.clearAllPhotoPaths();
+    }
   }
 
   Future<void> sendPasswordResetEmail(String email) {
