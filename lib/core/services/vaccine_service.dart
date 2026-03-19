@@ -4,6 +4,7 @@ import 'package:flutter_frontend/core/models/vaccine_model.dart';
 import 'package:flutter_frontend/core/network/api_exception.dart';
 
 import '../network/api_client.dart';
+import 'response_cache_service.dart';
 
 class VaccineService {
   VaccineService._();
@@ -12,12 +13,72 @@ class VaccineService {
   factory VaccineService() => _instance;
 
   static const String vaccinesPath = '/api/vaccines/';
+  static const String _vaccinesCacheKey = 'vaccines.catalog';
+  static const String _vaccineByIdCachePrefix = 'vaccines.byId.';
+  static const Duration _vaccinesCacheTtl = Duration(hours: 12);
+  static const Duration _vaccineByIdCacheTtl = Duration(hours: 12);
 
   final ApiClient _apiClient = ApiClient();
+  final ResponseCacheService _cache = ResponseCacheService();
   
-  Future<List<VaccineModel>> getVaccines() async {
-    final response = await _apiClient.get(vaccinesPath);
-    final json = jsonDecode(response.body);
+  Future<List<VaccineModel>> getVaccines({bool forceRefresh = false}) async {
+    final cachedEntry = await _cache.get(_vaccinesCacheKey);
+    if (!forceRefresh && cachedEntry != null && cachedEntry.isFresh(_vaccinesCacheTtl)) {
+      final cachedVaccines = _tryParseVaccines(cachedEntry.body);
+      if (cachedVaccines != null) {
+        return cachedVaccines;
+      }
+    }
+
+    try {
+      final response = await _apiClient.get(vaccinesPath);
+      final vaccines = _parseVaccines(response.body);
+      await _cache.set(_vaccinesCacheKey, response.body);
+      return vaccines;
+    } catch (_) {
+      if (cachedEntry != null) {
+        final fallbackVaccines = _tryParseVaccines(cachedEntry.body);
+        if (fallbackVaccines != null) {
+          return fallbackVaccines;
+        }
+      }
+      rethrow;
+    }
+  }
+
+  Future<VaccineModel> getVaccineById(
+    String vaccineId, {
+    bool forceRefresh = false,
+  }) async {
+    final normalizedVaccineId = vaccineId.trim();
+    final cacheKey = _vaccineByIdCacheKey(normalizedVaccineId);
+    final cachedEntry = await _cache.get(cacheKey);
+
+    if (!forceRefresh && cachedEntry != null && cachedEntry.isFresh(_vaccineByIdCacheTtl)) {
+      final cachedVaccine = _tryParseVaccine(cachedEntry.body);
+      if (cachedVaccine != null) {
+        return cachedVaccine;
+      }
+    }
+
+    try {
+      final response = await _apiClient.get('$vaccinesPath$normalizedVaccineId/');
+      final vaccine = _parseVaccine(response.body);
+      await _cache.set(cacheKey, response.body);
+      return vaccine;
+    } catch (_) {
+      if (cachedEntry != null) {
+        final fallbackVaccine = _tryParseVaccine(cachedEntry.body);
+        if (fallbackVaccine != null) {
+          return fallbackVaccine;
+        }
+      }
+      rethrow;
+    }
+  }
+
+  List<VaccineModel> _parseVaccines(String body) {
+    final json = jsonDecode(body);
 
     if (json is! List<dynamic>) {
       throw const ApiException(
@@ -29,9 +90,16 @@ class VaccineService {
     return json.map(_asVaccineMap).map(VaccineModel.fromJson).toList(growable: false);
   }
 
-  Future<VaccineModel> getVaccineById(String vaccineId) async {
-    final response = await _apiClient.get('$vaccinesPath$vaccineId/');
-    final json = jsonDecode(response.body);
+  List<VaccineModel>? _tryParseVaccines(String body) {
+    try {
+      return _parseVaccines(body);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  VaccineModel _parseVaccine(String body) {
+    final json = jsonDecode(body);
 
     if (json is! Map<String, dynamic>) {
       throw const ApiException(
@@ -41,6 +109,18 @@ class VaccineService {
     }
 
     return VaccineModel.fromJson(json);
+  }
+
+  VaccineModel? _tryParseVaccine(String body) {
+    try {
+      return _parseVaccine(body);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _vaccineByIdCacheKey(String vaccineId) {
+    return '$_vaccineByIdCachePrefix$vaccineId';
   }
 
   Map<String, dynamic> _asVaccineMap(dynamic item) {

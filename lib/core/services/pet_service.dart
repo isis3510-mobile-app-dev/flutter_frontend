@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../models/pet_model.dart';
 import '../network/api_exception.dart';
 import '../network/api_client.dart';
+import 'response_cache_service.dart';
 
 class PetService {
   PetService._();
@@ -13,21 +14,35 @@ class PetService {
 
   static const String petsPath = '/api/pets/';
   static const String myPetsPath = '/api/pets/mine';
+  static const String _petsCacheKey = 'pets.mine';
+  static const Duration _petsCacheTtl = Duration(minutes: 5);
 
   final ApiClient _apiClient = ApiClient();
+  final ResponseCacheService _cache = ResponseCacheService();
 
-  Future<List<PetModel>> getPets() async {
-    final response = await _apiClient.get(myPetsPath);
-    final json = jsonDecode(response.body);
-
-    if (json is! List<dynamic>) {
-      throw const ApiException(
-        type: ApiErrorType.unknown,
-        message: 'Unexpected pets response from server.',
-      );
+  Future<List<PetModel>> getPets({bool forceRefresh = false}) async {
+    final cachedEntry = await _cache.get(_petsCacheKey);
+    if (!forceRefresh && cachedEntry != null && cachedEntry.isFresh(_petsCacheTtl)) {
+      final cachedPets = _tryParsePets(cachedEntry.body);
+      if (cachedPets != null) {
+        return cachedPets;
+      }
     }
 
-    return json.map(_asPetMap).map(PetModel.fromJson).toList(growable: false);
+    try {
+      final response = await _apiClient.get(myPetsPath);
+      final pets = _parsePets(response.body);
+      await _cache.set(_petsCacheKey, response.body);
+      return pets;
+    } catch (_) {
+      if (cachedEntry != null) {
+        final fallbackPets = _tryParsePets(cachedEntry.body);
+        if (fallbackPets != null) {
+          return fallbackPets;
+        }
+      }
+      rethrow;
+    }
   }
 
   Future<PetModel> getPetById(String petId) async {
@@ -58,7 +73,9 @@ class PetService {
       );
     }
 
-    return PetModel.fromJson(json);
+    final pet = PetModel.fromJson(json);
+    await _invalidatePetsCache();
+    return pet;
   }
 
   Future<PetModel> updatePet({
@@ -79,11 +96,14 @@ class PetService {
       );
     }
 
-    return PetModel.fromJson(json);
+    final pet = PetModel.fromJson(json);
+    await _invalidatePetsCache();
+    return pet;
   }
 
   Future<void> deletePet(String petId) async {
     await _apiClient.delete('$petsPath${petId.trim()}/');
+    await _invalidatePetsCache();
   }
 
   Future<void> updatePetStatus({
@@ -95,6 +115,7 @@ class PetService {
       body: jsonEncode({'status': status}),
       headers: const {'Content-Type': 'application/json'},
     );
+    await _invalidatePetsCache();
   }
 
   Future<void> addVaccination({
@@ -102,6 +123,7 @@ class PetService {
     required Map<String, dynamic> data,
   }) async {
     await _apiClient.post('$petsPath$petId/vaccinations/', body: data);
+    await _invalidatePetsCache();
   }
 
   Future<void> updateVaccination({
@@ -122,6 +144,7 @@ class PetService {
       '$petsPath$normalizedPetId/vaccinations/$normalizedVaccinationId/',
       body: data,
     );
+    await _invalidatePetsCache();
   }
 
   Future<void> deleteVaccination({
@@ -129,6 +152,7 @@ class PetService {
     required String vaccinationId,
   }) async {
     await _apiClient.delete('$petsPath$petId/vaccinations/$vaccinationId/');
+    await _invalidatePetsCache();
   }
 
   Future<List<PetVaccinationModel>> getVaccinations(String petId) async {
@@ -173,6 +197,35 @@ class PetService {
 
   Future<void> markPetAsFound(String petId) async {
     await updatePetStatus(petId: petId, status: 'healthy');
+  }
+
+  List<PetModel> _parsePets(String body) {
+    final json = jsonDecode(body);
+
+    if (json is! List<dynamic>) {
+      throw const ApiException(
+        type: ApiErrorType.unknown,
+        message: 'Unexpected pets response from server.',
+      );
+    }
+
+    return json.map(_asPetMap).map(PetModel.fromJson).toList(growable: false);
+  }
+
+  List<PetModel>? _tryParsePets(String body) {
+    try {
+      return _parsePets(body);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _invalidatePetsCache() async {
+    try {
+      await _cache.clear(_petsCacheKey);
+    } catch (_) {
+      // Cache invalidation is best effort.
+    }
   }
 
   Map<String, dynamic> _asPetMap(dynamic item) {

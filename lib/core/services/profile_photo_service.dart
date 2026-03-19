@@ -60,6 +60,26 @@ class ProfilePhotoService {
     await _clearPath(_profilePhotoPathKey);
   }
 
+  Future<void> clearAllPhotoPaths() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final keysToRemove = prefs
+          .getKeys()
+          .where(
+            (key) =>
+                key == _profilePhotoPathKey ||
+                key.startsWith(_petPhotoPathPrefix),
+          )
+          .toList(growable: false);
+
+      for (final key in keysToRemove) {
+        await prefs.remove(key);
+      }
+    } catch (_) {
+      // Silently fail if unable to clear
+    }
+  }
+
   Future<void> savePetPhotoPath({required String petId, required String filePath}) async {
     await _savePath(_petPhotoPathKey(petId), filePath);
   }
