@@ -63,6 +63,7 @@ class _AddEventPageState extends State<AddEventPage> {
   @override
   void initState() {
     super.initState();
+    _eventController.addListener(_syncEventTypeFromTitle);
     _applyPrefill(widget.prefill);
     _loadPets();
     _loadEditingEventIfNeeded();
@@ -149,6 +150,13 @@ class _AddEventPageState extends State<AddEventPage> {
     if (_pets.isNotEmpty) {
       _applyPetSelectionFromPrefill(prefill);
     }
+
+    _syncEventTypeFromTitle();
+  }
+
+  void _syncEventTypeFromTitle() {
+    final title = _eventController.text.trim();
+    _eventTypeController.text = title.isEmpty ? '' : _resolveEventType(title);
   }
 
   Future<void> _loadEditingEventIfNeeded({bool force = false}) async {
@@ -956,7 +964,7 @@ class _AddEventPageState extends State<AddEventPage> {
       case 1:
         return [
           AddEventStepDetails(
-            eventTypeController: _eventTypeController,
+            eventController: _eventController,
             priceController: _priceController,
             providerController: _providerController,
             clinicController: _clinicController,

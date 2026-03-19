@@ -6,7 +6,7 @@ import 'package:flutter_frontend/shared/widgets/form_field.dart';
 class AddEventStepDetails extends StatelessWidget {
   const AddEventStepDetails({
     super.key,
-    required this.eventTypeController,
+    required this.eventController,
     required this.priceController,
     required this.providerController,
     required this.clinicController,
@@ -19,7 +19,7 @@ class AddEventStepDetails extends StatelessWidget {
     required this.isUploadingAttachments,
   });
 
-  final TextEditingController eventTypeController;
+  final TextEditingController eventController;
   final TextEditingController priceController;
   final TextEditingController providerController;
   final TextEditingController clinicController;
@@ -37,15 +37,10 @@ class AddEventStepDetails extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         AppFormField(
-          label: '${AppStrings.labelEventType} *',
-          hintText: AppStrings.hintEventType,
-          controller: eventTypeController,
-          validator: (value) {
-            if (value == null || value.trim().isEmpty) {
-              return AppStrings.validationRequired;
-            }
-            return null;
-          },
+          label: AppStrings.labelEventName,
+          hintText: AppStrings.hintNotProvided,
+          controller: eventController,
+          readOnly: true,
         ),
         const SizedBox(height: 18),
         AppFormField(

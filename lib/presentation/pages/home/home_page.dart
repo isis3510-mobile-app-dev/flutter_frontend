@@ -387,6 +387,12 @@ class _HomePageState extends State<HomePage> {
   }
 
   SmartAlertItem _selectHomeAlertByPriority() {
+    for (final alert in _smartAlerts) {
+      if (_isVetSmartAlert(alert)) {
+        return alert;
+      }
+    }
+
     const priorityOrder = [
       SmartSuggestionType.danger,
       SmartSuggestionType.warning,
@@ -402,6 +408,14 @@ class _HomePageState extends State<HomePage> {
     }
 
     return _smartAlerts.first;
+  }
+
+  bool _isVetSmartAlert(SmartAlertItem alert) {
+    final combinedText =
+        '${alert.suggestion.title} ${alert.suggestion.message}'.toLowerCase();
+    return combinedText.contains('vet') ||
+        combinedText.contains('veterinarian') ||
+        combinedText.contains('checkup');
   }
 
   Widget _buildHealthAlertsSection() {
@@ -648,8 +662,9 @@ class _HomePageState extends State<HomePage> {
         children: [
           HomeHeader(
             userName: _userName,
-            hasNotification: false,
-            onNotificationTap: () => _showUnavailableMessage(),
+            hasNotification: _smartAlerts.isNotEmpty,
+            onNotificationTap: () =>
+                Navigator.of(context).pushNamed(Routes.smartAlerts),
             onNfcTap: () => Navigator.of(context).pushNamed(Routes.nfc),
           ),
           const SizedBox(height: AppDimensions.spaceL),
