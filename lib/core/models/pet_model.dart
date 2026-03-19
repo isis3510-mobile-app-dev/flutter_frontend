@@ -127,19 +127,31 @@ class PetModel {
       owners: ownersJson == null
           ? const []
           : ownersJson.map((item) => item.toString()).toList(growable: false),
-      name: _readString(json['name']),
-      species: _readString(json['species']),
-      breed: _readString(json['breed']),
-      gender: _readString(json['gender']),
-      birthDate: _parseDate(json['birthDate']),
+      name: _readStringByKeys(json, const ['name']),
+      species: _readStringByKeys(json, const ['species']),
+      breed: _readStringByKeys(json, const ['breed']),
+      gender: _readStringByKeys(json, const ['gender']),
+      birthDate: _parseDate(_readValueByKeys(json, const ['birthDate', 'birth_date'])),
       weight: _readDouble(json['weight']),
-      color: _readString(json['color']),
-      photoUrl: _readNullableString(json['photoUrl']),
-      status: _readString(json['status'], fallback: 'healthy'),
-      isNfcSynced: json['isNfcSynced'] as bool? ?? false,
-      knownAllergies: _readString(json['knownAllergies']),
-      defaultVet: _readString(json['defaultVet']),
-      defaultClinic: _readString(json['defaultClinic']),
+      color: _readStringByKeys(json, const ['color']),
+      photoUrl: _readNullableString(
+        _readValueByKeys(json, const ['photoUrl', 'photo_url']),
+      ),
+      status: _readStringByKeys(json, const ['status'], fallback: 'healthy'),
+      isNfcSynced: _readBoolByKeys(
+        json,
+        const ['isNfcSynced', 'is_nfc_synced'],
+        fallback: false,
+      ),
+      knownAllergies: _readStringByKeys(
+        json,
+        const ['knownAllergies', 'known_allergies'],
+      ),
+      defaultVet: _readStringByKeys(json, const ['defaultVet', 'default_vet']),
+      defaultClinic: _readStringByKeys(
+        json,
+        const ['defaultClinic', 'default_clinic'],
+      ),
       vaccinations: vaccinationsJson == null
           ? const []
           : vaccinationsJson
@@ -213,6 +225,33 @@ String _readString(dynamic value, {String fallback = ''}) {
 String? _readNullableString(dynamic value) {
   final text = _readString(value).trim();
   return text.isEmpty ? null : text;
+}
+
+bool _readBoolByKeys(
+  Map<String, dynamic> json,
+  List<String> keys, {
+  required bool fallback,
+}) {
+  final value = _readValueByKeys(json, keys);
+  if (value is bool) {
+    return value;
+  }
+
+  if (value is num) {
+    return value != 0;
+  }
+
+  if (value is String) {
+    final normalized = value.trim().toLowerCase();
+    if (normalized == 'true' || normalized == '1' || normalized == 'yes') {
+      return true;
+    }
+    if (normalized == 'false' || normalized == '0' || normalized == 'no') {
+      return false;
+    }
+  }
+
+  return fallback;
 }
 
 List<dynamic> _readListByKeys(Map<String, dynamic> json, List<String> keys) {
