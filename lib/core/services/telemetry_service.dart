@@ -23,13 +23,27 @@ class TelemetryService {
 
   String? _cachedUserId;
   DateTime? _pendingAddPetStartTime;
+  int _pendingAddPetUploadBytes = 0;
+  int _pendingAddPetDownloadBytes = 0;
 
   void startAddPetTimer() {
     _pendingAddPetStartTime = DateTime.now();
+    _pendingAddPetUploadBytes = 0;
+    _pendingAddPetDownloadBytes = 0;
   }
 
   void cancelAddPetTimer() {
     _pendingAddPetStartTime = null;
+    _pendingAddPetUploadBytes = 0;
+    _pendingAddPetDownloadBytes = 0;
+  }
+
+  void addAddPetNetworkBytes({
+    required int uploadBytes,
+    required int downloadBytes,
+  }) {
+    _pendingAddPetUploadBytes += uploadBytes;
+    _pendingAddPetDownloadBytes += downloadBytes;
   }
 
   Future<void> logNfcReadExecution({
@@ -54,6 +68,7 @@ class TelemetryService {
       'startTime': startTime.toIso8601String(),
       'endTime': endTime.toIso8601String(),
       'totalTime': totalTimeMs,
+      'appType' : "Flutter"
     };
 
     try {
@@ -81,6 +96,14 @@ class TelemetryService {
     }
 
     final totalTimeMs = endTime.difference(startTime).inMilliseconds;
+    final totalSeconds = totalTimeMs <= 0 ? 0 : totalTimeMs / 1000.0;
+    final uploadSpeed = totalSeconds == 0
+        ? 0
+        : (_pendingAddPetUploadBytes / totalSeconds).round();
+    final downloadSpeed = totalSeconds == 0
+        ? 0
+        : (_pendingAddPetDownloadBytes / totalSeconds).round();
+
     final payload = <String, dynamic>{
       'schema': 1,
       'userId': userId,
@@ -88,6 +111,9 @@ class TelemetryService {
       'startTime': startTime.toIso8601String(),
       'endTime': endTime.toIso8601String(),
       'totalTime': totalTimeMs,
+      'uploadSpeed': uploadSpeed,
+      'downloadSpeed': downloadSpeed,
+      'appType' : "Flutter"
     };
 
     try {
@@ -95,6 +121,9 @@ class TelemetryService {
     } catch (_) {
       // Telemetry should never block the UI or crash the app.
     }
+
+    _pendingAddPetUploadBytes = 0;
+    _pendingAddPetDownloadBytes = 0;
   }
 
   Future<void> logAddEventClick({int nClicks = 1}) async {

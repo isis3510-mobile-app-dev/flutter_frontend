@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/core/models/pet_model.dart';
+import 'dart:convert';
+
 import 'package:image_picker/image_picker.dart';
 import '../../../widgets/stepper.dart' as app_stepper;
 
@@ -66,7 +69,7 @@ class _AddPetScreenState extends State<AddPetScreen> {
 
   @override
   void dispose() {
-    if (!_isEditMode && !_didSubmitSuccessfully) {
+    if (!_didSubmitSuccessfully) {
       TelemetryService().cancelAddPetTimer();
     }
     _nameController.dispose();
@@ -200,9 +203,7 @@ class _AddPetScreenState extends State<AddPetScreen> {
 
   void _goBack() {
     if (_currentStep == 0) {
-      if (!_isEditMode) {
-        TelemetryService().cancelAddPetTimer();
-      }
+      TelemetryService().cancelAddPetTimer();
       context.pop();
       return;
     }
@@ -237,9 +238,7 @@ class _AddPetScreenState extends State<AddPetScreen> {
       return;
     }
 
-    if (!_isEditMode) {
-      TelemetryService().startAddPetTimer();
-    }
+    TelemetryService().startAddPetTimer();
 
     setState(() {
       _isCreatingPet = true;
@@ -255,10 +254,20 @@ class _AddPetScreenState extends State<AddPetScreen> {
             )
           : await petService.createPet(payload);
 
+      TelemetryService().addAddPetNetworkBytes(
+        uploadBytes: _estimateJsonBytes(payload),
+        downloadBytes: _estimateJsonBytes(_petResponseEstimate(savedPet)),
+      );
+
       if (_petPhotoPath != null &&
           _petPhotoPath!.isNotEmpty &&
           !_isRemotePhotoPath(_petPhotoPath)) {
         final pickedFile = XFile(_petPhotoPath!);
+        final bytes = await pickedFile.length();
+        TelemetryService().addAddPetNetworkBytes(
+          uploadBytes: bytes,
+          downloadBytes: 0,
+        );
         final uploadedPhoto = await _attachmentUploadService.uploadPetPhoto(
           bytes: await pickedFile.readAsBytes(),
           petId: savedPet.id,
@@ -278,15 +287,31 @@ class _AddPetScreenState extends State<AddPetScreen> {
             _didRemovePhoto = false;
           });
         }
+
+        TelemetryService().addAddPetNetworkBytes(
+          uploadBytes: 0,
+          downloadBytes: _estimateJsonBytes({
+            'fileName': uploadedPhoto.fileName,
+            'storagePath': uploadedPhoto.storagePath,
+            'downloadUrl': uploadedPhoto.downloadUrl,
+            'contentType': uploadedPhoto.contentType,
+            'sizeBytes': uploadedPhoto.sizeBytes,
+          }),
+        );
+        TelemetryService().addAddPetNetworkBytes(
+          uploadBytes: _estimateJsonBytes({
+            ...payload,
+            'photoUrl': uploadedPhoto.downloadUrl,
+          }),
+          downloadBytes: _estimateJsonBytes(_petResponseEstimate(savedPet)),
+        );
       }
 
       if (!mounted) {
         return;
       }
 
-      if (!_isEditMode) {
-        _didSubmitSuccessfully = true;
-      }
+      _didSubmitSuccessfully = true;
 
       context.showSnackBar(
         _isEditMode
@@ -298,17 +323,13 @@ class _AddPetScreenState extends State<AddPetScreen> {
       if (!mounted) {
         return;
       }
-      if (!_isEditMode) {
-        TelemetryService().cancelAddPetTimer();
-      }
+      TelemetryService().cancelAddPetTimer();
       context.showSnackBar(error.message, isError: true);
     } catch (_) {
       if (!mounted) {
         return;
       }
-      if (!_isEditMode) {
-        TelemetryService().cancelAddPetTimer();
-      }
+      TelemetryService().cancelAddPetTimer();
       context.showSnackBar(AppStrings.petsLoadError, isError: true);
     } finally {
       if (mounted) {
@@ -317,6 +338,36 @@ class _AddPetScreenState extends State<AddPetScreen> {
         });
       }
     }
+  }
+
+  int _estimateJsonBytes(Object data) {
+    try {
+      return utf8.encode(jsonEncode(data)).length;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  Map<String, dynamic> _petResponseEstimate(PetModel pet) {
+    return {
+      'id': pet.id,
+      'schema': pet.schema,
+      'owners': pet.owners,
+      'name': pet.name,
+      'species': pet.species,
+      'breed': pet.breed,
+      'gender': pet.gender,
+      'birthDate': pet.birthDate?.toIso8601String(),
+      'weight': pet.weight,
+      'color': pet.color,
+      'photoUrl': pet.photoUrl,
+      'status': pet.status,
+      'isNfcSynced': pet.isNfcSynced,
+      'knownAllergies': pet.knownAllergies,
+      'defaultVet': pet.defaultVet,
+      'defaultClinic': pet.defaultClinic,
+      'vaccinations': pet.vaccinations.length,
+    };
   }
 
   Future<void> _pickPhotoFromGallery() async {
