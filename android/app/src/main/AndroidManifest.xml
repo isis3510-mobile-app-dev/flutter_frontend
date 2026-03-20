@@ -7,7 +7,7 @@
     <uses-feature android:name="android.hardware.nfc" android:required="false"/>
 
     <application
-        android:label="flutter_frontend"
+        android:label="PetCare"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true">
