@@ -16,6 +16,7 @@ import '../../../../core/services/event_service.dart';
 import '../../../../core/services/pet_service.dart';
 import '../../../../core/services/profile_photo_service.dart';
 import '../../../../core/services/smart_feature_service.dart';
+import '../../../../core/services/telemetry_service.dart';
 import '../../../../shared/widgets/quick_actions_fab.dart';
 import '../../add_event/add_event_args.dart';
 import '../../records/detail/detail_page.dart';
@@ -48,6 +49,7 @@ class _PetDetailScreenState extends State<PetDetailScreen>
   final EventService _eventService = EventService();
   final SmartFeatureService _smartFeatureService = SmartFeatureService();
   final ProfilePhotoService _photoService = ProfilePhotoService();
+  final TelemetryService _telemetryService = TelemetryService();
 
   Future<void> _goToAddVaccine() async {
     final result = await Navigator.pushNamed(context, Routes.addVaccine);
@@ -306,6 +308,9 @@ class _PetDetailScreenState extends State<PetDetailScreen>
     if (wasUpdated == true) {
       _hasMutatedPet = true;
       await _loadPetDetail();
+      await _telemetryService.logAddPetExecutionIfPending(
+        endTime: DateTime.now(),
+      );
     }
   }
 
