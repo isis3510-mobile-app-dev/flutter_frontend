@@ -346,6 +346,8 @@ class _RecordsPageState extends State<RecordsPage> {
       }
       return true;
     }).toList();
+    final (emptyMessage, emptyIcon) =
+        _emptyPresentationForFilter(_selectedFilterIndex);
 
     return Scaffold(
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
@@ -390,16 +392,22 @@ class _RecordsPageState extends State<RecordsPage> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        for (final record in filteredRecords)
-                          RecordListItem(
-                            title: record.title,
-                            subtitle: record.subtitle,
-                            meta: record.meta,
-                            icon: record.icon,
-                            iconBackground: record.iconBackground,
-                            iconColor: record.iconColor,
-                            onTap: () => navigateToDetail(record),
-                          ),
+                        if (filteredRecords.isEmpty)
+                          _EmptyRecordsState(
+                            message: emptyMessage,
+                            icon: emptyIcon,
+                          )
+                        else
+                          for (final record in filteredRecords)
+                            RecordListItem(
+                              title: record.title,
+                              subtitle: record.subtitle,
+                              meta: record.meta,
+                              icon: record.icon,
+                              iconBackground: record.iconBackground,
+                              iconColor: record.iconColor,
+                              onTap: () => navigateToDetail(record),
+                            ),
                         const SizedBox(height: 12),
                       ],
                     ),
@@ -410,6 +418,53 @@ class _RecordsPageState extends State<RecordsPage> {
       bottomNavigationBar: PetcareBottomNavBar(
         currentIndex: _currentIndex,
         onTap: _handleBottomNavTap,
+      ),
+    );
+  }
+
+  (String, IconData) _emptyPresentationForFilter(int filterIndex) {
+    if (filterIndex == Routes.recordsFilterVaccines) {
+      return ('No vaccine records yet.', Icons.vaccines_outlined);
+    }
+    if (filterIndex == Routes.recordsFilterEvents) {
+      return ('No event records yet.', Icons.event_note_outlined);
+    }
+    return ('No records yet.', Icons.folder_open_rounded);
+  }
+}
+
+class _EmptyRecordsState extends StatelessWidget {
+  const _EmptyRecordsState({
+    required this.message,
+    required this.icon,
+  });
+
+  final String message;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 56,
+              color: AppColors.grey300.withValues(alpha: 0.5),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: context.textTheme.titleMedium?.copyWith(
+                color: AppColors.grey500.withValues(alpha: 0.65),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
