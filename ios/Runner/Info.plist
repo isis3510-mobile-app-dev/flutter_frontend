@@ -47,6 +47,8 @@
 	<true/>
 	<key>NFCReaderUsageDescription</key>
 	<string>PetCare uses NFC to read and write pet emergency tags.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>PetCare needs camera access so you can take a photo and attach it to pet records.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>PetCare needs access to your photo library so you can select a profile picture.</string>
 </dict>

@@ -232,6 +232,12 @@ abstract class AppStrings {
   static const String hintAdministeredBy = 'e.g. Doctor Tatiana';
   static const String uploadDocuments = 'Upload Documents';
   static const String uploadHint = 'Tap to upload or take a photo';
+  static const String attachmentSelectFile = 'Select File';
+  static const String attachmentSelectFileSubtitle =
+      'Choose a PDF or image from your device';
+  static const String attachmentTakePhoto = 'Take Photo';
+  static const String attachmentTakePhotoSubtitle =
+      'Open the camera and attach it right away';
   static const String hintEventName = 'e.g. Vet Appointment';
   static const String hintEventTime = 'e.g. 9:00 AM';
   static const String hintEventType = 'e.g. vet_visit';
