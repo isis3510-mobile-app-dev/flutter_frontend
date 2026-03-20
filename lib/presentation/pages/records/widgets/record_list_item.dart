@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/core/constants/app_colors.dart';
 import 'package:flutter_frontend/core/utils/context_extensions.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class RecordListItem extends StatelessWidget {
   const RecordListItem({
@@ -11,6 +12,7 @@ class RecordListItem extends StatelessWidget {
     required this.icon,
     required this.iconBackground,
     required this.iconColor,
+    this.iconAssetPath,
     this.onTap,
   });
 
@@ -20,6 +22,7 @@ class RecordListItem extends StatelessWidget {
   final IconData icon;
   final Color iconBackground;
   final Color iconColor;
+  final String? iconAssetPath;
   final VoidCallback? onTap;
 
   @override
@@ -51,7 +54,32 @@ class RecordListItem extends StatelessWidget {
                   color: iconBackground,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: iconColor, size: 20),
+                child: Center(
+                  child: (iconAssetPath != null && iconAssetPath!.isNotEmpty)
+                      ? iconAssetPath!.toLowerCase().endsWith('.svg')
+                          ? SvgPicture.asset(
+                              iconAssetPath!,
+                              width: 20,
+                              height: 20,
+                              placeholderBuilder: (_) => Icon(
+                                icon,
+                                color: iconColor,
+                                size: 20,
+                              ),
+                            )
+                          : Image.asset(
+                              iconAssetPath!,
+                              width: 20,
+                              height: 20,
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) => Icon(
+                                icon,
+                                color: iconColor,
+                                size: 20,
+                              ),
+                            )
+                      : Icon(icon, color: iconColor, size: 20),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
