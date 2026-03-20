@@ -9,12 +9,15 @@ import 'package:flutter_frontend/core/services/attachment_upload_service.dart';
 import 'package:flutter_frontend/core/services/pet_service.dart';
 import 'package:flutter_frontend/core/services/user_service.dart';
 import 'package:flutter_frontend/core/services/vaccine_service.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter_frontend/presentation/pages/add_flow/utils/date_input.dart';
 import 'package:flutter_frontend/presentation/pages/add_flow/widgets/add_flow_scaffold.dart';
 import 'package:flutter_frontend/presentation/pages/add_vaccine/widgets/add_vaccine_step_basic.dart';
 import 'package:flutter_frontend/presentation/pages/add_vaccine/widgets/add_vaccine_step_details.dart';
 import 'package:flutter_frontend/presentation/pages/add_vaccine/widgets/add_vaccine_step_overview.dart';
 import 'add_vaccine_args.dart';
+
+enum _AttachmentSource { files, camera }
 
 class AddVaccinePage extends StatefulWidget {
   const AddVaccinePage({super.key, this.prefill});
@@ -38,6 +41,7 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
   final PetService _petService = PetService();
   final AttachmentUploadService _attachmentUploadService =
       AttachmentUploadService();
+  final ImagePicker _imagePicker = ImagePicker();
   final List<VaccineModel> _vaccines = [];
   final List<PetModel> _pets = [];
   final List<EditableAttachmentModel> _attachedDocuments = [];
@@ -629,40 +633,17 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
     }
 
     try {
-      final result = await FilePicker.platform.pickFiles(
-        allowMultiple: true,
-        withData: true,
-        type: FileType.custom,
-        allowedExtensions: const ['pdf', 'jpg', 'jpeg', 'png', 'webp'],
-      );
-
-      if (result == null || result.files.isEmpty) {
+      final source = await _showAttachmentSourcePicker();
+      if (source == null) {
         return;
       }
 
-      if (!mounted) {
-        return;
-      }
+      final uploads = switch (source) {
+        _AttachmentSource.files => await _pickFilesForAttachment(petId),
+        _AttachmentSource.camera => await _capturePhotoForAttachment(petId),
+      };
 
-      setState(() => _isUploadingAttachments = true);
-
-      final uploads = <EditableAttachmentModel>[];
-      for (final file in result.files) {
-        final bytes = file.bytes;
-        if (bytes == null || bytes.isEmpty) {
-          continue;
-        }
-
-        final uploaded = await _attachmentUploadService.uploadPetDocument(
-          bytes: bytes,
-          petId: petId,
-          fileName: file.name,
-          category: 'vaccinations',
-        );
-        uploads.add(EditableAttachmentModel.fromUploaded(uploaded));
-      }
-
-      if (!mounted) {
+      if (uploads.isEmpty || !mounted) {
         return;
       }
 
@@ -682,6 +663,112 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
         setState(() => _isUploadingAttachments = false);
       }
     }
+  }
+
+  Future<_AttachmentSource?> _showAttachmentSourcePicker() {
+    return showModalBottomSheet<_AttachmentSource>(
+      context: context,
+      showDragHandle: true,
+      builder: (bottomSheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.attach_file_rounded),
+                title: const Text(AppStrings.attachmentSelectFile),
+                subtitle: const Text(AppStrings.attachmentSelectFileSubtitle),
+                onTap: () =>
+                    Navigator.pop(bottomSheetContext, _AttachmentSource.files),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_camera_outlined),
+                title: const Text(AppStrings.attachmentTakePhoto),
+                subtitle: const Text(AppStrings.attachmentTakePhotoSubtitle),
+                onTap: () =>
+                    Navigator.pop(bottomSheetContext, _AttachmentSource.camera),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<List<EditableAttachmentModel>> _pickFilesForAttachment(
+    String petId,
+  ) async {
+    final result = await FilePicker.platform.pickFiles(
+      allowMultiple: true,
+      withData: true,
+      type: FileType.custom,
+      allowedExtensions: const ['pdf', 'jpg', 'jpeg', 'png', 'webp'],
+    );
+
+    if (result == null || result.files.isEmpty) {
+      return const <EditableAttachmentModel>[];
+    }
+
+    if (!mounted) {
+      return const <EditableAttachmentModel>[];
+    }
+
+    setState(() => _isUploadingAttachments = true);
+
+    final uploads = <EditableAttachmentModel>[];
+    for (final file in result.files) {
+      final bytes = file.bytes;
+      if (bytes == null || bytes.isEmpty) {
+        continue;
+      }
+
+      final uploaded = await _attachmentUploadService.uploadPetDocument(
+        bytes: bytes,
+        petId: petId,
+        fileName: file.name,
+        category: 'vaccinations',
+      );
+      uploads.add(EditableAttachmentModel.fromUploaded(uploaded));
+    }
+
+    return uploads;
+  }
+
+  Future<List<EditableAttachmentModel>> _capturePhotoForAttachment(
+    String petId,
+  ) async {
+    final photo = await _imagePicker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 85,
+      maxWidth: 1600,
+      maxHeight: 1600,
+    );
+
+    if (photo == null) {
+      return const <EditableAttachmentModel>[];
+    }
+
+    final bytes = await photo.readAsBytes();
+    if (bytes.isEmpty) {
+      return const <EditableAttachmentModel>[];
+    }
+
+    if (!mounted) {
+      return const <EditableAttachmentModel>[];
+    }
+
+    setState(() => _isUploadingAttachments = true);
+
+    final uploaded = await _attachmentUploadService.uploadPetDocument(
+      bytes: bytes,
+      petId: petId,
+      fileName: photo.name,
+      category: 'vaccinations',
+    );
+
+    return <EditableAttachmentModel>[
+      EditableAttachmentModel.fromUploaded(uploaded),
+    ];
   }
 
   void _removeAttachmentAt(int index) {
