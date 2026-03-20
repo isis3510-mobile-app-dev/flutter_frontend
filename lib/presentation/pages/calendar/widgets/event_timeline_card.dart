@@ -12,6 +12,7 @@ class EventTimelineCard extends StatelessWidget {
     required this.subtitle,
     required this.iconAssetPath,
     required this.cardColor,
+    required this.eventType,
     this.isLast = false,
     this.onTap,
   });
@@ -21,6 +22,7 @@ class EventTimelineCard extends StatelessWidget {
   final String subtitle;
   final String iconAssetPath;
   final Color cardColor;
+  final dynamic eventType;
   final bool isLast;
   final VoidCallback? onTap;
 
@@ -31,6 +33,9 @@ class EventTimelineCard extends StatelessWidget {
         ? AppColors.onBackgroundDark
         : AppColors.onSurface;
     final subtitleColor = isDark ? AppColors.grey500 : AppColors.grey700;
+    
+    // Check if this is an appointment type
+    final isAppointment = eventType.toString().contains('appointment');
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -74,6 +79,7 @@ class EventTimelineCard extends StatelessWidget {
         Expanded(
           child: Material(
             color: Colors.transparent,
+            clipBehavior: Clip.antiAlias,
             child: InkWell(
               borderRadius: BorderRadius.circular(AppDimensions.radiusL),
               onTap: onTap,
@@ -109,24 +115,60 @@ class EventTimelineCard extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: AppDimensions.spaceS),
-                          SvgPicture.asset(
-                            iconAssetPath,
-                            width: AppDimensions.calendarEventIconSize,
-                            height: AppDimensions.calendarEventIconSize,
-                            colorFilter: ColorFilter.mode(
-                              isDark
-                                  ? AppColors.onBackgroundDark
-                                  : AppColors.primary,
-                              BlendMode.srcIn,
+                          if (isAppointment)
+                            iconAssetPath.toLowerCase().endsWith('.svg')
+                                ? SvgPicture.asset(
+                                    iconAssetPath,
+                                    width: AppDimensions.calendarEventIconSize *
+                                        1.1,
+                                    height:
+                                        AppDimensions.calendarEventIconSize *
+                                            1.1,
+                                    placeholderBuilder: (_) => Icon(
+                                      Icons.event_note_outlined,
+                                      size:
+                                          AppDimensions.calendarEventIconSize *
+                                              1.1,
+                                      color: AppColors.primary,
+                                    ),
+                                  )
+                                : Image.asset(
+                                    iconAssetPath,
+                                    width: AppDimensions.calendarEventIconSize *
+                                        1.1,
+                                    height:
+                                        AppDimensions.calendarEventIconSize *
+                                            1.1,
+                                    fit: BoxFit.contain,
+                                    errorBuilder:
+                                        (context, error, stackTrace) => Icon(
+                                      Icons.event_note_outlined,
+                                      size:
+                                          AppDimensions.calendarEventIconSize *
+                                              1.1,
+                                      color: AppColors.primary,
+                                    ),
+                                  )
+                          else
+                            // Regular vaccine/dental/grooming icon
+                            SvgPicture.asset(
+                              iconAssetPath,
+                              width: AppDimensions.calendarEventIconSize,
+                              height: AppDimensions.calendarEventIconSize,
+                              colorFilter: ColorFilter.mode(
+                                isDark
+                                    ? AppColors.onBackgroundDark
+                                    : AppColors.primary,
+                                BlendMode.srcIn,
+                              ),
+                              placeholderBuilder: (_) => Icon(
+                                Icons.event_note_outlined,
+                                size: AppDimensions.calendarEventIconSize,
+                                color: isDark
+                                    ? AppColors.onBackgroundDark
+                                    : AppColors.primary,
+                              ),
                             ),
-                            placeholderBuilder: (_) => Icon(
-                              Icons.event_note_outlined,
-                              size: AppDimensions.calendarEventIconSize,
-                              color: isDark
-                                  ? AppColors.onBackgroundDark
-                                  : AppColors.primary,
-                            ),
-                          ),
                         ],
                       ),
                       const SizedBox(height: AppDimensions.spaceXS),

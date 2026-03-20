@@ -184,4 +184,10 @@ abstract class AppColors {
   static const Color smartAlertVetText = Color(0xFF00695C);
   static const Color smartAlertVetBgDark = Color(0xFF173B37);
   static const Color smartAlertVetTextDark = Color(0xFF8CE7D8);
+
+  // --- Medical appointments ---
+  static const Color appointmentBackground = Color(0xFFEDE7F6);
+  static const Color appointmentBackgroundDark = Color(0xFF3F2C5F);
+  static const Color appointmentIconBackground = Color(0xFFC4AEE0);
+  static const Color appointmentIconBackgroundDark = Color(0xFF5E42A8);
 }
