@@ -222,7 +222,10 @@ class PetService {
 
   Future<void> _invalidatePetsCache() async {
     try {
+      // Invalidate both the pets list cache and the user profile cache
+      // since the user profile contains the list of pets
       await _cache.clear(_petsCacheKey);
+      await _cache.clear('users.current');
     } catch (_) {
       // Cache invalidation is best effort.
     }

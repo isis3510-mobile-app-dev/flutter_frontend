@@ -567,6 +567,7 @@ class _CalendarPageState extends State<CalendarPage> {
                                 '${_petNameForId(event.petId)} • ${event.clinicName}',
                             iconAssetPath: event.iconAssetPath,
                             cardColor: _eventCardColor(event.type, isDark),
+                            eventType: event.type,
                             isLast: index == selectedDayEvents.length - 1,
                           ),
                         );
@@ -735,7 +736,7 @@ class _CalendarEvent {
   String get iconAssetPath {
     return switch (type) {
       _CalendarEventType.vaccine => AppAssets.iconVaccine,
-      _CalendarEventType.appointment => AppAssets.iconVetCheck,
+      _CalendarEventType.appointment => AppAssets.iconVetCheckClean,
       _CalendarEventType.dental => AppAssets.iconDentalCheck,
       _CalendarEventType.grooming => AppAssets.iconCalendar,
     };
@@ -749,7 +750,9 @@ Color _eventCardColor(_CalendarEventType type, bool isDark) {
           ? AppColors.petDetailHealthSummaryBgDark
           : AppColors.petStatusHealthyBg,
     _CalendarEventType.appointment =>
-      isDark ? AppColors.surfaceDark : AppColors.surface,
+      isDark 
+          ? AppColors.appointmentBackgroundDark
+          : AppColors.appointmentBackground,
     _CalendarEventType.dental =>
       isDark
           ? AppColors.addPetReminderBackgroundDark

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/core/constants/app_assets.dart';
 import 'package:flutter_frontend/core/constants/app_colors.dart';
 import 'package:flutter_frontend/core/models/event_model.dart';
 import 'package:flutter_frontend/core/models/pet_model.dart';
@@ -159,8 +160,9 @@ class _RecordsPageState extends State<RecordsPage> {
             subtitle: _buildVaccineSubtitle(pet, vaccine.administeredBy),
             meta: _formatDate(vaccine.dateGiven),
             icon: Icons.vaccines_outlined,
-            iconBackground: AppColors.primaryVariant,
+            iconBackground: AppColors.petStatusHealthyBg,
             iconColor: AppColors.primary,
+            iconAssetPath: AppAssets.iconVaccine,
             sortDate: vaccine.dateGiven,
             vaccination: vaccine,
             pet: pet,
@@ -190,8 +192,9 @@ class _RecordsPageState extends State<RecordsPage> {
             subtitle: _buildEventSubtitle(pet, event),
             meta: _buildEventMeta(event),
             icon: Icons.event_note_outlined,
-            iconBackground: AppColors.primaryVariant,
+            iconBackground: AppColors.appointmentBackground,
             iconColor: AppColors.primary,
+            iconAssetPath: AppAssets.iconVetCheckClean,
             sortDate: event.date,
             event: event,
             pet: pet,
@@ -406,6 +409,7 @@ class _RecordsPageState extends State<RecordsPage> {
                               icon: record.icon,
                               iconBackground: record.iconBackground,
                               iconColor: record.iconColor,
+                              iconAssetPath: record.iconAssetPath,
                               onTap: () => navigateToDetail(record),
                             ),
                         const SizedBox(height: 12),
@@ -481,6 +485,7 @@ class _RecordEntry {
     required this.icon,
     required this.iconBackground,
     required this.iconColor,
+    this.iconAssetPath,
     required this.sortDate,
     this.vaccination,
     this.event,
@@ -494,6 +499,7 @@ class _RecordEntry {
   final IconData icon;
   final Color iconBackground;
   final Color iconColor;
+  final String? iconAssetPath;
   final DateTime sortDate;
   final PetVaccinationModel? vaccination;
   final EventModel? event;
