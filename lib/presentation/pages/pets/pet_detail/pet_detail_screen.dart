@@ -164,6 +164,7 @@ class _PetDetailScreenState extends State<PetDetailScreen>
 
     final result = await Navigator.of(context).push(
       MaterialPageRoute(
+        settings: const RouteSettings(name: Routes.eventDetail),
         builder: (context) =>
             DetailPage(type: 'event', event: event, pet: _petDetails),
       ),

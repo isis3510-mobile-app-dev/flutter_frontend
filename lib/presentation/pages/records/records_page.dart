@@ -256,6 +256,7 @@ class _RecordsPageState extends State<RecordsPage> {
         context,
       ).push(
         MaterialPageRoute(
+          settings: const RouteSettings(name: Routes.vaccineDetail),
           builder: (context) => DetailPage(
             type: 'vaccine',
             vaccination: record.vaccination,
@@ -273,6 +274,7 @@ class _RecordsPageState extends State<RecordsPage> {
         context,
       ).push(
         MaterialPageRoute(
+          settings: const RouteSettings(name: Routes.eventDetail),
           builder: (context) => DetailPage(
             type: 'event',
             event: record.event,

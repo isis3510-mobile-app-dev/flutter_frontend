@@ -13,6 +13,7 @@ import '../../../../core/services/attachment_upload_service.dart';
 import '../../../../core/services/pet_service.dart';
 import '../../../../core/services/profile_photo_service.dart';
 import '../../../../core/services/telemetry_service.dart';
+import '../../../../core/telemetry/telemetry_ids.dart';
 import '../../../../core/utils/context_extensions.dart';
 import '../models/pet_ui_model.dart';
 import 'add_pet_form_types.dart';
@@ -238,7 +239,9 @@ class _AddPetScreenState extends State<AddPetScreen> {
       return;
     }
 
-    TelemetryService().startAddPetTimer();
+    TelemetryService().startAddPetTimer(
+      featureId: _isEditMode ? featureEditPetId : featureAddPetId,
+    );
 
     setState(() {
       _isCreatingPet = true;

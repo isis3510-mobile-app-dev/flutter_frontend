@@ -1,6 +1,5 @@
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-
 import '../network/api_client.dart';
+import '../telemetry/telemetry_ids.dart';
 import 'user_service.dart';
 
 class TelemetryService {
@@ -13,10 +12,7 @@ class TelemetryService {
   static const String _featureExecutionLogsPath =
       '/api/feature-execution-logs/';
   static const String _featureClicksLogsPath = '/api/feature-clicks-logs/';
-
-  static const String _envNfcReadFeatureId = 'FEATURE_NFC_READ_ID';
-  static const String _envAddPetFeatureId = 'FEATURE_ADD_PET_ID';
-  static const String _envAddEventRouteId = 'FEATURE_ROUTE_ADD_EVENT_ID';
+  static const String _screenTimeLogsPath = '/api/screen-time-logs/';
 
   final ApiClient _apiClient = ApiClient();
   final UserService _userService = UserService();
@@ -25,17 +21,23 @@ class TelemetryService {
   DateTime? _pendingAddPetStartTime;
   int _pendingAddPetUploadBytes = 0;
   int _pendingAddPetDownloadBytes = 0;
+  String? _pendingAddPetFeatureId;
 
-  void startAddPetTimer() {
+  void startAddPetTimer({required String featureId}) {
+    if (featureId.trim().isEmpty) {
+      return;
+    }
     _pendingAddPetStartTime = DateTime.now();
     _pendingAddPetUploadBytes = 0;
     _pendingAddPetDownloadBytes = 0;
+    _pendingAddPetFeatureId = featureId;
   }
 
   void cancelAddPetTimer() {
     _pendingAddPetStartTime = null;
     _pendingAddPetUploadBytes = 0;
     _pendingAddPetDownloadBytes = 0;
+    _pendingAddPetFeatureId = null;
   }
 
   void addAddPetNetworkBytes({
@@ -50,8 +52,7 @@ class TelemetryService {
     required DateTime startTime,
     required DateTime endTime,
   }) async {
-    final featureId = _readEnv(_envNfcReadFeatureId);
-    if (featureId == null) {
+    if (featureNfcReadId.isEmpty) {
       return;
     }
 
@@ -64,7 +65,7 @@ class TelemetryService {
     final payload = <String, dynamic>{
       'schema': 1,
       'userId': userId,
-      'featureId': featureId,
+      'featureId': featureNfcReadId,
       'startTime': startTime.toIso8601String(),
       'endTime': endTime.toIso8601String(),
       'totalTime': totalTimeMs,
@@ -80,13 +81,13 @@ class TelemetryService {
 
   Future<void> logAddPetExecutionIfPending({required DateTime endTime}) async {
     final startTime = _pendingAddPetStartTime;
+    final featureId = _pendingAddPetFeatureId;
     if (startTime == null) {
       return;
     }
     _pendingAddPetStartTime = null;
 
-    final featureId = _readEnv(_envAddPetFeatureId);
-    if (featureId == null) {
+    if (featureId == null || featureId.isEmpty) {
       return;
     }
 
@@ -124,11 +125,11 @@ class TelemetryService {
 
     _pendingAddPetUploadBytes = 0;
     _pendingAddPetDownloadBytes = 0;
+    _pendingAddPetFeatureId = null;
   }
 
   Future<void> logAddEventClick({int nClicks = 1}) async {
-    final routeId = _readEnv(_envAddEventRouteId);
-    if (routeId == null) {
+    if (featureRouteAddEventId.isEmpty) {
       return;
     }
 
@@ -140,13 +141,42 @@ class TelemetryService {
     final payload = <String, dynamic>{
       'schema': 1,
       'userId': userId,
-      'routeId': routeId,
+      'routeId': featureRouteAddEventId,
       'timestamp': DateTime.now().toIso8601String(),
       'nClicks': nClicks,
+      'appType' : "Flutter"
     };
 
     try {
       await _apiClient.post(_featureClicksLogsPath, body: payload);
+    } catch (_) {
+      // Telemetry should never block the UI or crash the app.
+    }
+  }
+
+  Future<void> logScreenTime({
+    required String screenId,
+    required DateTime startTime,
+    required DateTime endTime,
+  }) async {
+    final userId = await _getUserId();
+    if (userId == null) {
+      return;
+    }
+
+    final totalTimeMs = endTime.difference(startTime).inMilliseconds;
+    final payload = <String, dynamic>{
+      'schema': 1,
+      'userId': userId,
+      'screenId': screenId,
+      'startTime': startTime.toIso8601String(),
+      'endTime': endTime.toIso8601String(),
+      'totalTime': totalTimeMs,
+      'appType' : "Flutter"
+    };
+
+    try {
+      await _apiClient.post(_screenTimeLogsPath, body: payload);
     } catch (_) {
       // Telemetry should never block the UI or crash the app.
     }
@@ -167,15 +197,5 @@ class TelemetryService {
     }
   }
 
-  String? _readEnv(String key) {
-    try {
-      final value = dotenv.env[key]?.trim();
-      if (value == null || value.isEmpty) {
-        return null;
-      }
-      return value;
-    } catch (_) {
-      return null;
-    }
-  }
+  // Telemetry IDs are sourced from lib/core/telemetry/telemetry_ids.dart.
 }
