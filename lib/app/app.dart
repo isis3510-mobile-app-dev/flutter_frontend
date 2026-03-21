@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../presentation/pages/auth/auth_gate.dart';
 import '../core/theme/app_theme.dart';
+import '../core/telemetry/screen_time_observer.dart';
 import 'routes.dart';
 import 'theme_controller.dart';
 
@@ -42,7 +42,8 @@ class _AppState extends State<App> {
             theme: AppTheme.light,
             darkTheme: AppTheme.dark,
             themeMode: _themeController.themeMode,
-            home: const AuthGate(),
+            initialRoute: Routes.authGate,
+            navigatorObservers: [ScreenTimeObserver()],
             onGenerateRoute: Routes.onGenerateRoute,
           );
         },
