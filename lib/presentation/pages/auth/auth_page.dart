@@ -6,6 +6,8 @@ import 'package:flutter_frontend/core/constants/app_assets.dart';
 import 'package:flutter_frontend/core/constants/app_colors.dart';
 import 'package:flutter_frontend/core/constants/app_dimensions.dart';
 import 'package:flutter_frontend/core/constants/app_strings.dart';
+import 'package:flutter_frontend/core/forms/app_form_constraints.dart';
+import 'package:flutter_frontend/core/forms/app_form_utils.dart';
 import 'package:flutter_frontend/core/network/api_exception.dart';
 import 'package:flutter_frontend/core/services/auth_service.dart';
 import 'package:flutter_frontend/core/utils/context_extensions.dart';
@@ -21,6 +23,7 @@ class AuthPage extends StatefulWidget {
 }
 
 class _AuthPageState extends State<AuthPage> {
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final AuthService _authService = AuthService();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -30,6 +33,9 @@ class _AuthPageState extends State<AuthPage> {
   bool _isPasswordObscured = true;
   bool _isLoading = false;
   String? _errorMessage;
+  String? _emailFieldError;
+  String? _passwordFieldError;
+  String? _nameFieldError;
 
   @override
   void dispose() {
@@ -67,14 +73,24 @@ class _AuthPageState extends State<AuthPage> {
                         signInLabel: AppStrings.authSignIn,
                         createAccountLabel: AppStrings.authCreateAccount,
                         onChanged: (isSignIn) {
-                          setState(() => _isSignInMode = isSignIn);
+                          setState(() {
+                            _isSignInMode = isSignIn;
+                            _clearFieldErrors();
+                            _errorMessage = null;
+                          });
                         },
                       ),
                       const SizedBox(height: AppDimensions.spaceL),
-                      if (_isSignInMode)
-                        ..._buildSignInForm(context)
-                      else
-                        ..._buildCreateAccountForm(context),
+                      Form(
+                        key: _formKey,
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: _isSignInMode
+                              ? _buildSignInForm(context)
+                              : _buildCreateAccountForm(context),
+                        ),
+                      ),
                       if (_errorMessage != null) ...[
                         const SizedBox(height: AppDimensions.spaceM),
                         Text(
@@ -153,6 +169,15 @@ class _AuthPageState extends State<AuthPage> {
         label: AppStrings.authFullName,
         hintText: AppStrings.authFullNameHint,
         controller: _nameController,
+        forceErrorText: _nameFieldError,
+        onChanged: (_) => _clearNameError(),
+        validator: AppFormValidators.combine([
+          AppFormValidators.required(AppStrings.validationFullNameRequired),
+          AppFormValidators.maxCharacters(
+            fieldLabel: AppStrings.authFullName,
+            maxLength: AppFormConstraints.personNameMaxLength,
+          ),
+        ]),
       ),
       const SizedBox(height: AppDimensions.spaceM),
       AuthTextField(
@@ -160,6 +185,13 @@ class _AuthPageState extends State<AuthPage> {
         hintText: AppStrings.authEmailHint,
         controller: _emailController,
         keyboardType: TextInputType.emailAddress,
+        forceErrorText: _emailFieldError,
+        onChanged: (_) => _clearEmailError(),
+        validator: AppFormValidators.email(
+          requiredMessage: AppStrings.validationEmailRequired,
+          invalidMessage: AppStrings.authErrorInvalidEmail,
+        ),
+        inputFormatters: AppInputFormatters.email(),
       ),
       const SizedBox(height: AppDimensions.spaceM),
       AuthTextField(
@@ -169,6 +201,16 @@ class _AuthPageState extends State<AuthPage> {
         isPassword: true,
         obscureText: _isPasswordObscured,
         onToggleVisibility: _togglePasswordVisibility,
+        forceErrorText: _passwordFieldError,
+        onChanged: (_) => _clearPasswordError(),
+        validator: AppFormValidators.password(
+          requiredMessage: AppStrings.validationPasswordRequired,
+          minLength: 8,
+          tooShortMessage: AppStrings.validationPasswordTooShort,
+          invalidCharactersMessage:
+              AppStrings.validationPasswordUnsupportedCharacters,
+        ),
+        inputFormatters: AppInputFormatters.password(),
       ),
       const SizedBox(height: AppDimensions.spaceL),
       _PrimaryAuthButton(
@@ -186,6 +228,13 @@ class _AuthPageState extends State<AuthPage> {
         hintText: AppStrings.authEmailHint,
         controller: _emailController,
         keyboardType: TextInputType.emailAddress,
+        forceErrorText: _emailFieldError,
+        onChanged: (_) => _clearEmailError(),
+        validator: AppFormValidators.email(
+          requiredMessage: AppStrings.validationEmailRequired,
+          invalidMessage: AppStrings.authErrorInvalidEmail,
+        ),
+        inputFormatters: AppInputFormatters.email(),
       ),
       const SizedBox(height: AppDimensions.spaceM),
       AuthTextField(
@@ -195,6 +244,15 @@ class _AuthPageState extends State<AuthPage> {
         isPassword: true,
         obscureText: _isPasswordObscured,
         onToggleVisibility: _togglePasswordVisibility,
+        forceErrorText: _passwordFieldError,
+        onChanged: (_) => _clearPasswordError(),
+        validator: AppFormValidators.password(
+          requiredMessage: AppStrings.validationPasswordRequired,
+          minLength: 0,
+          invalidCharactersMessage:
+              AppStrings.validationPasswordUnsupportedCharacters,
+        ),
+        inputFormatters: AppInputFormatters.password(),
       ),
       const SizedBox(height: AppDimensions.spaceS),
       Align(
@@ -228,7 +286,12 @@ class _AuthPageState extends State<AuthPage> {
   }
 
   Future<void> _handleSignIn() async {
-    if (!_validateInputs(requireName: false)) {
+    AppFormSanitizers.trimControllers([_emailController]);
+    _clearFieldErrors();
+    setState(() {
+      _errorMessage = null;
+    });
+    if (!(_formKey.currentState?.validate() ?? false)) {
       return;
     }
 
@@ -241,7 +304,12 @@ class _AuthPageState extends State<AuthPage> {
   }
 
   Future<void> _handleSignUp() async {
-    if (!_validateInputs(requireName: true)) {
+    AppFormSanitizers.trimControllers([_nameController, _emailController]);
+    _clearFieldErrors();
+    setState(() {
+      _errorMessage = null;
+    });
+    if (!(_formKey.currentState?.validate() ?? false)) {
       return;
     }
 
@@ -259,11 +327,14 @@ class _AuthPageState extends State<AuthPage> {
   }
 
   Future<void> _handleForgotPassword() async {
+    AppFormSanitizers.trimControllers([_emailController]);
     final email = _emailController.text.trim();
 
-    if (email.isEmpty) {
+    if (_emailValidator(_emailController.text) != null) {
+      _clearFieldErrors();
+      _formKey.currentState?.validate();
       setState(() {
-        _errorMessage = AppStrings.authForgotPasswordEnterEmail;
+        _errorMessage = null;
       });
       return;
     }
@@ -308,25 +379,54 @@ class _AuthPageState extends State<AuthPage> {
     }
   }
 
-  bool _validateInputs({required bool requireName}) {
-    final hasName = _nameController.text.trim().isNotEmpty;
-    final hasEmail = _emailController.text.trim().isNotEmpty;
-    final hasPassword = _passwordController.text.isNotEmpty;
+  String? _emailValidator(String? value) {
+    return AppFormValidators.email(
+      requiredMessage: AppStrings.validationEmailRequired,
+      invalidMessage: AppStrings.authErrorInvalidEmail,
+    )(value);
+  }
 
-    if ((requireName && !hasName) || !hasEmail || !hasPassword) {
-      setState(() {
-        _errorMessage = AppStrings.validationRequired;
-      });
-      return false;
+  void _clearFieldErrors() {
+    _emailFieldError = null;
+    _passwordFieldError = null;
+    _nameFieldError = null;
+  }
+
+  void _clearEmailError() {
+    if (_emailFieldError == null && _errorMessage == null) {
+      return;
     }
+    setState(() {
+      _emailFieldError = null;
+      _errorMessage = null;
+    });
+  }
 
-    return true;
+  void _clearPasswordError() {
+    if (_passwordFieldError == null && _errorMessage == null) {
+      return;
+    }
+    setState(() {
+      _passwordFieldError = null;
+      _errorMessage = null;
+    });
+  }
+
+  void _clearNameError() {
+    if (_nameFieldError == null && _errorMessage == null) {
+      return;
+    }
+    setState(() {
+      _nameFieldError = null;
+      _errorMessage = null;
+    });
   }
 
   Future<void> _runAuthAction(Future<void> Function() action) async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _clearFieldErrors();
     });
 
     try {
@@ -336,9 +436,8 @@ class _AuthPageState extends State<AuthPage> {
         _errorMessage = error.message;
       });
     } on FirebaseAuthException catch (error) {
-      final message = _firebaseErrorMessage(error);
       setState(() {
-        _errorMessage = message.isEmpty ? null : message;
+        _applyFirebaseFieldError(error);
       });
     } on PlatformException catch (error) {
       final message = _platformAuthErrorMessage(error);
@@ -355,6 +454,32 @@ class _AuthPageState extends State<AuthPage> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  void _applyFirebaseFieldError(FirebaseAuthException error) {
+    final message = _firebaseErrorMessage(error);
+    if (message.isEmpty) {
+      _errorMessage = null;
+      return;
+    }
+
+    switch (error.code) {
+      case 'invalid-email':
+      case 'user-not-found':
+      case 'email-already-in-use':
+      case 'account-exists-with-different-credential':
+        _emailFieldError = message;
+        _errorMessage = null;
+        return;
+      case 'wrong-password':
+      case 'invalid-credential':
+      case 'weak-password':
+        _passwordFieldError = message;
+        _errorMessage = null;
+        return;
+      default:
+        _errorMessage = message;
     }
   }
 

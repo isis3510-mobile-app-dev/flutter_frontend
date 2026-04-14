@@ -251,6 +251,25 @@ abstract class AppStrings {
   static const String validationRequired = 'This field is required.';
   static const String validationInvalidDate = 'Please enter a valid date.';
   static const String validationInvalidNumber = 'Please enter a valid number.';
+  static const String validationFullNameRequired = 'Full name is required.';
+  static const String validationEmailRequired = 'Email address is required.';
+  static const String validationPasswordRequired = 'Password is required.';
+  static const String validationPasswordTooShort =
+      'Password must be at least 8 characters.';
+  static const String validationPasswordUnsupportedCharacters =
+      'Password cannot contain emojis or unsupported characters.';
+  static const String validationPhoneInvalid =
+      'Phone can only contain numbers and basic dialing characters.';
+  static const String validationPetWeightMax =
+      'Weight must be less than 100 kg.';
+  static const String validationPriceMax = 'Price must be less than 1,000,000.';
+  static const String validationSelectPet = 'Please select a pet.';
+  static const String validationSelectValidPet = 'Please select a valid pet.';
+  static const String validationSelectVaccine = 'Please select a vaccine name.';
+  static const String validationSelectProduct =
+      'Please select a vaccine product.';
+  static const String validationSpeciesRequired = 'Please select a species.';
+  static const String validationGenderRequired = 'Please select a gender.';
 
   // --- Step names ---
   static const String stepBasicInfo = 'Basic Info';
@@ -416,4 +435,26 @@ abstract class AppStrings {
       'Pets and family group are read-only in this section.';
   static const String profilePetsCount = 'Pets linked';
   static const String profileFamilyGroupCount = 'Family group linked';
+
+  static String validationFieldTooLong(String fieldLabel, int maxLength) {
+    return '$fieldLabel must be $maxLength characters or less.';
+  }
+
+  static String validationFieldTooShort(String fieldLabel, int minLength) {
+    return '$fieldLabel must be at least $minLength characters.';
+  }
+
+  static String validationFieldContainsUnsupportedCharacters(
+    String fieldLabel,
+  ) {
+    return '$fieldLabel cannot contain emojis or unsupported characters.';
+  }
+
+  static String validationFieldRequired(String fieldLabel) {
+    return '$fieldLabel is required.';
+  }
+
+  static String validationNumberMustBeAtMost(String maxValue) {
+    return 'Value must be at most $maxValue.';
+  }
 }

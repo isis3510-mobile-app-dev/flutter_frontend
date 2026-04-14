@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/core/constants/app_colors.dart';
-import 'package:flutter_frontend/presentation/widgets/stepper.dart' as app_stepper;
+import 'package:flutter_frontend/presentation/widgets/stepper.dart'
+    as app_stepper;
 import 'package:flutter_frontend/shared/widgets/full_width_button.dart';
 
 class AddFlowScaffold extends StatelessWidget {
@@ -38,13 +39,11 @@ class AddFlowScaffold extends StatelessWidget {
           padding: const EdgeInsets.all(24),
           child: Form(
             key: formKey,
+            autovalidateMode: AutovalidateMode.onUserInteraction,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                app_stepper.Stepper(
-                  steps: steps,
-                  currentStep: currentStep,
-                ),
+                app_stepper.Stepper(steps: steps, currentStep: currentStep),
                 const SizedBox(height: 28),
                 ...stepContent,
               ],
@@ -63,7 +62,9 @@ class AddFlowScaffold extends StatelessWidget {
                   child: FullWidthButton(
                     text: backButtonText,
                     onPressed: onBackPressed,
-                    backgroundColor: isDark ? AppColors.surfaceDark : AppColors.surface,
+                    backgroundColor: isDark
+                        ? AppColors.surfaceDark
+                        : AppColors.surface,
                     borderColor: AppColors.primary,
                     textColor: AppColors.primary,
                   ),

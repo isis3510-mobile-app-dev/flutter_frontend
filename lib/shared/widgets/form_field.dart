@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_frontend/core/constants/app_colors.dart';
 import 'package:flutter_frontend/core/utils/context_extensions.dart';
 
@@ -16,6 +17,8 @@ class AppFormField extends StatelessWidget {
     this.onChanged,
     this.validator,
     this.enabled = true,
+    this.inputFormatters,
+    this.maxLines = 1,
   });
 
   final String label;
@@ -29,6 +32,8 @@ class AppFormField extends StatelessWidget {
   final ValueChanged<String>? onChanged;
   final FormFieldValidator<String>? validator;
   final bool enabled;
+  final List<TextInputFormatter>? inputFormatters;
+  final int maxLines;
 
   @override
   Widget build(BuildContext context) {
@@ -55,6 +60,8 @@ class AppFormField extends StatelessWidget {
           readOnly: readOnly,
           obscureText: obscureText,
           keyboardType: keyboardType,
+          inputFormatters: inputFormatters,
+          maxLines: maxLines,
           style: context.textTheme.bodyMedium?.copyWith(color: textColor),
           decoration: InputDecoration(
             hintText: hintText,

@@ -8,6 +8,7 @@ import '../../../widgets/stepper.dart' as app_stepper;
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/forms/app_form_utils.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/services/attachment_upload_service.dart';
 import '../../../../core/services/pet_service.dart';
@@ -215,6 +216,16 @@ class _AddPetScreenState extends State<AddPetScreen> {
   }
 
   void _continue() {
+    AppFormSanitizers.trimControllers([
+      _nameController,
+      _breedController,
+      _weightController,
+      _colorController,
+      _veterinarianController,
+      _clinicController,
+      _allergiesController,
+    ]);
+
     if (!_validateCurrentStep()) {
       return;
     }
@@ -229,13 +240,23 @@ class _AddPetScreenState extends State<AddPetScreen> {
       return;
     }
 
+    AppFormSanitizers.trimControllers([
+      _nameController,
+      _breedController,
+      _weightController,
+      _colorController,
+      _veterinarianController,
+      _clinicController,
+      _allergiesController,
+    ]);
+
     if (!_validateCurrentStep()) {
       return;
     }
 
     final birthDate = _parseDate(_dateOfBirthController.text);
     if (birthDate == null) {
-      context.showSnackBar(AppStrings.addPetValidationRequired, isError: true);
+      context.showSnackBar(AppStrings.validationInvalidDate, isError: true);
       return;
     }
 
@@ -447,19 +468,7 @@ class _AddPetScreenState extends State<AddPetScreen> {
   }
 
   bool _validateCurrentStep() {
-    final formValid = _formKey.currentState?.validate() ?? false;
-
-    if (_currentStep == 0 && _species == null) {
-      context.showSnackBar(AppStrings.addPetValidationRequired, isError: true);
-      return false;
-    }
-
-    if (_currentStep == 1 && _gender == null) {
-      context.showSnackBar(AppStrings.addPetValidationRequired, isError: true);
-      return false;
-    }
-
-    return formValid;
+    return _formKey.currentState?.validate() ?? false;
   }
 
   @override
@@ -478,6 +487,7 @@ class _AddPetScreenState extends State<AddPetScreen> {
       body: SafeArea(
         child: Form(
           key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(
               AppDimensions.pageHorizontalPadding,
