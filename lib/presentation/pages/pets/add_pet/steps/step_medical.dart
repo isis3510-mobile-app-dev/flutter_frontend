@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../../core/constants/app_colors.dart';
 import '../../../../../core/constants/app_dimensions.dart';
 import '../../../../../core/constants/app_strings.dart';
+import '../../../../../core/forms/app_form_constraints.dart';
+import '../../../../../core/forms/app_form_utils.dart';
 import '../widgets/pet_form_field.dart';
 
 class StepMedical extends StatelessWidget {
@@ -71,18 +74,43 @@ class StepMedical extends StatelessWidget {
           label: AppStrings.addPetVeterinarianLabel,
           controller: veterinarianController,
           hintText: AppStrings.addPetVeterinarianHint,
+          inputFormatters: [
+            LengthLimitingTextInputFormatter(
+              AppFormConstraints.providerNameMaxLength,
+            ),
+          ],
+          validator: AppFormValidators.maxCharacters(
+            fieldLabel: AppStrings.addPetVeterinarianLabel,
+            maxLength: AppFormConstraints.providerNameMaxLength,
+          ),
         ),
         const SizedBox(height: AppDimensions.spaceL),
         PetFormField(
           label: AppStrings.addPetClinicLabel,
           controller: clinicController,
           hintText: AppStrings.addPetClinicHint,
+          inputFormatters: AppInputFormatters.safeSingleLineText(
+            AppFormConstraints.clinicNameMaxLength,
+          ),
+          validator: AppFormValidators.safeSingleLineText(
+            fieldLabel: AppStrings.addPetClinicLabel,
+            maxLength: AppFormConstraints.clinicNameMaxLength,
+          ),
         ),
         const SizedBox(height: AppDimensions.spaceL),
         PetFormField(
           label: AppStrings.addPetAllergiesLabel,
           controller: allergiesController,
           hintText: AppStrings.addPetAllergiesHint,
+          inputFormatters: [
+            LengthLimitingTextInputFormatter(
+              AppFormConstraints.allergiesMaxLength,
+            ),
+          ],
+          validator: AppFormValidators.maxCharacters(
+            fieldLabel: AppStrings.addPetAllergiesLabel,
+            maxLength: AppFormConstraints.allergiesMaxLength,
+          ),
         ),
         const SizedBox(height: AppDimensions.spaceXL),
         Container(

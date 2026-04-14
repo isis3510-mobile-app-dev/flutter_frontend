@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_frontend/core/constants/app_colors.dart';
 import 'package:flutter_frontend/core/constants/app_strings.dart';
+import 'package:flutter_frontend/core/forms/app_form_utils.dart';
 import 'package:flutter_frontend/core/models/attachment_models.dart';
 import 'package:flutter_frontend/core/models/pet_model.dart';
 import 'package:flutter_frontend/core/models/vaccine_model.dart';
@@ -471,6 +472,13 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
   }
 
   Future<void> _continue() async {
+    AppFormSanitizers.trimControllers([
+      _vaccineController,
+      _productController,
+      _petNameController,
+      _administeredByController,
+    ]);
+
     final isValid = _formKey.currentState?.validate() ?? false;
     if (!isValid) {
       return;
@@ -503,6 +511,14 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
     if (_isSubmitting) {
       return;
     }
+
+    AppFormSanitizers.trimControllers([
+      _vaccineController,
+      _productController,
+      _petNameController,
+      _administeredByController,
+    ]);
+
     if (!(_formKey.currentState?.validate() ?? false)) {
       return;
     }
@@ -814,7 +830,9 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
             isLoadingPets: _isLoadingPets,
             selectedVaccineName: _selectedVaccineName,
             selectedProductName: _selectedProductName,
+            selectedVaccineId: _selectedVaccineId,
             selectedPetName: _selectedPetName,
+            selectedPetId: _selectedPetId,
             vaccineNameOptions: _vaccineNameOptions,
             productOptions: _productOptions,
             petNameOptions: _petNameOptions,
@@ -825,6 +843,17 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
                 _selectedVaccineId = null;
                 _vaccineController.text = value ?? '';
                 _productController.text = '';
+
+                if (value == null || value.trim().isEmpty) {
+                  return;
+                }
+
+                final matches = _vaccines
+                    .where((vaccine) => vaccine.name == value)
+                    .toList(growable: false);
+                if (matches.length == 1) {
+                  _selectedVaccineId = matches.first.id;
+                }
               });
             },
             onProductChanged: (value) {

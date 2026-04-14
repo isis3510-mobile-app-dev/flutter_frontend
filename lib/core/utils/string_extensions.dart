@@ -16,7 +16,9 @@ extension StringExtensions on String {
 
   /// Returns true if the string is a valid email address.
   bool get isValidEmail {
-    final regex = RegExp(r'^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$');
+    final regex = RegExp(
+      r"^(?=.{1,254}$)(?=.{1,64}@)[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$",
+    );
     return regex.hasMatch(this);
   }
 

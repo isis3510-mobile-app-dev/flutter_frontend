@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_frontend/core/constants/app_colors.dart';
 import 'package:flutter_frontend/core/constants/app_dimensions.dart';
 import 'package:flutter_frontend/core/utils/context_extensions.dart';
@@ -13,6 +14,10 @@ class AuthTextField extends StatelessWidget {
     this.isPassword = false,
     this.obscureText = false,
     this.onToggleVisibility,
+    this.validator,
+    this.inputFormatters,
+    this.forceErrorText,
+    this.onChanged,
   });
 
   final String label;
@@ -22,6 +27,10 @@ class AuthTextField extends StatelessWidget {
   final bool isPassword;
   final bool obscureText;
   final VoidCallback? onToggleVisibility;
+  final FormFieldValidator<String>? validator;
+  final List<TextInputFormatter>? inputFormatters;
+  final String? forceErrorText;
+  final ValueChanged<String>? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -38,9 +47,13 @@ class AuthTextField extends StatelessWidget {
       children: [
         Text(label, style: context.textTheme.labelLarge),
         const SizedBox(height: AppDimensions.spaceS),
-        TextField(
+        TextFormField(
           controller: controller,
           keyboardType: keyboardType,
+          validator: validator,
+          forceErrorText: forceErrorText,
+          inputFormatters: inputFormatters,
+          onChanged: onChanged,
           obscureText: isPassword && obscureText,
           style: context.textTheme.bodyMedium?.copyWith(color: textColor),
           decoration: InputDecoration(
@@ -54,6 +67,8 @@ class AuthTextField extends StatelessWidget {
             ),
             enabledBorder: _fieldBorder(borderColor),
             focusedBorder: _focusedFieldBorder,
+            errorBorder: _errorFieldBorder,
+            focusedErrorBorder: _errorFieldBorder,
             suffixIcon: isPassword
                 ? IconButton(
                     onPressed: onToggleVisibility,
@@ -81,6 +96,14 @@ const OutlineInputBorder _focusedFieldBorder = OutlineInputBorder(
   borderRadius: BorderRadius.all(Radius.circular(AppDimensions.radiusL)),
   borderSide: BorderSide(
     color: AppColors.primary,
+    width: AppDimensions.strokeThin,
+  ),
+);
+
+const OutlineInputBorder _errorFieldBorder = OutlineInputBorder(
+  borderRadius: BorderRadius.all(Radius.circular(AppDimensions.radiusL)),
+  borderSide: BorderSide(
+    color: AppColors.error,
     width: AppDimensions.strokeThin,
   ),
 );

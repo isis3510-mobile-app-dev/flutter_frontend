@@ -10,9 +10,10 @@ enum ThemeSource { manual, ambientLight, schedule }
 
 class ThemeController extends ChangeNotifier {
   static const String _themePreferenceKey = 'theme_preference';
-  static const double _darkLuxThreshold = 40;
-  static const double _lightLuxThreshold = 100;
-  static const Duration _sensorPollingInterval = Duration(seconds: 2);
+  static const double _darkLuxThreshold = 18;
+  static const double _lightLuxThreshold = 180;
+  static const Duration _sensorPollingInterval = Duration(seconds: 4);
+  static const int _requiredStableSensorReadings = 3;
 
   ThemeController();
 
@@ -25,6 +26,8 @@ class ThemeController extends ChangeNotifier {
   StreamSubscription<double>? _ambientLightSubscription;
   bool? _sensorDarkMode;
   double? _lastAmbientLux;
+  bool? _pendingSensorDarkMode;
+  int _stableSensorReadingCount = 0;
 
   bool get isInitialized => _isInitialized;
 
@@ -148,13 +151,36 @@ class ThemeController extends ChangeNotifier {
 
     _lastAmbientLux = lux;
     final previousMode = _sensorDarkMode;
+    final fallbackMode =
+        _sensorDarkMode ?? _isWithinAutomaticDarkWindow(DateTime.now());
+    bool targetMode = fallbackMode;
 
     if (lux <= _darkLuxThreshold) {
-      _sensorDarkMode = true;
+      targetMode = true;
     } else if (lux >= _lightLuxThreshold) {
-      _sensorDarkMode = false;
+      targetMode = false;
+    }
+
+    if (_sensorDarkMode == null) {
+      _sensorDarkMode = targetMode;
+      _pendingSensorDarkMode = null;
+      _stableSensorReadingCount = 0;
+    } else if (targetMode == _sensorDarkMode) {
+      _pendingSensorDarkMode = null;
+      _stableSensorReadingCount = 0;
     } else {
-      _sensorDarkMode ??= _isWithinAutomaticDarkWindow(DateTime.now());
+      if (_pendingSensorDarkMode == targetMode) {
+        _stableSensorReadingCount += 1;
+      } else {
+        _pendingSensorDarkMode = targetMode;
+        _stableSensorReadingCount = 1;
+      }
+
+      if (_stableSensorReadingCount >= _requiredStableSensorReadings) {
+        _sensorDarkMode = targetMode;
+        _pendingSensorDarkMode = null;
+        _stableSensorReadingCount = 0;
+      }
     }
 
     if (_preference == AppThemePreference.sensor &&

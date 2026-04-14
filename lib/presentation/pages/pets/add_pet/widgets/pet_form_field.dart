@@ -17,6 +17,7 @@ class PetFormField extends StatelessWidget {
     this.maxLines = 1,
     this.suffixIcon,
     this.inputFormatters,
+    this.onChanged,
   });
 
   final String label;
@@ -29,6 +30,7 @@ class PetFormField extends StatelessWidget {
   final int maxLines;
   final Widget? suffixIcon;
   final List<TextInputFormatter>? inputFormatters;
+  final ValueChanged<String>? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +50,7 @@ class PetFormField extends StatelessWidget {
         TextFormField(
           controller: controller,
           validator: validator,
+          onChanged: onChanged,
           readOnly: readOnly,
           onTap: onTap,
           keyboardType: keyboardType,

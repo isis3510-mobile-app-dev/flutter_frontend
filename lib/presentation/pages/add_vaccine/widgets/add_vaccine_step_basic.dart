@@ -10,7 +10,9 @@ class AddVaccineStepBasic extends StatelessWidget {
     required this.isLoadingPets,
     required this.selectedVaccineName,
     required this.selectedProductName,
+    required this.selectedVaccineId,
     required this.selectedPetName,
+    required this.selectedPetId,
     required this.vaccineNameOptions,
     required this.productOptions,
     required this.petNameOptions,
@@ -25,7 +27,9 @@ class AddVaccineStepBasic extends StatelessWidget {
   final bool isLoadingPets;
   final String? selectedVaccineName;
   final String? selectedProductName;
+  final String? selectedVaccineId;
   final String? selectedPetName;
+  final String? selectedPetId;
   final List<String> vaccineNameOptions;
   final List<String> productOptions;
   final List<String> petNameOptions;
@@ -34,6 +38,24 @@ class AddVaccineStepBasic extends StatelessWidget {
   final ValueChanged<String?> onPetChanged;
   final VoidCallback onPickDate;
   final TextEditingController dateController;
+
+  bool _isValidDate(String value) {
+    final parts = value.split('/');
+    if (parts.length != 3) {
+      return false;
+    }
+
+    final day = int.tryParse(parts[0]);
+    final month = int.tryParse(parts[1]);
+    final year = int.tryParse(parts[2]);
+    return day != null &&
+        month != null &&
+        year != null &&
+        DateTime.tryParse(
+              '${year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}',
+            ) !=
+            null;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,7 +73,7 @@ class AddVaccineStepBasic extends StatelessWidget {
           onChanged: onVaccineChanged,
           validator: (value) {
             if (value == null || value.trim().isEmpty) {
-              return AppStrings.validationRequired;
+              return AppStrings.validationSelectVaccine;
             }
             return null;
           },
@@ -65,7 +87,8 @@ class AddVaccineStepBasic extends StatelessWidget {
           readOnly: true,
           onTap: onPickDate,
           validator: (value) {
-            if (value == null || value.trim().isEmpty) {
+            final trimmed = value?.trim() ?? '';
+            if (trimmed.isEmpty || !_isValidDate(trimmed)) {
               return AppStrings.validationInvalidDate;
             }
             return null;
@@ -77,8 +100,8 @@ class AddVaccineStepBasic extends StatelessWidget {
           hintText: selectedVaccineName == null
               ? 'Select a vaccine first'
               : productOptions.isEmpty
-                  ? 'No products available'
-                  : AppStrings.hintProductName,
+              ? 'No products available'
+              : AppStrings.hintProductName,
           value: selectedProductName,
           items: productOptions,
           enabled: selectedVaccineName != null && productOptions.isNotEmpty,
@@ -88,7 +111,10 @@ class AddVaccineStepBasic extends StatelessWidget {
               return null;
             }
             if (value == null || value.trim().isEmpty) {
-              return AppStrings.validationRequired;
+              return AppStrings.validationSelectProduct;
+            }
+            if ((selectedVaccineId?.trim() ?? '').isEmpty) {
+              return AppStrings.validationSelectProduct;
             }
             return null;
           },
@@ -96,15 +122,17 @@ class AddVaccineStepBasic extends StatelessWidget {
         const SizedBox(height: 18),
         AppDropdownField(
           label: AppStrings.labelPetName,
-          hintText:
-              isLoadingPets ? 'Loading pets...' : AppStrings.hintPetName,
+          hintText: isLoadingPets ? 'Loading pets...' : AppStrings.hintPetName,
           value: selectedPetName,
           items: petNameOptions,
           enabled: !isLoadingPets && petNameOptions.isNotEmpty,
           onChanged: onPetChanged,
           validator: (value) {
             if (value == null || value.trim().isEmpty) {
-              return AppStrings.validationRequired;
+              return AppStrings.validationSelectPet;
+            }
+            if ((selectedPetId?.trim() ?? '').isEmpty) {
+              return AppStrings.validationSelectValidPet;
             }
             return null;
           },

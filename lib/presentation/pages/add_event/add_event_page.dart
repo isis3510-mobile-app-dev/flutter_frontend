@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_frontend/core/constants/app_colors.dart';
 import 'package:flutter_frontend/core/constants/app_strings.dart';
+import 'package:flutter_frontend/core/forms/app_form_utils.dart';
 import 'package:flutter_frontend/core/models/attachment_models.dart';
 import 'package:flutter_frontend/core/models/event_model.dart';
 import 'package:flutter_frontend/core/models/pet_model.dart';
@@ -568,6 +569,16 @@ class _AddEventPageState extends State<AddEventPage> {
   }
 
   Future<void> _continue() async {
+    AppFormSanitizers.trimControllers([
+      _eventController,
+      _priceController,
+      _providerController,
+      _clinicController,
+      _followUpDateController,
+      _descriptionController,
+      _petNameController,
+    ]);
+
     final isValid = _formKey.currentState?.validate() ?? false;
     if (!isValid) {
       return;
@@ -635,6 +646,16 @@ class _AddEventPageState extends State<AddEventPage> {
     if (_isSubmitting) {
       return;
     }
+
+    AppFormSanitizers.trimControllers([
+      _eventController,
+      _priceController,
+      _providerController,
+      _clinicController,
+      _followUpDateController,
+      _descriptionController,
+      _petNameController,
+    ]);
 
     if (!(_formKey.currentState?.validate() ?? false)) {
       return;
@@ -1024,6 +1045,7 @@ class _AddEventPageState extends State<AddEventPage> {
           AddEventStepBasic(
             isLoadingPets: _isLoadingPets,
             selectedPetName: _selectedPetName,
+            selectedPetId: _selectedPetId,
             petNameOptions: _petNameOptions,
             onPetChanged: (value) {
               setState(() {

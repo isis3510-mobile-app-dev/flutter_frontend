@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_frontend/core/constants/app_colors.dart';
 import 'package:flutter_frontend/core/constants/app_dimensions.dart';
 import 'package:flutter_frontend/core/constants/app_strings.dart';
+import 'package:flutter_frontend/core/forms/app_form_constraints.dart';
+import 'package:flutter_frontend/core/forms/app_form_utils.dart';
 import 'package:flutter_frontend/core/models/user_profile.dart';
 import 'package:flutter_frontend/core/network/api_exception.dart';
 import 'package:flutter_frontend/core/services/attachment_upload_service.dart';
@@ -58,6 +61,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Future<void> _saveProfile() async {
+    AppFormSanitizers.trimControllers([
+      _nameController,
+      _emailController,
+      _phoneController,
+      _addressController,
+    ]);
+
     final form = _formKey.currentState;
     if (form == null || !form.validate()) {
       return;
@@ -112,26 +122,23 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   String? _requiredFieldValidator(String? value) {
-    final trimmed = value?.trim() ?? '';
-    if (trimmed.isEmpty) {
-      return AppStrings.validationRequired;
-    }
-    return null;
+    return AppFormValidators.required(
+      AppStrings.validationFieldRequired(AppStrings.authFullName),
+    )(value);
   }
 
   String? _emailValidator(String? value) {
-    final requiredValidation = _requiredFieldValidator(value);
-    if (requiredValidation != null) {
-      return requiredValidation;
-    }
+    return AppFormValidators.email(
+      requiredMessage: AppStrings.validationEmailRequired,
+      invalidMessage: AppStrings.authErrorInvalidEmail,
+    )(value);
+  }
 
-    final trimmed = value!.trim();
-    final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
-    if (!emailRegex.hasMatch(trimmed)) {
-      return AppStrings.authErrorInvalidEmail;
-    }
-
-    return null;
+  String? _phoneValidator(String? value) {
+    return AppFormValidators.phone(
+      maxLength: AppFormConstraints.phoneMaxLength,
+      invalidMessage: AppStrings.validationPhoneInvalid,
+    )(value);
   }
 
   Future<void> _pickPhotoFromGallery() async {
@@ -247,6 +254,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       body: SafeArea(
         child: Form(
           key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(AppDimensions.pageHorizontalPadding),
             child: Column(
@@ -256,6 +264,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   label: AppStrings.authFullName,
                   controller: _nameController,
                   validator: _requiredFieldValidator,
+                  inputFormatters: [
+                    LengthLimitingTextInputFormatter(
+                      AppFormConstraints.personNameMaxLength,
+                    ),
+                  ],
                 ),
                 const SizedBox(height: AppDimensions.spaceM),
                 _ProfileFormField(
@@ -263,18 +276,28 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   validator: _emailValidator,
+                  inputFormatters: AppInputFormatters.email(),
                 ),
                 const SizedBox(height: AppDimensions.spaceM),
                 _ProfileFormField(
                   label: AppStrings.profilePhone,
                   controller: _phoneController,
                   keyboardType: TextInputType.phone,
+                  validator: _phoneValidator,
+                  inputFormatters: AppInputFormatters.phone(),
                 ),
                 const SizedBox(height: AppDimensions.spaceM),
                 _ProfileFormField(
                   label: AppStrings.profileAddress,
                   controller: _addressController,
                   maxLines: 2,
+                  validator: AppFormValidators.safeMultilineText(
+                    fieldLabel: AppStrings.profileAddress,
+                    maxLength: AppFormConstraints.addressMaxLength,
+                  ),
+                  inputFormatters: AppInputFormatters.safeMultilineText(
+                    AppFormConstraints.addressMaxLength,
+                  ),
                 ),
                 const SizedBox(height: AppDimensions.spaceM),
                 Text(
@@ -411,6 +434,7 @@ class _ProfileFormField extends StatelessWidget {
     this.keyboardType,
     this.validator,
     this.maxLines = 1,
+    this.inputFormatters,
   });
 
   final String label;
@@ -418,6 +442,7 @@ class _ProfileFormField extends StatelessWidget {
   final TextInputType? keyboardType;
   final String? Function(String?)? validator;
   final int maxLines;
+  final List<TextInputFormatter>? inputFormatters;
 
   @override
   Widget build(BuildContext context) {
@@ -441,6 +466,7 @@ class _ProfileFormField extends StatelessWidget {
           keyboardType: keyboardType,
           validator: validator,
           maxLines: maxLines,
+          inputFormatters: inputFormatters,
           style: Theme.of(
             context,
           ).textTheme.bodyMedium?.copyWith(color: textColor),
