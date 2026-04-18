@@ -213,20 +213,11 @@ class _NfcPageState extends State<NfcPage> {
           rawPayload: payload,
           payload: parsedPayload,
         );
-        Map<String, dynamic>? resolvedReadPayload = parsedPayload;
-
-        if (scannedPetId != null && scannedPetId.isNotEmpty) {
-          try {
-            final backendPayload = await _nfcBackendService.readPublicTagData(
-              scannedPetId,
-            );
-            if (backendPayload.isNotEmpty) {
-              resolvedReadPayload = backendPayload;
-            }
-          } catch (_) {
-            // Fall back to the payload stored on the tag when public read fails.
-          }
-        }
+        final resolvedReadPayload = _resolveOfflineReadPayload(
+          rawPayload: payload,
+          parsedPayload: parsedPayload,
+          scannedPetId: scannedPetId,
+        );
 
         if (!mounted) {
           return;
@@ -294,18 +285,22 @@ class _NfcPageState extends State<NfcPage> {
       );
       return;
     }
-
-    final backendPayload = await _nfcBackendService.readPublicTagData(pet.id);
+    final simulatedPayload = <String, dynamic>{
+      'petId': pet.id,
+      'petName': pet.name,
+      'name': pet.name,
+      'species': pet.species,
+      'breed': pet.breed,
+      'status': pet.status,
+      'source': 'simulation',
+    };
     if (!mounted) {
       return;
     }
 
     setState(() {
-      _lastReadRawPayload = jsonEncode({
-        'petId': pet.id,
-        'source': 'simulation',
-      });
-      _lastReadTagData = backendPayload;
+      _lastReadRawPayload = jsonEncode(simulatedPayload);
+      _lastReadTagData = simulatedPayload;
       _selectedPetId = pet.id;
       _viewState = _NfcViewState.success;
     });
@@ -313,9 +308,31 @@ class _NfcPageState extends State<NfcPage> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Simulation mode: read completed using backend data.'),
+        content: Text('Simulation mode: read completed without internet.'),
       ),
     );
+  }
+
+  Map<String, dynamic>? _resolveOfflineReadPayload({
+    required String rawPayload,
+    required Map<String, dynamic>? parsedPayload,
+    required String? scannedPetId,
+  }) {
+    if (parsedPayload != null && parsedPayload.isNotEmpty) {
+      return parsedPayload;
+    }
+
+    final petId = scannedPetId?.trim();
+    if (petId != null && petId.isNotEmpty) {
+      return <String, dynamic>{'petId': petId};
+    }
+
+    final trimmedPayload = rawPayload.trim();
+    if (trimmedPayload.isEmpty) {
+      return null;
+    }
+
+    return <String, dynamic>{'rawText': trimmedPayload};
   }
 
   Future<void> _simulateWriteWithoutNfc() async {
