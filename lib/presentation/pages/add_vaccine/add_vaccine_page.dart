@@ -8,7 +8,6 @@ import 'package:flutter_frontend/core/models/pet_model.dart';
 import 'package:flutter_frontend/core/models/vaccine_model.dart';
 import 'package:flutter_frontend/core/services/attachment_upload_service.dart';
 import 'package:flutter_frontend/core/services/pet_service.dart';
-import 'package:flutter_frontend/core/services/user_service.dart';
 import 'package:flutter_frontend/core/services/vaccine_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_frontend/presentation/pages/add_flow/utils/date_input.dart';
@@ -38,7 +37,6 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
   final _administeredByController = TextEditingController();
 
   final VaccineService _vaccineService = VaccineService();
-  final UserService _userService = UserService();
   final PetService _petService = PetService();
   final AttachmentUploadService _attachmentUploadService =
       AttachmentUploadService();
@@ -215,24 +213,7 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
   Future<void> _loadPets() async {
     setState(() => _isLoadingPets = true);
     try {
-      final profile = await _userService.getCurrentUser();
-      final petIds = profile.pets
-          .map(_extractPetId)
-          .map((id) => id.trim())
-          .where((id) => id.isNotEmpty)
-          .toList(growable: false);
-
-      final petResults = await Future.wait(
-        petIds.map((petId) async {
-          try {
-            return await _petService.getPetById(petId);
-          } catch (_) {
-            // Skip missing/invalid pet ids to avoid crashing the flow.
-            return null;
-          }
-        }),
-      );
-      final pets = petResults.whereType<PetModel>().toList(growable: false);
+      final pets = await _petService.getPets();
       if (!mounted) return;
       setState(() {
         _pets
@@ -253,19 +234,6 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
         setState(() => _isLoadingPets = false);
       }
     }
-  }
-
-  String _extractPetId(dynamic pet) {
-    if (pet is String) {
-      return pet;
-    }
-    if (pet is Map) {
-      final id = pet['id'] ?? pet['petId'] ?? pet['pet_id'];
-      if (id != null) {
-        return id.toString();
-      }
-    }
-    return pet?.toString() ?? '';
   }
 
   void _applyPetSelectionFromPrefill(AddVaccineArgs prefill) {

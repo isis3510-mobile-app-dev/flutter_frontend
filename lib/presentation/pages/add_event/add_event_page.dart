@@ -260,25 +260,15 @@ class _AddEventPageState extends State<AddEventPage> {
     setState(() => _isLoadingPets = true);
 
     try {
-      final profile = await _userService.getCurrentUser();
-      _ownerId = profile.id.trim().isEmpty ? null : profile.id.trim();
-      final petIds = profile.pets
-          .map(_extractPetId)
-          .map((id) => id.trim())
-          .where((id) => id.isNotEmpty)
-          .toList(growable: false);
+      final pets = await _petService.getPets();
 
-      final petResults = await Future.wait(
-        petIds.map((petId) async {
-          try {
-            return await _petService.getPetById(petId);
-          } catch (_) {
-            // Skip missing/invalid pet ids to keep the flow working.
-            return null;
-          }
-        }),
-      );
-      final pets = petResults.whereType<PetModel>().toList(growable: false);
+      // Keep owner id prefilled when user data is available.
+      try {
+        final profile = await _userService.getCurrentUser();
+        _ownerId = profile.id.trim().isEmpty ? null : profile.id.trim();
+      } catch (_) {
+        // Owner id can still be resolved from selected pet owners on submit.
+      }
 
       if (!mounted) {
         return;
@@ -306,19 +296,6 @@ class _AddEventPageState extends State<AddEventPage> {
         setState(() => _isLoadingPets = false);
       }
     }
-  }
-
-  String _extractPetId(dynamic pet) {
-    if (pet is String) {
-      return pet;
-    }
-    if (pet is Map) {
-      final id = pet['id'] ?? pet['petId'] ?? pet['pet_id'];
-      if (id != null) {
-        return id.toString();
-      }
-    }
-    return pet?.toString() ?? '';
   }
 
   void _applyPetSelectionFromPrefill(AddEventArgs prefill) {

@@ -22,6 +22,7 @@ class EventService {
   static const String _actionCreate = 'create';
   static const String _actionUpdate = 'update';
   static const String _actionDelete = 'delete';
+  static const String _petIdMappingMetaPrefix = 'pet_id_map.';
 
   final ApiClient _apiClient = ApiClient();
   final ResponseCacheService _cache = ResponseCacheService();
@@ -214,10 +215,14 @@ class EventService {
       try {
         switch (operation.action) {
           case _actionCreate:
-            final createPayload = operation.payload ?? const <String, dynamic>{};
+            final createPayload = _asStringDynamicMap(
+              operation.payload ?? const <String, dynamic>{},
+            );
+            final resolvedCreatePayload =
+                await _resolveEventPayloadPetIdForSync(createPayload);
             final response = await _apiClient.post(
               eventsPath,
-              body: createPayload,
+              body: resolvedCreatePayload,
             );
             final created = _decodeEventMap(
               response.body,
@@ -230,9 +235,14 @@ class EventService {
             await _persistEventMap(_eventToMap(created));
             break;
           case _actionUpdate:
+            final updatePayload = _asStringDynamicMap(
+              operation.payload ?? const <String, dynamic>{},
+            );
+            final resolvedUpdatePayload =
+                await _resolveEventPayloadPetIdForSync(updatePayload);
             await _apiClient.put(
               '$eventsPath${operation.entityId}/',
-              body: operation.payload ?? const <String, dynamic>{},
+              body: resolvedUpdatePayload,
             );
             break;
           case _actionDelete:
@@ -426,6 +436,44 @@ class EventService {
     }
 
     return null;
+  }
+
+  Future<Map<String, dynamic>> _resolveEventPayloadPetIdForSync(
+    Map<String, dynamic> payload,
+  ) async {
+    final resolved = <String, dynamic>{...payload};
+    final rawPetId = (resolved['petId'] ?? resolved['pet_id'])?.toString();
+    final mappedPetId = await _resolvePetIdForSync(rawPetId);
+    if (mappedPetId == null || mappedPetId.isEmpty) {
+      return resolved;
+    }
+
+    if (resolved.containsKey('petId')) {
+      resolved['petId'] = mappedPetId;
+    }
+    if (resolved.containsKey('pet_id')) {
+      resolved['pet_id'] = mappedPetId;
+    }
+    if (!resolved.containsKey('petId') && !resolved.containsKey('pet_id')) {
+      resolved['petId'] = mappedPetId;
+    }
+
+    return resolved;
+  }
+
+  Future<String?> _resolvePetIdForSync(String? petId) async {
+    final trimmed = petId?.trim() ?? '';
+    if (trimmed.isEmpty) {
+      return null;
+    }
+
+    final mapped = await _localDb.getMetaValue('$_petIdMappingMetaPrefix$trimmed');
+    final mappedTrimmed = mapped?.trim() ?? '';
+    if (mappedTrimmed.isNotEmpty) {
+      return mappedTrimmed;
+    }
+
+    return trimmed;
   }
 
   Map<String, dynamic> _eventToMap(EventModel event) {

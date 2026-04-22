@@ -29,6 +29,7 @@ class PetService {
   static const String _actionAddVaccination = 'add_vaccination';
   static const String _actionUpdateVaccination = 'update_vaccination';
   static const String _actionDeleteVaccination = 'delete_vaccination';
+  static const String _petIdMappingMetaPrefix = 'pet_id_map.';
 
   final ApiClient _apiClient = ApiClient();
   final ResponseCacheService _cache = ResponseCacheService();
@@ -494,6 +495,13 @@ class PetService {
             );
             final decoded = jsonDecode(response.body);
             if (decoded is Map<String, dynamic>) {
+              final remotePetId = _readPetRemoteId(_asPetMap(decoded));
+              if (remotePetId != null && remotePetId.isNotEmpty) {
+                await _localDb.setMetaValue(
+                  key: '$_petIdMappingMetaPrefix${operation.entityId}',
+                  value: remotePetId,
+                );
+              }
               await _localDb.deleteEntity(
                 table: LocalDbTables.pets,
                 remoteId: operation.entityId,
@@ -532,7 +540,8 @@ class PetService {
     for (final operation in vaccinationOperations) {
       try {
         final payload = operation.payload ?? const <String, dynamic>{};
-        final petId = (payload['petId'] as String?)?.trim();
+        final queuedPetId = (payload['petId'] as String?)?.trim();
+        final petId = await _resolvePetIdForSync(queuedPetId);
         if (petId == null || petId.isEmpty) {
           throw const ApiException(
             type: ApiErrorType.unknown,
@@ -697,6 +706,21 @@ class PetService {
     }
 
     return null;
+  }
+
+  Future<String?> _resolvePetIdForSync(String? petId) async {
+    final trimmed = petId?.trim() ?? '';
+    if (trimmed.isEmpty) {
+      return null;
+    }
+
+    final mapped = await _localDb.getMetaValue('$_petIdMappingMetaPrefix$trimmed');
+    final mappedTrimmed = mapped?.trim() ?? '';
+    if (mappedTrimmed.isNotEmpty) {
+      return mappedTrimmed;
+    }
+
+    return trimmed;
   }
 
   bool _shouldQueueOffline(Object error) {
