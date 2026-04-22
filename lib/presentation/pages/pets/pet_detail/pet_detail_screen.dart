@@ -99,7 +99,19 @@ class _PetDetailScreenState extends State<PetDetailScreen>
     });
 
     try {
-      final detail = await _petService.getPetById(widget.pet.id);
+      PetModel detail;
+      try {
+        detail = await _petService.getPetById(widget.pet.id);
+      } on ApiException catch (_) {
+        final localPets = await _petService.getPets();
+        final localMatch = localPets.where((pet) => pet.id == widget.pet.id);
+        if (localMatch.isEmpty) {
+          rethrow;
+        }
+
+        detail = localMatch.first;
+      }
+
       final localPath = await _photoService.getPetPhotoPath(widget.pet.id);
       final uiPet = detail.toUiModel().copyWith(localPhotoPath: localPath);
       List<EventModel> petEvents = const [];
@@ -109,9 +121,15 @@ class _PetDetailScreenState extends State<PetDetailScreen>
       try {
         petEvents = await _eventService.getEventsByPet(widget.pet.id);
       } on ApiException catch (error) {
-        eventsErrorMessage = error.message;
+        final isLocalPet = widget.pet.id.trim().startsWith('local_');
+        if (!isLocalPet) {
+          eventsErrorMessage = error.message;
+        }
       } catch (_) {
-        eventsErrorMessage = AppStrings.errorGeneric;
+        final isLocalPet = widget.pet.id.trim().startsWith('local_');
+        if (!isLocalPet) {
+          eventsErrorMessage = AppStrings.errorGeneric;
+        }
       }
 
       try {
@@ -127,10 +145,13 @@ class _PetDetailScreenState extends State<PetDetailScreen>
         return;
       }
 
+      final sortedPetEvents = List<EventModel>.from(petEvents)
+        ..sort((a, b) => b.date.compareTo(a.date));
+
       setState(() {
         _petDetails = detail;
         _pet = uiPet;
-        _petEvents = petEvents..sort((a, b) => b.date.compareTo(a.date));
+        _petEvents = sortedPetEvents;
         _smartSuggestions = smartSuggestions;
         _eventsErrorMessage = eventsErrorMessage;
       });
