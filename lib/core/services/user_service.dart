@@ -18,6 +18,8 @@ class UserService {
   static const String currentUserPath = '/api/users/me/';
   static const String _currentUserCacheKey = 'users.current';
   static const Duration _currentUserCacheTtl = Duration(minutes: 5);
+  static const String _entityTypeUser = 'user';
+  static const String _actionUpdateProfile = 'update_profile';
 
   final ApiClient _apiClient = ApiClient();
   final ResponseCacheService _cache = ResponseCacheService();
@@ -58,32 +60,106 @@ class UserService {
 
   Future<UserProfile> updateCurrentUser({
     required String name,
-    required String email,
     String phone = '',
     String address = '',
     String profilePhoto = '',
   }) async {
-    final response = await _apiClient.put(
-      currentUserPath,
-      body: {
-        'name': name,
-        'email': email,
-        'phone': phone,
-        'address': address,
-        'profilePhoto': profilePhoto,
-        'initials': _initialsFromName(name),
-      },
+    final updatePayload = <String, dynamic>{
+      'name': name,
+      'phone': phone,
+      'address': address,
+      'profilePhoto': profilePhoto,
+      'initials': _initialsFromName(name),
+    };
+
+    try {
+      final response = await _apiClient.put(
+        currentUserPath,
+        body: updatePayload,
+      );
+
+      if (response.body.isEmpty) {
+        await _cache.clear(_currentUserCacheKey);
+        return getCurrentUser(forceRefresh: true);
+      }
+
+      final profile = _parseCurrentUser(response.body);
+      await _cache.set(_currentUserCacheKey, response.body);
+      await _persistCurrentUserFromBody(response.body);
+      return profile;
+    } catch (error) {
+      if (!_shouldQueueOffline(error)) {
+        rethrow;
+      }
+
+      final localProfileJson = await _getCurrentUserJsonFromLocalDb();
+      if (localProfileJson == null) {
+        rethrow;
+      }
+
+      final userId = (localProfileJson['id'] as String?)?.trim() ?? '';
+      if (userId.isEmpty) {
+        rethrow;
+      }
+
+      final mergedProfile = <String, dynamic>{
+        ...localProfileJson,
+        ...updatePayload,
+      };
+
+      await _localDb.upsertEntity(
+        table: LocalDbTables.users,
+        remoteId: userId,
+        payload: mergedProfile,
+        syncStatus: 'pending_update',
+      );
+
+      await _localDb.enqueueSyncOperation(
+        entityType: _entityTypeUser,
+        entityId: userId,
+        action: _actionUpdateProfile,
+        payload: updatePayload,
+      );
+
+      await _cache.set(_currentUserCacheKey, jsonEncode(mergedProfile));
+      return UserProfile.fromJson(mergedProfile);
+    }
+  }
+
+  Future<void> retryPendingSyncOperations({int limit = 30}) async {
+    final operations = await _localDb.getPendingSyncOperations(
+      entityType: _entityTypeUser,
+      limit: limit,
     );
 
-    if (response.body.isEmpty) {
-      await _cache.clear(_currentUserCacheKey);
-      return getCurrentUser(forceRefresh: true);
-    }
+    for (final operation in operations) {
+      try {
+        switch (operation.action) {
+          case _actionUpdateProfile:
+            final response = await _apiClient.put(
+              currentUserPath,
+              body: operation.payload ?? const <String, dynamic>{},
+            );
 
-    final profile = _parseCurrentUser(response.body);
-    await _cache.set(_currentUserCacheKey, response.body);
-    await _persistCurrentUserFromBody(response.body);
-    return profile;
+            if (response.body.trim().isNotEmpty) {
+              await _persistCurrentUserFromBody(response.body);
+              await _cache.set(_currentUserCacheKey, response.body);
+            } else {
+              await _cache.clear(_currentUserCacheKey);
+            }
+            break;
+          default:
+            break;
+        }
+
+        await _localDb.markSyncOperationCompleted(operation.id);
+      } catch (error) {
+        await _localDb.markSyncOperationFailed(
+          operation.id,
+          error: error.toString(),
+        );
+      }
+    }
   }
 
   UserProfile _parseCurrentUser(String body) {
@@ -149,14 +225,31 @@ class UserService {
 
   Future<UserProfile?> _getCurrentUserFromLocalDb() async {
     try {
+      final userJson = await _getCurrentUserJsonFromLocalDb();
+      if (userJson == null) {
+        return null;
+      }
+
+      return UserProfile.fromJson(userJson);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> _getCurrentUserJsonFromLocalDb() async {
+    try {
       final users = await _localDb.getAllEntities(LocalDbTables.users);
       if (users.isEmpty) {
         return null;
       }
 
-      return UserProfile.fromJson(users.first);
+      return users.first;
     } catch (_) {
       return null;
     }
+  }
+
+  bool _shouldQueueOffline(Object error) {
+    return error is ApiException && error.type == ApiErrorType.network;
   }
 }

@@ -31,7 +31,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final ImagePicker _imagePicker = ImagePicker();
 
   late final TextEditingController _nameController;
-  late final TextEditingController _emailController;
   late final TextEditingController _phoneController;
   late final TextEditingController _addressController;
 
@@ -45,7 +44,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.profile.name);
-    _emailController = TextEditingController(text: widget.profile.email);
     _phoneController = TextEditingController(text: widget.profile.phone);
     _addressController = TextEditingController(text: widget.profile.address);
     _profilePhotoValue = widget.profile.profilePhoto;
@@ -54,7 +52,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
   @override
   void dispose() {
     _nameController.dispose();
-    _emailController.dispose();
     _phoneController.dispose();
     _addressController.dispose();
     super.dispose();
@@ -63,7 +60,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
   Future<void> _saveProfile() async {
     AppFormSanitizers.trimControllers([
       _nameController,
-      _emailController,
       _phoneController,
       _addressController,
     ]);
@@ -81,7 +77,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
     try {
       await _userService.updateCurrentUser(
         name: _nameController.text.trim(),
-        email: _emailController.text.trim(),
         phone: _phoneController.text.trim(),
         address: _addressController.text.trim(),
         profilePhoto: _profilePhotoValue.trim(),
@@ -124,13 +119,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
   String? _requiredFieldValidator(String? value) {
     return AppFormValidators.required(
       AppStrings.validationFieldRequired(AppStrings.authFullName),
-    )(value);
-  }
-
-  String? _emailValidator(String? value) {
-    return AppFormValidators.email(
-      requiredMessage: AppStrings.validationEmailRequired,
-      invalidMessage: AppStrings.authErrorInvalidEmail,
     )(value);
   }
 
@@ -269,14 +257,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       AppFormConstraints.personNameMaxLength,
                     ),
                   ],
-                ),
-                const SizedBox(height: AppDimensions.spaceM),
-                _ProfileFormField(
-                  label: AppStrings.profileEmail,
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  validator: _emailValidator,
-                  inputFormatters: AppInputFormatters.email(),
                 ),
                 const SizedBox(height: AppDimensions.spaceM),
                 _ProfileFormField(
