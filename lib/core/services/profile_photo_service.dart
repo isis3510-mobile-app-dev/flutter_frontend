@@ -18,8 +18,10 @@ class ProfilePhotoService {
     required String fileNamePrefix,
     required String extension,
   }) async {
-    final directory = await getApplicationDocumentsDirectory();
-    final imageDir = Directory('${directory.path}/$directoryName');
+    final directory = await getApplicationSupportDirectory();
+    final imageDir = Directory(
+      '${directory.path}/app_specific/$directoryName',
+    );
 
     if (!await imageDir.exists()) {
       await imageDir.create(recursive: true);

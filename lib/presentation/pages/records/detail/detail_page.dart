@@ -5,9 +5,11 @@ import 'package:flutter_frontend/core/constants/app_strings.dart';
 import 'package:flutter_frontend/core/models/event_model.dart';
 import 'package:flutter_frontend/core/models/pet_model.dart';
 import 'package:flutter_frontend/core/services/event_service.dart';
+import 'package:flutter_frontend/core/services/local_asset_store_service.dart';
 import 'package:flutter_frontend/core/services/pet_service.dart';
 import 'package:flutter_frontend/core/services/vaccine_service.dart';
 import 'package:flutter_frontend/core/utils/context_extensions.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:flutter_frontend/presentation/pages/add_event/add_event_args.dart';
 import 'package:flutter_frontend/presentation/pages/add_vaccine/add_vaccine_args.dart';
 import 'package:flutter_frontend/shared/widgets/full_width_button.dart';
@@ -37,6 +39,7 @@ class _DetailPageState extends State<DetailPage> {
   final PetService _petService = PetService();
   final VaccineService _vaccineService = VaccineService();
   final EventService _eventService = EventService();
+  final LocalAssetStoreService _localAssetStore = LocalAssetStoreService();
 
   PetVaccinationModel? _vaccination;
   PetModel? _pet;
@@ -212,9 +215,9 @@ class _DetailPageState extends State<DetailPage> {
     }
   }
 
-  Future<void> _openDocument(String url) async {
-    final uri = Uri.tryParse(url.trim());
-    if (uri == null) {
+  Future<void> _openDocument(_DocumentItem document) async {
+    final remoteUrl = document.url.trim();
+    if (remoteUrl.isEmpty) {
       if (!mounted) {
         return;
       }
@@ -225,7 +228,39 @@ class _DetailPageState extends State<DetailPage> {
     }
 
     try {
-      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      final localPath = await _localAssetStore.ensureLocalCopyFromRemote(
+        remoteUrl: remoteUrl,
+        category: _documentCategory,
+        fileName: document.name,
+        stableId: document.documentId,
+      );
+
+      if (localPath != null && localPath.trim().isNotEmpty) {
+        try {
+          final result = await OpenFilex.open(localPath);
+          if (result.type == ResultType.done || !mounted) {
+            return;
+          }
+        } catch (_) {
+          // If local opening fails, continue with remote fallback.
+        }
+      }
+
+      final remoteUri = Uri.tryParse(remoteUrl);
+      if (remoteUri == null) {
+        if (!mounted) {
+          return;
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text(AppStrings.errorGeneric)),
+        );
+        return;
+      }
+
+      final opened = await launchUrl(
+        remoteUri,
+        mode: LaunchMode.externalApplication,
+      );
       if (opened || !mounted) {
         return;
       }
@@ -244,6 +279,12 @@ class _DetailPageState extends State<DetailPage> {
         ),
       );
     }
+  }
+
+  String get _documentCategory {
+    return widget.type == 'event'
+        ? 'documents/events'
+        : 'documents/vaccines';
   }
 
   @override
@@ -545,6 +586,7 @@ class _DetailPageState extends State<DetailPage> {
                         documents: vaccineDocuments
                             .map(
                               (doc) => _DocumentItem(
+                                documentId: doc.documentId,
                                 name: doc.fileName,
                                 url: doc.fileUri,
                               ),
@@ -557,6 +599,7 @@ class _DetailPageState extends State<DetailPage> {
                         documents: eventDocuments
                             .map(
                               (doc) => _DocumentItem(
+                                documentId: doc.documentId,
                                 name: doc.fileName,
                                 url: doc.fileUri,
                               ),
@@ -614,10 +657,15 @@ class _DetailPageState extends State<DetailPage> {
 }
 
 class _DocumentItem {
-  const _DocumentItem({required this.name, required this.url});
+  const _DocumentItem({
+    required this.name,
+    required this.url,
+    this.documentId,
+  });
 
   final String name;
   final String url;
+  final String? documentId;
 }
 
 class _DocumentsList extends StatelessWidget {
@@ -629,7 +677,7 @@ class _DocumentsList extends StatelessWidget {
 
   final List<_DocumentItem> documents;
   final String emptyLabel;
-  final Future<void> Function(String url) onOpenDocument;
+  final Future<void> Function(_DocumentItem document) onOpenDocument;
 
   @override
   Widget build(BuildContext context) {
@@ -660,7 +708,7 @@ class _DocumentsList extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             onTap: document.url.trim().isEmpty
                 ? null
-                : () => onOpenDocument(document.url),
+                : () => onOpenDocument(document),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Row(

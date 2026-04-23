@@ -168,7 +168,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
         return;
       }
 
-      await _photoService.clearLocalPhoto();
+      if (uploadedPhoto.localFilePath != null &&
+          uploadedPhoto.localFilePath!.trim().isNotEmpty) {
+        await _photoService.saveLocalPhotoPath(uploadedPhoto.localFilePath!);
+      } else {
+        await _photoService.clearLocalPhoto();
+      }
 
       setState(() {
         _profilePhotoValue = uploadedPhoto.downloadUrl;

@@ -303,11 +303,18 @@ class _AddPetScreenState extends State<AddPetScreen> {
           data: {...payload, 'photoUrl': uploadedPhoto.downloadUrl},
         );
 
-        await _photoService.clearPetPhotoPath(savedPet.id);
+        if (uploadedPhoto.localFilePath != null &&
+            uploadedPhoto.localFilePath!.trim().isNotEmpty) {
+          await _photoService.savePetPhotoPath(
+            petId: savedPet.id,
+            filePath: uploadedPhoto.localFilePath!,
+          );
+        }
 
         if (mounted) {
           setState(() {
-            _petPhotoPath = uploadedPhoto.downloadUrl;
+            _petPhotoPath =
+                uploadedPhoto.localFilePath ?? uploadedPhoto.downloadUrl;
             _didRemovePhoto = false;
           });
         }
