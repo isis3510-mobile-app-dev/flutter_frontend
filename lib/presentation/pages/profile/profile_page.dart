@@ -5,6 +5,7 @@ import 'package:flutter_frontend/core/constants/app_dimensions.dart';
 import 'package:flutter_frontend/core/constants/app_strings.dart';
 import 'package:flutter_frontend/core/models/user_profile.dart';
 import 'package:flutter_frontend/core/network/api_exception.dart';
+import 'package:flutter_frontend/core/services/app_preferences_service.dart';
 import 'package:flutter_frontend/core/services/auth_service.dart';
 import 'package:flutter_frontend/core/services/profile_photo_service.dart';
 import 'package:flutter_frontend/core/services/telemetry_service.dart';
@@ -26,6 +27,7 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  final AppPreferencesService _preferencesService = AppPreferencesService();
   final AuthService _authService = AuthService();
   final ProfilePhotoService _photoService = ProfilePhotoService();
   final UserService _userService = UserService();
@@ -46,7 +48,20 @@ class _ProfilePageState extends State<ProfilePage> {
   void initState() {
     super.initState();
     _notificationsEnabled = true;
+    _loadPreferences();
     _loadProfile();
+  }
+
+  Future<void> _loadPreferences() async {
+    final notificationsEnabled = await _preferencesService
+        .getNotificationsEnabled();
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _notificationsEnabled = notificationsEnabled;
+    });
   }
 
   Future<void> _loadProfile() async {
@@ -407,10 +422,11 @@ class _ProfilePageState extends State<ProfilePage> {
     await themeController.setPreference(selected);
   }
 
-  void _handleNotificationsToggle(bool value) {
+  Future<void> _handleNotificationsToggle(bool value) async {
     setState(() {
       _notificationsEnabled = value;
     });
+    await _preferencesService.setNotificationsEnabled(value);
   }
 
   Future<void> _handleSignOut() async {
