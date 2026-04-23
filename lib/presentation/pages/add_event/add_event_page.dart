@@ -832,6 +832,13 @@ class _AddEventPageState extends State<AddEventPage> {
         _attachedDocuments.addAll(uploads);
         _didTouchAttachments = true;
       });
+
+      final pendingCount = uploads.where((item) => item.isPendingUpload).length;
+      if (pendingCount > 0 && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text(AppStrings.attachmentQueuedOffline)),
+        );
+      }
     } catch (_) {
       if (!mounted) {
         return;

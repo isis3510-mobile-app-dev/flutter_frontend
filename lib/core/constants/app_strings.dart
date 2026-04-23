@@ -122,6 +122,10 @@ abstract class AppStrings {
   // --- Error messages ---
   static const String errorGeneric = 'An unexpected error occurred.';
   static const String errorNoConnection = 'No internet connection.';
+  static const String errorDocumentNoLocalCopyOffline =
+      'There is no local copy of this document on your device.';
+  static const String attachmentQueuedOffline =
+      'No internet. Document saved locally and queued for upload.';
   static const String valueNotAvailable = 'Not available';
   static const String stateEnabled = 'Enabled';
   static const String stateDisabled = 'Disabled';

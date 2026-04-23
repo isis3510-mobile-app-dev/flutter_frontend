@@ -4,6 +4,7 @@ import 'dart:convert';
 import '../models/pet_model.dart';
 import '../network/api_client.dart';
 import '../network/api_exception.dart';
+import 'attachment_upload_service.dart';
 import 'local_database_service.dart';
 import 'response_cache_service.dart';
 
@@ -34,6 +35,8 @@ class PetService {
   final ApiClient _apiClient = ApiClient();
   final ResponseCacheService _cache = ResponseCacheService();
   final LocalDatabaseService _localDb = LocalDatabaseService();
+  final AttachmentUploadService _attachmentUploadService =
+      AttachmentUploadService();
 
   Future<List<PetModel>> getPets({bool forceRefresh = false}) async {
     final cachedEntry = await _cache.get(_petsCacheKey);
@@ -551,9 +554,13 @@ class PetService {
 
         switch (operation.action) {
           case _actionAddVaccination:
+            final addData =
+                await _attachmentUploadService.resolvePendingAttachmentsInPayload(
+                  _asPetMap(payload['data'] ?? const <String, dynamic>{}),
+                );
             final response = await _apiClient.post(
               '$petsPath$petId/vaccinations/',
-              body: payload['data'] ?? const <String, dynamic>{},
+              body: addData,
             );
             if (response.body.trim().isNotEmpty) {
               final decoded = jsonDecode(response.body);
@@ -575,9 +582,13 @@ class PetService {
             }
             break;
           case _actionUpdateVaccination:
+            final updateData = await _attachmentUploadService
+                .resolvePendingAttachmentsInPayload(
+                  _asPetMap(payload['data'] ?? const <String, dynamic>{}),
+                );
             await _apiClient.put(
               '$petsPath$petId/vaccinations/${operation.entityId}/',
-              body: payload['data'] ?? const <String, dynamic>{},
+              body: updateData,
             );
             break;
           case _actionDeleteVaccination:
