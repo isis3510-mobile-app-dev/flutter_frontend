@@ -6,6 +6,7 @@ class UploadedAttachmentModel {
     required this.contentType,
     required this.sizeBytes,
     this.localFilePath,
+    this.isPendingUpload = false,
   });
 
   final String fileName;
@@ -14,6 +15,7 @@ class UploadedAttachmentModel {
   final String contentType;
   final int sizeBytes;
   final String? localFilePath;
+  final bool isPendingUpload;
 }
 
 class EditableAttachmentModel {
@@ -25,6 +27,7 @@ class EditableAttachmentModel {
     this.contentType = '',
     this.sizeBytes = 0,
     this.documentId,
+    this.isPendingUpload = false,
   });
 
   final String fileName;
@@ -34,6 +37,7 @@ class EditableAttachmentModel {
   final String contentType;
   final int sizeBytes;
   final String? documentId;
+  final bool isPendingUpload;
 
   factory EditableAttachmentModel.fromUploaded(
     UploadedAttachmentModel attachment,
@@ -45,6 +49,7 @@ class EditableAttachmentModel {
       storagePath: attachment.storagePath,
       contentType: attachment.contentType,
       sizeBytes: attachment.sizeBytes,
+      isPendingUpload: attachment.isPendingUpload,
     );
   }
 
@@ -54,9 +59,14 @@ class EditableAttachmentModel {
         'documentId': documentId,
       'fileName': fileName,
       'fileUri': fileUri,
+      if (isPendingUpload &&
+          localFilePath != null &&
+          localFilePath!.trim().isNotEmpty)
+        'localFilePath': localFilePath,
       if (storagePath.trim().isNotEmpty) 'storagePath': storagePath,
       if (contentType.trim().isNotEmpty) 'contentType': contentType,
       if (sizeBytes > 0) 'sizeBytes': sizeBytes,
+      if (isPendingUpload) 'pendingUpload': true,
     };
   }
 }
