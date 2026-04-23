@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -12,6 +13,7 @@ import '../../../../core/models/event_model.dart';
 import '../../../../core/models/pet_model.dart';
 import '../../../../core/models/smart_alert_model.dart';
 import '../../../../core/network/api_exception.dart';
+import '../../../../core/services/app_image_cache_manager.dart';
 import '../../../../core/services/event_service.dart';
 import '../../../../core/services/pet_service.dart';
 import '../../../../core/services/profile_photo_service.dart';
@@ -679,10 +681,12 @@ class _PetPhoto extends StatelessWidget {
     }
 
     if (_isRemotePhoto(value)) {
-      return Image.network(
-        value,
+      return CachedNetworkImage(
+        imageUrl: value,
+        cacheManager: AppImageCacheManager.instance,
         fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => _PhotoPlaceholder(species: species),
+        placeholder: (_, _) => _PhotoPlaceholder(species: species),
+        errorWidget: (_, _, _) => _PhotoPlaceholder(species: species),
       );
     }
 

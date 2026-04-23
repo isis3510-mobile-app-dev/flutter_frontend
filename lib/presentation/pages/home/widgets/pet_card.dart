@@ -1,6 +1,8 @@
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/core/services/app_image_cache_manager.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../pets/models/pet_ui_model.dart';
@@ -40,7 +42,10 @@ class PetCard extends StatelessWidget {
                   image: pet.hasPhoto
                       ? DecorationImage(
                           image: pet.isPhotoRemote
-                              ? NetworkImage(effectivePhotoPath!)
+                              ? CachedNetworkImageProvider(
+                                  effectivePhotoPath!,
+                                  cacheManager: AppImageCacheManager.instance,
+                                )
                               : FileImage(File(effectivePhotoPath!))
                                     as ImageProvider,
                           fit: BoxFit.cover,
