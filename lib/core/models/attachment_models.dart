@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 class UploadedAttachmentModel {
   const UploadedAttachmentModel({
     required this.fileName,
@@ -58,5 +60,80 @@ class EditableAttachmentModel {
       if (contentType.trim().isNotEmpty) 'contentType': contentType,
       if (sizeBytes > 0) 'sizeBytes': sizeBytes,
     };
+  }
+}
+
+enum AttachmentUploadStatus { queued, processing, uploading, succeeded, failed }
+
+class PendingAttachmentUpload {
+  const PendingAttachmentUpload({
+    required this.localId,
+    required this.fileName,
+    required this.bytes,
+    required this.category,
+    required this.isImage,
+  });
+
+  final String localId;
+  final String fileName;
+  final Uint8List bytes;
+  final String category;
+  final bool isImage;
+}
+
+class AttachmentUploadItem {
+  const AttachmentUploadItem({
+    required this.localId,
+    required this.fileName,
+    required this.status,
+    this.errorMessage,
+    this.attachment,
+  });
+
+  final String localId;
+  final String fileName;
+  final AttachmentUploadStatus status;
+  final String? errorMessage;
+  final EditableAttachmentModel? attachment;
+
+  bool get isPending =>
+      status == AttachmentUploadStatus.queued ||
+      status == AttachmentUploadStatus.processing ||
+      status == AttachmentUploadStatus.uploading;
+
+  bool get isFailed => status == AttachmentUploadStatus.failed;
+  bool get isSucceeded => status == AttachmentUploadStatus.succeeded;
+
+  AttachmentUploadItem copyWith({
+    String? localId,
+    String? fileName,
+    AttachmentUploadStatus? status,
+    String? errorMessage,
+    bool clearErrorMessage = false,
+    EditableAttachmentModel? attachment,
+    bool clearAttachment = false,
+  }) {
+    return AttachmentUploadItem(
+      localId: localId ?? this.localId,
+      fileName: fileName ?? this.fileName,
+      status: status ?? this.status,
+      errorMessage: clearErrorMessage
+          ? null
+          : (errorMessage ?? this.errorMessage),
+      attachment: clearAttachment ? null : (attachment ?? this.attachment),
+    );
+  }
+
+  factory AttachmentUploadItem.fromExisting(
+    EditableAttachmentModel attachment,
+  ) {
+    return AttachmentUploadItem(
+      localId: attachment.documentId?.trim().isNotEmpty == true
+          ? 'existing-${attachment.documentId!.trim()}'
+          : 'existing-${attachment.fileName}-${attachment.fileUri}',
+      fileName: attachment.fileName,
+      status: AttachmentUploadStatus.succeeded,
+      attachment: attachment,
+    );
   }
 }

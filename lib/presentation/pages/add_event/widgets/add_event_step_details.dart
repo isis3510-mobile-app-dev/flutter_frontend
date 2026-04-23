@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_frontend/core/constants/app_strings.dart';
 import 'package:flutter_frontend/core/forms/app_form_constraints.dart';
 import 'package:flutter_frontend/core/forms/app_form_utils.dart';
+import 'package:flutter_frontend/core/models/attachment_models.dart';
 import 'package:flutter_frontend/presentation/pages/add_flow/widgets/add_flow_attachments.dart';
 import 'package:flutter_frontend/shared/widgets/form_field.dart';
 
@@ -17,9 +18,9 @@ class AddEventStepDetails extends StatelessWidget {
     required this.onPickFollowUpDate,
     required this.descriptionController,
     required this.onAddAttachment,
-    required this.attachmentNames,
+    required this.attachments,
     required this.onRemoveAttachment,
-    required this.isUploadingAttachments,
+    this.onRetryAttachment,
   });
 
   final TextEditingController eventController;
@@ -30,9 +31,9 @@ class AddEventStepDetails extends StatelessWidget {
   final VoidCallback onPickFollowUpDate;
   final TextEditingController descriptionController;
   final VoidCallback onAddAttachment;
-  final List<String> attachmentNames;
-  final ValueChanged<int> onRemoveAttachment;
-  final bool isUploadingAttachments;
+  final List<AttachmentUploadItem> attachments;
+  final ValueChanged<String> onRemoveAttachment;
+  final ValueChanged<String>? onRetryAttachment;
 
   bool _isValidDate(String value) {
     final parts = value.split('/');
@@ -142,9 +143,9 @@ class AddEventStepDetails extends StatelessWidget {
         const SizedBox(height: 18),
         AddFlowAttachmentsSection(
           onTap: onAddAttachment,
-          attachments: attachmentNames,
+          attachments: attachments,
           onRemoveAttachment: onRemoveAttachment,
-          isUploading: isUploadingAttachments,
+          onRetryAttachment: onRetryAttachment,
         ),
       ],
     );

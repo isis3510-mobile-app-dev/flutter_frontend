@@ -22,6 +22,7 @@ dependencies:
   google_sign_in: ^6.2.1
   http: ^1.6.0
   image_picker: ^1.1.2
+  image: ^4.5.4
   nfc_manager: ^4.1.1
   open_filex: ^4.7.0
   path_provider: ^2.1.1
