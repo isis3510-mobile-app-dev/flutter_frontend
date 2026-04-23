@@ -1,7 +1,9 @@
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../../../../../core/services/app_image_cache_manager.dart';
 
 import '../../../../../core/constants/app_colors.dart';
 import '../../../../../core/constants/app_dimensions.dart';
@@ -143,11 +145,18 @@ class PetPhotoPicker extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppDimensions.radiusL),
       child: isNetwork
-          ? Image.network(
-              value,
+          ? CachedNetworkImage(
+              imageUrl: value,
+              cacheManager: AppImageCacheManager.instance,
               fit: BoxFit.cover,
               width: double.infinity,
               height: double.infinity,
+              placeholder: (_, _) => const SizedBox.expand(
+                child: ColoredBox(color: Colors.transparent),
+              ),
+              errorWidget: (_, _, _) => const SizedBox.expand(
+                child: ColoredBox(color: Colors.transparent),
+              ),
             )
           : Image.file(
               File(value),

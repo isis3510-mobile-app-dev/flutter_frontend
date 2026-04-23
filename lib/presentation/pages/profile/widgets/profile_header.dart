@@ -1,9 +1,11 @@
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/core/constants/app_colors.dart';
 import 'package:flutter_frontend/core/constants/app_dimensions.dart';
 import 'package:flutter_frontend/core/constants/app_strings.dart';
+import 'package:flutter_frontend/core/services/app_image_cache_manager.dart';
 
 /// The profile header component displaying the user's avatar, name, and role.
 /// Located at the top of the profile page.
@@ -37,7 +39,10 @@ class ProfileHeader extends StatelessWidget {
     final hasLocalPhoto =
         localPhotoPath != null && localPhotoPath!.trim().isNotEmpty;
     final ImageProvider<Object>? imageProvider = hasRemotePhoto
-        ? NetworkImage(remotePhotoUrl!.trim())
+      ? CachedNetworkImageProvider(
+        remotePhotoUrl!.trim(),
+        cacheManager: AppImageCacheManager.instance,
+        )
         : hasLocalPhoto
         ? FileImage(File(localPhotoPath!))
         : null;

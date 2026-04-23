@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import 'local_database_service.dart';
 import 'profile_photo_service.dart';
 import 'response_cache_service.dart';
 
@@ -14,6 +15,7 @@ class AuthService {
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
   final ResponseCacheService _responseCacheService = ResponseCacheService();
+  final LocalDatabaseService _localDatabaseService = LocalDatabaseService();
   final ProfilePhotoService _profilePhotoService = ProfilePhotoService();
 
   Stream<User?> get authStateChanges => _firebaseAuth.authStateChanges();
@@ -76,6 +78,7 @@ class AuthService {
       await _googleSignIn.signOut();
     } finally {
       await _responseCacheService.clearAll();
+      await _localDatabaseService.clearUserData();
       await _profilePhotoService.clearAllPhotoPaths();
     }
   }

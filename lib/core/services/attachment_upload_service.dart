@@ -7,16 +7,19 @@ import 'package:flutter_frontend/firebase_options.dart';
 
 import 'attachment_id_service.dart';
 import 'auth_service.dart';
+import 'local_asset_store_service.dart';
 
 class AttachmentUploadService {
   AttachmentUploadService._({
     FirebaseStorage? storage,
     AuthService? authService,
     AttachmentIdService? attachmentIdService,
+    LocalAssetStoreService? localAssetStoreService,
   }) : _storage =
            storage ?? FirebaseStorage.instanceFor(bucket: _defaultBucketUrl),
        _authService = authService ?? AuthService(),
-       _attachmentIdService = attachmentIdService ?? AttachmentIdService();
+       _attachmentIdService = attachmentIdService ?? AttachmentIdService(),
+       _localAssetStore = localAssetStoreService ?? LocalAssetStoreService();
 
   static final AttachmentUploadService _instance = AttachmentUploadService._();
 
@@ -25,6 +28,7 @@ class AttachmentUploadService {
   final FirebaseStorage _storage;
   final AuthService _authService;
   final AttachmentIdService _attachmentIdService;
+  final LocalAssetStoreService _localAssetStore;
   static const Duration _uploadTimeout = Duration(seconds: 30);
   static String get _defaultBucketUrl {
     final configuredBucket =
@@ -67,6 +71,8 @@ class AttachmentUploadService {
       bytes: bytes,
       fileName: fileName,
       storagePath: storagePath,
+      localCategory: 'profile_photos',
+      localStableId: storagePath,
     );
   }
 
@@ -89,6 +95,8 @@ class AttachmentUploadService {
       bytes: bytes,
       fileName: fileName,
       storagePath: storagePath,
+      localCategory: 'pet_photos/${petId.trim()}',
+      localStableId: storagePath,
     );
   }
 
@@ -113,6 +121,9 @@ class AttachmentUploadService {
       bytes: bytes,
       fileName: fileName,
       storagePath: storagePath,
+      localCategory:
+          'documents/${_attachmentIdService.sanitizePathSegment(category)}/${petId.trim()}',
+      localStableId: storagePath,
     );
   }
 
@@ -120,6 +131,8 @@ class AttachmentUploadService {
     required Uint8List bytes,
     required String fileName,
     required String storagePath,
+    required String localCategory,
+    required String localStableId,
   }) async {
     final contentType = _contentTypeForFileName(fileName);
     final sanitizedFileName = _attachmentIdService.sanitizeFileName(fileName);
@@ -150,12 +163,26 @@ class AttachmentUploadService {
         '[AttachmentUploadService] download URL resolved path=$storagePath',
       );
 
+      String? localFilePath;
+      try {
+        localFilePath = await _localAssetStore.saveBytesIfMissing(
+          bytes: bytes,
+          category: localCategory,
+          fileName: sanitizedFileName,
+          stableId: localStableId,
+          aliases: [downloadUrl],
+        );
+      } catch (_) {
+        // Local cache failures should not block remote upload success.
+      }
+
       return UploadedAttachmentModel(
         fileName: sanitizedFileName,
         storagePath: storagePath,
         downloadUrl: downloadUrl,
         contentType: contentType,
         sizeBytes: bytes.lengthInBytes,
+        localFilePath: localFilePath,
       );
     } on FirebaseException catch (error) {
       debugPrint(

@@ -5,6 +5,7 @@ class UploadedAttachmentModel {
     required this.downloadUrl,
     required this.contentType,
     required this.sizeBytes,
+    this.localFilePath,
   });
 
   final String fileName;
@@ -12,12 +13,14 @@ class UploadedAttachmentModel {
   final String downloadUrl;
   final String contentType;
   final int sizeBytes;
+  final String? localFilePath;
 }
 
 class EditableAttachmentModel {
   const EditableAttachmentModel({
     required this.fileName,
     required this.fileUri,
+    this.localFilePath,
     this.storagePath = '',
     this.contentType = '',
     this.sizeBytes = 0,
@@ -26,6 +29,7 @@ class EditableAttachmentModel {
 
   final String fileName;
   final String fileUri;
+  final String? localFilePath;
   final String storagePath;
   final String contentType;
   final int sizeBytes;
@@ -37,6 +41,7 @@ class EditableAttachmentModel {
     return EditableAttachmentModel(
       fileName: attachment.fileName,
       fileUri: attachment.downloadUrl,
+      localFilePath: attachment.localFilePath,
       storagePath: attachment.storagePath,
       contentType: attachment.contentType,
       sizeBytes: attachment.sizeBytes,

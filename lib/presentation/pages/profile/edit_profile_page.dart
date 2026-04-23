@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -9,6 +10,7 @@ import 'package:flutter_frontend/core/forms/app_form_utils.dart';
 import 'package:flutter_frontend/core/models/user_profile.dart';
 import 'package:flutter_frontend/core/network/api_exception.dart';
 import 'package:flutter_frontend/core/services/attachment_upload_service.dart';
+import 'package:flutter_frontend/core/services/app_image_cache_manager.dart';
 import 'package:flutter_frontend/core/services/profile_photo_service.dart';
 import 'package:flutter_frontend/core/services/user_service.dart';
 import 'package:image_picker/image_picker.dart';
@@ -31,7 +33,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final ImagePicker _imagePicker = ImagePicker();
 
   late final TextEditingController _nameController;
-  late final TextEditingController _emailController;
   late final TextEditingController _phoneController;
   late final TextEditingController _addressController;
 
@@ -45,7 +46,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.profile.name);
-    _emailController = TextEditingController(text: widget.profile.email);
     _phoneController = TextEditingController(text: widget.profile.phone);
     _addressController = TextEditingController(text: widget.profile.address);
     _profilePhotoValue = widget.profile.profilePhoto;
@@ -54,7 +54,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
   @override
   void dispose() {
     _nameController.dispose();
-    _emailController.dispose();
     _phoneController.dispose();
     _addressController.dispose();
     super.dispose();
@@ -63,7 +62,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
   Future<void> _saveProfile() async {
     AppFormSanitizers.trimControllers([
       _nameController,
-      _emailController,
       _phoneController,
       _addressController,
     ]);
@@ -81,7 +79,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
     try {
       await _userService.updateCurrentUser(
         name: _nameController.text.trim(),
-        email: _emailController.text.trim(),
         phone: _phoneController.text.trim(),
         address: _addressController.text.trim(),
         profilePhoto: _profilePhotoValue.trim(),
@@ -124,13 +121,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
   String? _requiredFieldValidator(String? value) {
     return AppFormValidators.required(
       AppStrings.validationFieldRequired(AppStrings.authFullName),
-    )(value);
-  }
-
-  String? _emailValidator(String? value) {
-    return AppFormValidators.email(
-      requiredMessage: AppStrings.validationEmailRequired,
-      invalidMessage: AppStrings.authErrorInvalidEmail,
     )(value);
   }
 
@@ -180,7 +170,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
         return;
       }
 
-      await _photoService.clearLocalPhoto();
+      if (uploadedPhoto.localFilePath != null &&
+          uploadedPhoto.localFilePath!.trim().isNotEmpty) {
+        await _photoService.saveLocalPhotoPath(uploadedPhoto.localFilePath!);
+      } else {
+        await _photoService.clearLocalPhoto();
+      }
 
       setState(() {
         _profilePhotoValue = uploadedPhoto.downloadUrl;
@@ -225,7 +220,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
     // Priority 2: Photo from backend (HTTPS URL)
     final trimmed = _profilePhotoValue.trim();
     if (_isHttpImageUrl(trimmed)) {
-      return NetworkImage(trimmed);
+      return CachedNetworkImageProvider(
+        trimmed,
+        cacheManager: AppImageCacheManager.instance,
+      );
     }
 
     return null;
@@ -269,14 +267,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       AppFormConstraints.personNameMaxLength,
                     ),
                   ],
-                ),
-                const SizedBox(height: AppDimensions.spaceM),
-                _ProfileFormField(
-                  label: AppStrings.profileEmail,
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  validator: _emailValidator,
-                  inputFormatters: AppInputFormatters.email(),
                 ),
                 const SizedBox(height: AppDimensions.spaceM),
                 _ProfileFormField(

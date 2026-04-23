@@ -1,4 +1,4 @@
-import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:collection';
 
 class CachedResponseEntry {
   const CachedResponseEntry({required this.body, required this.updatedAt});
@@ -15,31 +15,18 @@ class ResponseCacheService {
   ResponseCacheService._();
 
   static final ResponseCacheService _instance = ResponseCacheService._();
+  static const int _maxEntries = 100;
 
   factory ResponseCacheService() => _instance;
 
-  static final Map<String, CachedResponseEntry> _memoryCache =
-      <String, CachedResponseEntry>{};
-  static const String _storagePrefix = 'response_cache.';
+  static final LinkedHashMap<String, CachedResponseEntry> _memoryCache =
+      LinkedHashMap<String, CachedResponseEntry>();
 
   Future<CachedResponseEntry?> get(String key) async {
-    final memoryEntry = _memoryCache[key];
-    if (memoryEntry != null) {
-      return memoryEntry;
-    }
-
-    final prefs = await SharedPreferences.getInstance();
-    final body = prefs.getString(_bodyKey(key));
-    final timestamp = prefs.getInt(_timestampKey(key));
-
-    if (body == null || timestamp == null) {
+    final entry = _memoryCache.remove(key);
+    if (entry == null) {
       return null;
     }
-
-    final entry = CachedResponseEntry(
-      body: body,
-      updatedAt: DateTime.fromMillisecondsSinceEpoch(timestamp),
-    );
 
     _memoryCache[key] = entry;
     return entry;
@@ -49,54 +36,27 @@ class ResponseCacheService {
     final now = updatedAt ?? DateTime.now();
     final entry = CachedResponseEntry(body: body, updatedAt: now);
 
+    _memoryCache.remove(key);
     _memoryCache[key] = entry;
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_bodyKey(key), body);
-    await prefs.setInt(_timestampKey(key), now.millisecondsSinceEpoch);
+    _evictIfNeeded();
   }
 
   Future<void> clear(String key) async {
     _memoryCache.remove(key);
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_bodyKey(key));
-    await prefs.remove(_timestampKey(key));
   }
 
   Future<void> clearByPrefix(String prefix) async {
     _memoryCache.removeWhere((key, _) => key.startsWith(prefix));
-
-    final storagePrefix = _storageKey(prefix);
-    final prefs = await SharedPreferences.getInstance();
-    final keys = prefs.getKeys();
-
-    final matchingKeys = keys
-        .where((key) => key.startsWith(storagePrefix))
-        .toList(growable: false);
-
-    for (final key in matchingKeys) {
-      await prefs.remove(key);
-    }
   }
 
   Future<void> clearAll() async {
     _memoryCache.clear();
-
-    final prefs = await SharedPreferences.getInstance();
-    final keys = prefs.getKeys();
-    final matchingKeys = keys
-        .where((key) => key.startsWith(_storagePrefix))
-        .toList(growable: false);
-
-    for (final key in matchingKeys) {
-      await prefs.remove(key);
-    }
   }
 
-  String _bodyKey(String key) => '${_storageKey(key)}.body';
-
-  String _timestampKey(String key) => '${_storageKey(key)}.timestamp';
-
-  String _storageKey(String key) => '$_storagePrefix$key';
+  void _evictIfNeeded() {
+    while (_memoryCache.length > _maxEntries) {
+      final oldestKey = _memoryCache.keys.first;
+      _memoryCache.remove(oldestKey);
+    }
+  }
 }

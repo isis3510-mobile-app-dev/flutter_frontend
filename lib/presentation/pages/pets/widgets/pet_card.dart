@@ -1,9 +1,11 @@
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/services/app_image_cache_manager.dart';
 import '../models/pet_ui_model.dart';
 
 class PetCard extends StatelessWidget {
@@ -205,10 +207,12 @@ class _PetCardPhoto extends StatelessWidget {
     }
 
     if (_isRemotePhoto(value)) {
-      return Image.network(
-        value,
+      return CachedNetworkImage(
+        imageUrl: value,
+        cacheManager: AppImageCacheManager.instance,
         fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => _PetCardPhotoPlaceholder(isDark: isDark),
+        placeholder: (_, _) => _PetCardPhotoPlaceholder(isDark: isDark),
+        errorWidget: (_, _, _) => _PetCardPhotoPlaceholder(isDark: isDark),
       );
     }
 

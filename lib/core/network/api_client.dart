@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -14,6 +15,7 @@ class ApiClient {
 
   final AuthService _authService;
   final http.Client _client;
+  static const Duration _requestTimeout = Duration(seconds: 20);
 
   String get _baseUrl {
     try {
@@ -121,6 +123,11 @@ class ApiClient {
         type: ApiErrorType.network,
         message: 'Network connection failed.',
       );
+    } on TimeoutException {
+      throw const ApiException(
+        type: ApiErrorType.network,
+        message: 'Network request timed out.',
+      );
     }
   }
 
@@ -146,25 +153,33 @@ class ApiClient {
 
     switch (method) {
       case 'GET':
-        return _client.get(uri, headers: requestHeaders);
+        return _client
+            .get(uri, headers: requestHeaders)
+            .timeout(_requestTimeout);
       case 'POST':
-        return _client.post(
-          uri,
-          headers: requestHeaders,
-          body: _encodeBody(body),
-        );
+        return _client
+            .post(
+              uri,
+              headers: requestHeaders,
+              body: _encodeBody(body),
+            )
+            .timeout(_requestTimeout);
       case 'PUT':
-        return _client.put(
-          uri,
-          headers: requestHeaders,
-          body: _encodeBody(body),
-        );
+        return _client
+            .put(
+              uri,
+              headers: requestHeaders,
+              body: _encodeBody(body),
+            )
+            .timeout(_requestTimeout);
       case 'DELETE':
-        return _client.delete(
-          uri,
-          headers: requestHeaders,
-          body: _encodeBody(body),
-        );
+        return _client
+            .delete(
+              uri,
+              headers: requestHeaders,
+              body: _encodeBody(body),
+            )
+            .timeout(_requestTimeout);
       default:
         throw const ApiException(
           type: ApiErrorType.unknown,
