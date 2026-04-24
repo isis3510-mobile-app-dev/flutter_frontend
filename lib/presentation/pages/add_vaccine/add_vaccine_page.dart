@@ -423,12 +423,12 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
     );
   }
 
-  Future<void> _pickDate() async {
+  Future<void> _pickDate(bool requiredPast) async {
     final pickedDate = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
       firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
+      lastDate: requiredPast ? DateTime.now() : DateTime(2100),
       builder: _pickerThemeBuilder,
     );
 
@@ -880,7 +880,7 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
                 }
               });
             },
-            onPickDate: _pickDate,
+            onPickDate: () =>_pickDate(true),
             dateController: _dateController,
           ),
         ];
