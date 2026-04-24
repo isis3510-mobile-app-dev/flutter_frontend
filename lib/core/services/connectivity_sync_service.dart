@@ -51,6 +51,10 @@ class ConnectivitySyncService {
     await _retryPendingWritesSafely();
   }
 
+  Future<bool> hasInternetAccess() async {
+    return _hasInternetAccess();
+  }
+
   Future<void> dispose() async {
     await _subscription?.cancel();
     _subscription = null;

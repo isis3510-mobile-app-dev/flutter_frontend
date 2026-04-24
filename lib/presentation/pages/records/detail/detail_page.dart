@@ -5,6 +5,7 @@ import 'package:flutter_frontend/core/constants/app_strings.dart';
 import 'package:flutter_frontend/core/models/event_model.dart';
 import 'package:flutter_frontend/core/models/pet_model.dart';
 import 'package:flutter_frontend/core/services/event_service.dart';
+import 'package:flutter_frontend/core/services/connectivity_sync_service.dart';
 import 'package:flutter_frontend/core/services/local_asset_store_service.dart';
 import 'package:flutter_frontend/core/services/pet_service.dart';
 import 'package:flutter_frontend/core/services/vaccine_service.dart';
@@ -39,6 +40,8 @@ class _DetailPageState extends State<DetailPage> {
   final PetService _petService = PetService();
   final VaccineService _vaccineService = VaccineService();
   final EventService _eventService = EventService();
+  final ConnectivitySyncService _connectivitySyncService =
+      ConnectivitySyncService();
   final LocalAssetStoreService _localAssetStore = LocalAssetStoreService();
 
   PetVaccinationModel? _vaccination;
@@ -234,8 +237,9 @@ class _DetailPageState extends State<DetailPage> {
         fileName: document.name,
         stableId: document.documentId,
       );
+      final hasLocalCopy = localPath != null && localPath.trim().isNotEmpty;
 
-      if (localPath != null && localPath.trim().isNotEmpty) {
+      if (hasLocalCopy) {
         try {
           final result = await OpenFilex.open(localPath);
           if (result.type == ResultType.done || !mounted) {
@@ -244,6 +248,25 @@ class _DetailPageState extends State<DetailPage> {
         } catch (_) {
           // If local opening fails, continue with remote fallback.
         }
+      }
+
+      final hasInternet = await _connectivitySyncService.hasInternetAccess();
+      if (!hasInternet) {
+        if (!mounted) {
+          return;
+        }
+        if (!hasLocalCopy) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(AppStrings.errorDocumentNoLocalCopyOffline),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not open this document.')),
+          );
+        }
+        return;
       }
 
       final remoteUri = Uri.tryParse(remoteUrl);

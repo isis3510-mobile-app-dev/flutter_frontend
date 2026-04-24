@@ -5,6 +5,7 @@ import 'package:flutter_frontend/core/models/event_model.dart';
 import 'package:flutter_frontend/core/network/api_exception.dart';
 
 import '../network/api_client.dart';
+import 'attachment_upload_service.dart';
 import 'local_database_service.dart';
 import 'response_cache_service.dart';
 
@@ -27,6 +28,8 @@ class EventService {
   final ApiClient _apiClient = ApiClient();
   final ResponseCacheService _cache = ResponseCacheService();
   final LocalDatabaseService _localDb = LocalDatabaseService();
+  final AttachmentUploadService _attachmentUploadService =
+      AttachmentUploadService();
 
   Future<List<EventModel>> getEventsByPet(
     String petId, {
@@ -218,8 +221,12 @@ class EventService {
             final createPayload = _asStringDynamicMap(
               operation.payload ?? const <String, dynamic>{},
             );
+            final resolvedAttachmentPayload = await _attachmentUploadService
+                .resolvePendingAttachmentsInPayload(createPayload);
             final resolvedCreatePayload =
-                await _resolveEventPayloadPetIdForSync(createPayload);
+                await _resolveEventPayloadPetIdForSync(
+                  resolvedAttachmentPayload,
+                );
             final response = await _apiClient.post(
               eventsPath,
               body: resolvedCreatePayload,
@@ -238,8 +245,12 @@ class EventService {
             final updatePayload = _asStringDynamicMap(
               operation.payload ?? const <String, dynamic>{},
             );
+            final resolvedAttachmentPayload = await _attachmentUploadService
+                .resolvePendingAttachmentsInPayload(updatePayload);
             final resolvedUpdatePayload =
-                await _resolveEventPayloadPetIdForSync(updatePayload);
+                await _resolveEventPayloadPetIdForSync(
+                  resolvedAttachmentPayload,
+                );
             await _apiClient.put(
               '$eventsPath${operation.entityId}/',
               body: resolvedUpdatePayload,

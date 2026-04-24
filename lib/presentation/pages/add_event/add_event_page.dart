@@ -848,6 +848,7 @@ class _AddEventPageState extends State<AddEventPage> {
     required String petId,
     required List<PendingAttachmentUpload> uploads,
   }) {
+    final uploadIds = uploads.map((upload) => upload.localId).toSet();
     unawaited(
       _attachmentUploadCoordinator
           .enqueueUploads(petId: petId, uploads: uploads)
@@ -855,7 +856,18 @@ class _AddEventPageState extends State<AddEventPage> {
             if (!mounted) {
               return;
             }
+            final hasQueuedOfflineAttachment = _attachmentUploadCoordinator
+                .items
+                .where((item) => uploadIds.contains(item.localId))
+                .any((item) => item.attachment?.isPendingUpload ?? false);
             setState(() {});
+            if (hasQueuedOfflineAttachment) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(AppStrings.attachmentQueuedOffline),
+                ),
+              );
+            }
           })
           .catchError((_) {
             if (!mounted) {
