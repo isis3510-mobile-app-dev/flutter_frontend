@@ -20,6 +20,10 @@ class NfcServiceException implements Exception {
 class NfcService {
   NfcService._();
 
+  static const MethodChannel _nfcDispatchChannel = MethodChannel(
+    'com.example.flutter_frontend/nfc_dispatch',
+  );
+
   static final NfcService _instance = NfcService._();
 
   factory NfcService() => _instance;
@@ -50,6 +54,7 @@ class NfcService {
     await _runSession<void>(
       timeout: timeout,
       alertMessage: 'Hold your phone near an NFC tag to write data.',
+      postDiscoveryCooldown: _postWriteCooldown,
       onTagDiscovered: (tag) => _writeTextToTag(tag, payload),
     );
   }
@@ -62,10 +67,25 @@ class NfcService {
     }
   }
 
+  Future<void> setTagIntentBlocked(bool blocked) async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      return;
+    }
+
+    try {
+      await _nfcDispatchChannel.invokeMethod<void>('setBlocked', {
+        'blocked': blocked,
+      });
+    } catch (_) {
+      // Ignore native bridge failures to avoid breaking NFC flows.
+    }
+  }
+
   Future<T> _runSession<T>({
     required Duration timeout,
     required String alertMessage,
     required Future<T> Function(NfcTag tag) onTagDiscovered,
+    Duration postDiscoveryCooldown = Duration.zero,
   }) async {
     final available = await isAvailable();
     if (!available) {
@@ -84,6 +104,9 @@ class NfcService {
 
         try {
           final result = await onTagDiscovered(tag);
+          if (postDiscoveryCooldown > Duration.zero) {
+            await Future<void>.delayed(postDiscoveryCooldown);
+          }
           if (!completer.isCompleted) {
             completer.complete(result);
           }
@@ -278,5 +301,13 @@ class NfcService {
       NfcPollingOption.iso15693,
       NfcPollingOption.iso18092,
     };
+  }
+
+  Duration get _postWriteCooldown {
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return const Duration(seconds: 2);
+    }
+
+    return Duration.zero;
   }
 }
