@@ -162,6 +162,17 @@ class TelemetryService {
     }
   }
 
+  Future<void> logCachedPetProfileLoadExecution({
+    required DateTime startTime,
+    required DateTime endTime,
+  }) async {
+    await _logFeatureExecution(
+      featureId: featureLoadCachedPetProfileId,
+      startTime: startTime,
+      endTime: endTime,
+    );
+  }
+
   Future<void> logVaccineAttachmentUploadExecution({
     required DateTime startTime,
     required DateTime endTime,

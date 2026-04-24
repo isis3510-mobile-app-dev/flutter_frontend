@@ -415,12 +415,12 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
     );
   }
 
-  Future<void> _pickDate() async {
+  Future<void> _pickDate(bool requiredPast) async {
     final pickedDate = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
       firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
+      lastDate: requiredPast ? DateTime.now() : DateTime(2100),
       builder: _pickerThemeBuilder,
     );
 
@@ -651,6 +651,7 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
     required String petId,
     required List<PendingAttachmentUpload> uploads,
   }) {
+    final uploadIds = uploads.map((upload) => upload.localId).toSet();
     unawaited(
       _attachmentUploadCoordinator
           .enqueueUploads(petId: petId, uploads: uploads)
@@ -658,7 +659,18 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
             if (!mounted) {
               return;
             }
+            final hasQueuedOfflineAttachment = _attachmentUploadCoordinator
+                .items
+                .where((item) => uploadIds.contains(item.localId))
+                .any((item) => item.attachment?.isPendingUpload ?? false);
             setState(() {});
+            if (hasQueuedOfflineAttachment) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(AppStrings.attachmentQueuedOffline),
+                ),
+              );
+            }
           })
           .catchError((_) {
             if (!mounted) {
@@ -908,7 +920,7 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
                 }
               });
             },
-            onPickDate: _pickDate,
+            onPickDate: () => _pickDate(true),
             dateController: _dateController,
           ),
         ];

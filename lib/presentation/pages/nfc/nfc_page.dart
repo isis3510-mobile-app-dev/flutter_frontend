@@ -13,6 +13,7 @@ import '../../../core/services/nfc_backend_service.dart';
 import '../../../core/services/nfc_service.dart';
 import '../../../core/services/pet_service.dart';
 import '../../../core/services/telemetry_service.dart';
+import '../../../core/services/user_service.dart';
 import '../../../shared/widgets/petcare_bottom_nav_bar.dart';
 import '../pets/models/pet_ui_mapper.dart';
 import '../pets/models/pet_ui_model.dart';
@@ -39,6 +40,7 @@ class _NfcPageState extends State<NfcPage> {
   final NfcService _nfcService = NfcService();
   final NfcBackendService _nfcBackendService = NfcBackendService();
   final PetService _petService = PetService();
+  final UserService _userService = UserService();
   final TelemetryService _telemetryService = TelemetryService();
 
   List<PetUiModel> _pets = const [];
@@ -244,15 +246,9 @@ class _NfcPageState extends State<NfcPage> {
         return;
       }
 
-      final backendPayload = await _nfcBackendService.getWritePayload(
-        selectedPet.id,
-      );
-      final payloadData = _applyWriteOptions(
-        payload: backendPayload,
-        pet: selectedPet,
-      );
+      final payloadData = await _resolveWritePayload(selectedPet);
       await _nfcService.writeTextTag(jsonEncode(payloadData));
-      await _nfcBackendService.syncPet(selectedPet.id);
+      await _syncPetNfcBestEffort(selectedPet.id);
 
       if (!mounted) {
         return;
@@ -344,14 +340,8 @@ class _NfcPageState extends State<NfcPage> {
       return;
     }
 
-    final backendPayload = await _nfcBackendService.getWritePayload(
-      selectedPet.id,
-    );
-    final payloadData = _applyWriteOptions(
-      payload: backendPayload,
-      pet: selectedPet,
-    );
-    await _nfcBackendService.syncPet(selectedPet.id);
+    final payloadData = await _resolveWritePayload(selectedPet);
+    await _syncPetNfcBestEffort(selectedPet.id);
 
     if (!mounted) {
       return;
@@ -441,6 +431,68 @@ class _NfcPageState extends State<NfcPage> {
         endTime: endTime,
       ),
     );
+  }
+
+  Future<Map<String, dynamic>> _resolveWritePayload(PetUiModel pet) async {
+    try {
+      final backendPayload = await _nfcBackendService.getWritePayload(pet.id);
+      return _applyWriteOptions(payload: backendPayload, pet: pet);
+    } on ApiException catch (error) {
+      if (error.type != ApiErrorType.network) {
+        rethrow;
+      }
+
+      final fallbackPayload = await _buildOfflineWritePayload(pet);
+      return _applyWriteOptions(payload: fallbackPayload, pet: pet);
+    }
+  }
+
+  Future<void> _syncPetNfcBestEffort(String petId) async {
+    try {
+      await _nfcBackendService.syncPet(petId);
+    } on ApiException catch (error) {
+      if (error.type != ApiErrorType.network) {
+        rethrow;
+      }
+    }
+  }
+
+  Future<Map<String, dynamic>> _buildOfflineWritePayload(PetUiModel pet) async {
+    String ownerName = '';
+    String ownerPhone = '';
+
+    try {
+      final profile = await _userService.getCurrentUser();
+      ownerName = _normalizePayloadText(profile.name);
+      ownerPhone = _normalizePayloadText(profile.phone);
+    } catch (_) {
+      // Fallback payload should still be produced even if owner profile is unavailable.
+    }
+
+    final normalizedPetId = pet.id.trim();
+    return <String, dynamic>{
+      'petId': normalizedPetId,
+      'petName': _normalizePayloadText(pet.name),
+      'species': _normalizePayloadText(pet.species),
+      'breed': _normalizePayloadText(pet.breed),
+      'knownAllergies': _normalizePayloadText(pet.knownAllergies),
+      'ownerName': ownerName,
+      'ownerPhone': ownerPhone,
+      'appDeepLink': 'petcare://pet/$normalizedPetId',
+    };
+  }
+
+  String _normalizePayloadText(String value) {
+    final normalized = value.trim();
+    if (normalized.isEmpty) {
+      return '';
+    }
+
+    if (normalized == AppStrings.valueNotAvailable) {
+      return '';
+    }
+
+    return normalized;
   }
 
   Map<String, dynamic> _applyWriteOptions({

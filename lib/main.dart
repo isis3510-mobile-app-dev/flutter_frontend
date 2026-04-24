@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -21,11 +23,18 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  await LocalDatabaseService().initialize();
-  await ConnectivitySyncService().initialize();
-  await ConnectivitySyncService().retryNowIfOnline();
-
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
   runApp(const App());
+
+  // Warm up local services in background so startup is not blocked.
+  unawaited(LocalDatabaseService().initialize());
+  unawaited(
+    ConnectivitySyncService()
+        .initialize()
+        .then((_) => ConnectivitySyncService().retryNowIfOnline())
+        .catchError((_) {
+          // Best-effort background sync initialization.
+        }),
+  );
 }

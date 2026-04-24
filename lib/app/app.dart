@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/core/services/app_preferences_service.dart';
 import '../core/theme/app_theme.dart';
 import '../core/telemetry/screen_time_observer.dart';
 import 'routes.dart';
@@ -14,12 +15,16 @@ class App extends StatefulWidget {
 }
 
 class _AppState extends State<App> {
+  late final AppPreferencesService _appPreferencesService;
   late final ThemeController _themeController;
 
   @override
   void initState() {
     super.initState();
-    _themeController = ThemeController();
+    _appPreferencesService = AppPreferencesService();
+    _themeController = ThemeController(
+      preferencesService: _appPreferencesService,
+    );
     _themeController.initialize();
   }
 

@@ -10,7 +10,7 @@ import '../../../../../core/services/pet_service.dart';
 import '../../../../../core/services/vaccine_service.dart';
 import '../../models/pet_ui_model.dart';
 
-enum VaccineStatusType { completed, upcoming, overdue }
+enum VaccineStatusType { completed, overdue }
 
 class VaccineUiModel {
   VaccineUiModel({
@@ -40,7 +40,6 @@ class VaccineUiModel {
   String get statusLabel {
     return switch (status) {
       VaccineStatusType.completed => 'completed',
-      VaccineStatusType.upcoming => 'upcoming',
       VaccineStatusType.overdue => 'overdue',
     };
   }
@@ -71,11 +70,13 @@ class VaccinesTab extends StatefulWidget {
     required this.pet,
     required this.vaccinations,
     required this.onAddVaccine,
+    required this.onVaccinationUpdated,
   });
 
   final PetUiModel pet;
   final List<PetVaccinationModel> vaccinations;
   final VoidCallback onAddVaccine;
+  final Future<void> Function() onVaccinationUpdated;
 
   @override
   State<VaccinesTab> createState() => _VaccinesTabState();
@@ -175,18 +176,8 @@ class _VaccinesTabState extends State<VaccinesTab> {
       return VaccineStatusType.overdue;
     }
 
-    if (sourceStatus == 'upcoming' ||
-        sourceStatus == 'pending' ||
-        sourceStatus == 'scheduled') {
-      return VaccineStatusType.upcoming;
-    }
-
     if (model.nextDueDate.isBefore(now)) {
       return VaccineStatusType.overdue;
-    }
-
-    if (model.dateGiven.isAfter(now)) {
-      return VaccineStatusType.upcoming;
     }
 
     return VaccineStatusType.completed;
@@ -201,7 +192,6 @@ class _VaccinesTabState extends State<VaccinesTab> {
   String _statusToApiValue(VaccineStatusType status) {
     return switch (status) {
       VaccineStatusType.completed => 'completed',
-      VaccineStatusType.upcoming => 'upcoming',
       VaccineStatusType.overdue => 'overdue',
     };
   }
@@ -209,7 +199,6 @@ class _VaccinesTabState extends State<VaccinesTab> {
   String _statusLabel(VaccineStatusType status) {
     return switch (status) {
       VaccineStatusType.completed => 'Completed',
-      VaccineStatusType.upcoming => 'Upcoming',
       VaccineStatusType.overdue => 'Overdue',
     };
   }
@@ -300,6 +289,12 @@ class _VaccinesTabState extends State<VaccinesTab> {
       setState(() {
         _statusOverrides[key] = newStatus;
       });
+
+      await widget.onVaccinationUpdated();
+
+      if (!mounted) {
+        return;
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -404,9 +399,6 @@ class _VaccinesTabState extends State<VaccinesTab> {
     final completed = uiVaccines
         .where((i) => i.status == VaccineStatusType.completed)
         .length;
-    final upcoming = uiVaccines
-        .where((i) => i.status == VaccineStatusType.upcoming)
-        .length;
     final overdue = uiVaccines
         .where((i) => i.status == VaccineStatusType.overdue)
         .length;
@@ -446,7 +438,6 @@ class _VaccinesTabState extends State<VaccinesTab> {
           ),
           child: VaccinesStatusSummary(
             completedCount: completed,
-            upcomingCount: upcoming,
             overdueCount: overdue,
           ),
         ),
@@ -558,12 +549,10 @@ class VaccinesStatusSummary extends StatelessWidget {
   const VaccinesStatusSummary({
     super.key,
     required this.completedCount,
-    required this.upcomingCount,
     required this.overdueCount,
   });
 
   final int completedCount;
-  final int upcomingCount;
   final int overdueCount;
 
   @override
@@ -576,15 +565,6 @@ class VaccinesStatusSummary extends StatelessWidget {
             count: completedCount,
             textColor: AppColors.vaccineStatusCompletedText,
             backgroundColor: AppColors.vaccineStatusCompletedBg,
-          ),
-        ),
-        const SizedBox(width: AppDimensions.spaceS),
-        Expanded(
-          child: _StatusChip(
-            label: 'Upcoming',
-            count: upcomingCount,
-            textColor: AppColors.vaccineStatusUpcomingText,
-            backgroundColor: AppColors.vaccineStatusUpcomingBg,
           ),
         ),
         const SizedBox(width: AppDimensions.spaceS),
@@ -730,7 +710,6 @@ class TimelineIndicator extends StatelessWidget {
   String get _iconPath {
     return switch (status) {
       VaccineStatusType.completed => 'assets/icons/status/successPrimary.svg',
-      VaccineStatusType.upcoming => 'assets/icons/status/pendingPrimary.svg',
       VaccineStatusType.overdue => 'assets/icons/status/warningPrimary.svg',
     };
   }
@@ -758,7 +737,6 @@ class VaccineCard extends StatelessWidget {
   Color get _badgeColor {
     return switch (vaccine.status) {
       VaccineStatusType.completed => AppColors.vaccineStatusCompletedBg,
-      VaccineStatusType.upcoming => AppColors.vaccineStatusUpcomingBg,
       VaccineStatusType.overdue => AppColors.vaccineStatusOverdueBg,
     };
   }
@@ -766,7 +744,6 @@ class VaccineCard extends StatelessWidget {
   Color get _badgeTextColor {
     return switch (vaccine.status) {
       VaccineStatusType.completed => AppColors.vaccineStatusCompletedText,
-      VaccineStatusType.upcoming => AppColors.vaccineStatusUpcomingText,
       VaccineStatusType.overdue => AppColors.vaccineStatusOverdueText,
     };
   }

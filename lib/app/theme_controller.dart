@@ -2,22 +2,23 @@ import 'dart:async';
 
 import 'package:ambient_light/ambient_light.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_frontend/core/services/app_preferences_service.dart';
 
 enum AppThemePreference { light, dark, schedule, sensor }
 
 enum ThemeSource { manual, ambientLight, schedule }
 
 class ThemeController extends ChangeNotifier {
-  static const String _themePreferenceKey = 'theme_preference';
   static const double _darkLuxThreshold = 18;
   static const double _lightLuxThreshold = 180;
   static const Duration _sensorPollingInterval = Duration(seconds: 4);
   static const int _requiredStableSensorReadings = 3;
 
-  ThemeController();
+  ThemeController({AppPreferencesService? preferencesService})
+    : _preferencesService = preferencesService ?? AppPreferencesService();
 
   final AmbientLight _ambientLight = AmbientLight();
+  final AppPreferencesService _preferencesService;
 
   bool _isInitialized = false;
   AppThemePreference _preference = AppThemePreference.schedule;
@@ -69,13 +70,9 @@ class ThemeController extends ChangeNotifier {
       return;
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    final storedPreference = prefs.getString(_themePreferenceKey);
+    final storedPreference = await _preferencesService.getThemePreference();
     if (storedPreference != null) {
-      _preference = AppThemePreference.values.firstWhere(
-        (item) => item.name == storedPreference,
-        orElse: () => AppThemePreference.schedule,
-      );
+      _preference = storedPreference;
     }
 
     _isInitialized = true;
@@ -93,8 +90,7 @@ class ThemeController extends ChangeNotifier {
 
   Future<void> setPreference(AppThemePreference preference) async {
     _preference = preference;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_themePreferenceKey, preference.name);
+    await _preferencesService.setThemePreference(preference);
 
     notifyListeners();
   }
