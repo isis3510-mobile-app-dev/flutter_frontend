@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_frontend/core/constants/app_colors.dart';
@@ -6,7 +8,7 @@ import 'package:flutter_frontend/core/forms/app_form_utils.dart';
 import 'package:flutter_frontend/core/models/attachment_models.dart';
 import 'package:flutter_frontend/core/models/pet_model.dart';
 import 'package:flutter_frontend/core/models/vaccine_model.dart';
-import 'package:flutter_frontend/core/services/attachment_upload_service.dart';
+import 'package:flutter_frontend/core/services/attachment_upload_coordinator.dart';
 import 'package:flutter_frontend/core/services/pet_service.dart';
 import 'package:flutter_frontend/core/services/vaccine_service.dart';
 import 'package:image_picker/image_picker.dart';
@@ -38,18 +40,15 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
 
   final VaccineService _vaccineService = VaccineService();
   final PetService _petService = PetService();
-  final AttachmentUploadService _attachmentUploadService =
-      AttachmentUploadService();
+  final AttachmentUploadCoordinator _attachmentUploadCoordinator =
+      AttachmentUploadCoordinator();
   final ImagePicker _imagePicker = ImagePicker();
   final List<VaccineModel> _vaccines = [];
   final List<PetModel> _pets = [];
-  final List<EditableAttachmentModel> _attachedDocuments = [];
 
   bool _isLoadingVaccines = false;
   bool _isLoadingPets = false;
   bool _isSubmitting = false;
-  bool _isUploadingAttachments = false;
-  bool _isLoadingExistingAttachments = false;
   bool _didHydrateExistingAttachments = false;
   bool _didTouchAttachments = false;
   String? _selectedVaccineName;
@@ -65,6 +64,7 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
   @override
   void initState() {
     super.initState();
+    _attachmentUploadCoordinator.addListener(_handleAttachmentUploadsChanged);
     _applyPrefill(widget.prefill);
     _loadVaccines();
     _loadPets();
@@ -73,6 +73,10 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
 
   @override
   void dispose() {
+    _attachmentUploadCoordinator.removeListener(
+      _handleAttachmentUploadsChanged,
+    );
+    _attachmentUploadCoordinator.dispose();
     _dateController.dispose();
     _vaccineController.dispose();
     _productController.dispose();
@@ -108,18 +112,18 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
       _editingVaccinationId = prefill.vaccinationId!.trim();
     }
 
-    _attachedDocuments
-      ..clear()
-      ..addAll(
-        (prefill.attachedDocuments ?? const <PetDocumentModel>[]).map(
-          (document) => EditableAttachmentModel(
-            fileName: document.fileName,
-            fileUri: document.fileUri,
-            documentId: document.documentId,
-          ),
-        ),
-      );
-    _didHydrateExistingAttachments = _attachedDocuments.isNotEmpty;
+    final existingAttachments =
+        (prefill.attachedDocuments ?? const <PetDocumentModel>[])
+            .map(
+              (document) => EditableAttachmentModel(
+                fileName: document.fileName,
+                fileUri: document.fileUri,
+                documentId: document.documentId,
+              ),
+            )
+            .toList(growable: false);
+    _attachmentUploadCoordinator.initializeFromExisting(existingAttachments);
+    _didHydrateExistingAttachments = existingAttachments.isNotEmpty;
 
     if (_vaccines.isNotEmpty) {
       _applyVaccineSelectionFromPrefill(prefill);
@@ -141,12 +145,6 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
     }
 
     try {
-      if (mounted) {
-        setState(() {
-          _isLoadingExistingAttachments = true;
-        });
-      }
-
       final vaccination = await _petService.getVaccination(
         petId: petId,
         vaccinationId: vaccinationId,
@@ -161,27 +159,21 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
           _administeredByController.text = vaccination.administeredBy.trim();
         }
 
-        _attachedDocuments
-          ..clear()
-          ..addAll(
-            vaccination.attachedDocuments.map(
-              (document) => EditableAttachmentModel(
-                fileName: document.fileName,
-                fileUri: document.fileUri,
-                documentId: document.documentId,
-              ),
-            ),
-          );
+        _attachmentUploadCoordinator.initializeFromExisting(
+          vaccination.attachedDocuments
+              .map(
+                (document) => EditableAttachmentModel(
+                  fileName: document.fileName,
+                  fileUri: document.fileUri,
+                  documentId: document.documentId,
+                ),
+              )
+              .toList(growable: false),
+        );
         _didHydrateExistingAttachments = true;
       });
     } catch (_) {
       // Keep the form usable even if hydration fails.
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoadingExistingAttachments = false;
-        });
-      }
     }
   }
 
@@ -505,6 +497,17 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
       return;
     }
 
+    if (!_attachmentUploadCoordinator.canSubmit) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Finish uploading or remove failed attachments before saving.',
+          ),
+        ),
+      );
+      return;
+    }
+
     final dateGiven = parseDateInput(_dateController.text.trim());
     if (dateGiven == null) {
       ScaffoldMessenger.of(
@@ -563,7 +566,8 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
         'status': 'completed',
         'administeredBy': _administeredByController.text.trim(),
         'clinicName': '',
-        'attachedDocuments': _attachedDocuments
+        'attachedDocuments': _attachmentUploadCoordinator
+            .buildSucceededPayload()
             .map((attachment) => attachment.toPayload())
             .toList(growable: false),
       };
@@ -623,25 +627,16 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
       }
 
       final uploads = switch (source) {
-        _AttachmentSource.files => await _pickFilesForAttachment(petId),
-        _AttachmentSource.camera => await _capturePhotoForAttachment(petId),
+        _AttachmentSource.files => await _pickFilesForAttachment(),
+        _AttachmentSource.camera => await _capturePhotoForAttachment(),
       };
 
       if (uploads.isEmpty || !mounted) {
         return;
       }
 
-      setState(() {
-        _attachedDocuments.addAll(uploads);
-        _didTouchAttachments = true;
-      });
-
-      final pendingCount = uploads.where((item) => item.isPendingUpload).length;
-      if (pendingCount > 0 && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(AppStrings.attachmentQueuedOffline)),
-        );
-      }
+      _didTouchAttachments = true;
+      _startAttachmentUploads(petId: petId, uploads: uploads);
     } catch (_) {
       if (!mounted) {
         return;
@@ -649,11 +644,43 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text(AppStrings.errorGeneric)));
-    } finally {
-      if (mounted) {
-        setState(() => _isUploadingAttachments = false);
-      }
     }
+  }
+
+  void _startAttachmentUploads({
+    required String petId,
+    required List<PendingAttachmentUpload> uploads,
+  }) {
+    final uploadIds = uploads.map((upload) => upload.localId).toSet();
+    unawaited(
+      _attachmentUploadCoordinator
+          .enqueueUploads(petId: petId, uploads: uploads)
+          .then((_) {
+            if (!mounted) {
+              return;
+            }
+            final hasQueuedOfflineAttachment = _attachmentUploadCoordinator
+                .items
+                .where((item) => uploadIds.contains(item.localId))
+                .any((item) => item.attachment?.isPendingUpload ?? false);
+            setState(() {});
+            if (hasQueuedOfflineAttachment) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(AppStrings.attachmentQueuedOffline),
+                ),
+              );
+            }
+          })
+          .catchError((_) {
+            if (!mounted) {
+              return;
+            }
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text(AppStrings.errorGeneric)),
+            );
+          }),
+    );
   }
 
   Future<_AttachmentSource?> _showAttachmentSourcePicker() {
@@ -686,9 +713,7 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
     );
   }
 
-  Future<List<EditableAttachmentModel>> _pickFilesForAttachment(
-    String petId,
-  ) async {
+  Future<List<PendingAttachmentUpload>> _pickFilesForAttachment() async {
     final result = await FilePicker.platform.pickFiles(
       allowMultiple: true,
       withData: true,
@@ -697,37 +722,36 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
     );
 
     if (result == null || result.files.isEmpty) {
-      return const <EditableAttachmentModel>[];
+      return const <PendingAttachmentUpload>[];
     }
 
     if (!mounted) {
-      return const <EditableAttachmentModel>[];
+      return const <PendingAttachmentUpload>[];
     }
 
-    setState(() => _isUploadingAttachments = true);
-
-    final uploads = <EditableAttachmentModel>[];
-    for (final file in result.files) {
+    final uploads = <PendingAttachmentUpload>[];
+    for (var index = 0; index < result.files.length; index++) {
+      final file = result.files[index];
       final bytes = file.bytes;
       if (bytes == null || bytes.isEmpty) {
         continue;
       }
 
-      final uploaded = await _attachmentUploadService.uploadPetDocument(
-        bytes: bytes,
-        petId: petId,
-        fileName: file.name,
-        category: 'vaccinations',
+      uploads.add(
+        PendingAttachmentUpload(
+          localId: _buildAttachmentLocalId(fileName: file.name, index: index),
+          fileName: file.name,
+          bytes: bytes,
+          category: 'vaccinations',
+          isImage: _isImageFile(file.name),
+        ),
       );
-      uploads.add(EditableAttachmentModel.fromUploaded(uploaded));
     }
 
     return uploads;
   }
 
-  Future<List<EditableAttachmentModel>> _capturePhotoForAttachment(
-    String petId,
-  ) async {
+  Future<List<PendingAttachmentUpload>> _capturePhotoForAttachment() async {
     final photo = await _imagePicker.pickImage(
       source: ImageSource.camera,
       imageQuality: 85,
@@ -736,41 +760,57 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
     );
 
     if (photo == null) {
-      return const <EditableAttachmentModel>[];
+      return const <PendingAttachmentUpload>[];
     }
 
     final bytes = await photo.readAsBytes();
     if (bytes.isEmpty) {
-      return const <EditableAttachmentModel>[];
+      return const <PendingAttachmentUpload>[];
     }
 
     if (!mounted) {
-      return const <EditableAttachmentModel>[];
+      return const <PendingAttachmentUpload>[];
     }
 
-    setState(() => _isUploadingAttachments = true);
-
-    final uploaded = await _attachmentUploadService.uploadPetDocument(
-      bytes: bytes,
-      petId: petId,
-      fileName: photo.name,
-      category: 'vaccinations',
-    );
-
-    return <EditableAttachmentModel>[
-      EditableAttachmentModel.fromUploaded(uploaded),
+    return <PendingAttachmentUpload>[
+      PendingAttachmentUpload(
+        localId: _buildAttachmentLocalId(fileName: photo.name),
+        fileName: photo.name,
+        bytes: bytes,
+        category: 'vaccinations',
+        isImage: true,
+      ),
     ];
   }
 
-  void _removeAttachmentAt(int index) {
-    if (index < 0 || index >= _attachedDocuments.length) {
+  void _removeAttachment(String localId) {
+    _didTouchAttachments = true;
+    _attachmentUploadCoordinator.remove(localId);
+  }
+
+  Future<void> _retryAttachment(String localId) async {
+    _didTouchAttachments = true;
+    await _attachmentUploadCoordinator.retry(localId);
+  }
+
+  void _handleAttachmentUploadsChanged() {
+    if (!mounted) {
       return;
     }
+    setState(() {});
+  }
 
-    setState(() {
-      _attachedDocuments.removeAt(index);
-      _didTouchAttachments = true;
-    });
+  String _buildAttachmentLocalId({required String fileName, int? index}) {
+    final suffix = index == null ? '' : '_$index';
+    return '${DateTime.now().microsecondsSinceEpoch}${suffix}_$fileName';
+  }
+
+  bool _isImageFile(String fileName) {
+    final normalized = fileName.toLowerCase();
+    return normalized.endsWith('.jpg') ||
+        normalized.endsWith('.jpeg') ||
+        normalized.endsWith('.png') ||
+        normalized.endsWith('.webp');
   }
 
   @override
@@ -880,7 +920,7 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
                 }
               });
             },
-            onPickDate: () =>_pickDate(true),
+            onPickDate: () => _pickDate(true),
             dateController: _dateController,
           ),
         ];
@@ -889,12 +929,9 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
           AddVaccineStepDetails(
             administeredByController: _administeredByController,
             onAddAttachment: _pickAndUploadAttachment,
-            attachmentNames: _attachedDocuments
-                .map((attachment) => attachment.fileName)
-                .toList(growable: false),
-            onRemoveAttachment: _removeAttachmentAt,
-            isUploadingAttachments:
-                _isUploadingAttachments || _isLoadingExistingAttachments,
+            attachments: _attachmentUploadCoordinator.items,
+            onRemoveAttachment: _removeAttachment,
+            onRetryAttachment: _retryAttachment,
           ),
         ];
       case 2:
@@ -906,7 +943,7 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
             productController: _productController,
             petNameController: _petNameController,
             administeredByController: _administeredByController,
-            attachmentNames: _attachedDocuments
+            attachmentNames: _attachmentUploadCoordinator.items
                 .map((attachment) => attachment.fileName)
                 .toList(growable: false),
           ),

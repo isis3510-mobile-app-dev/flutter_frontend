@@ -1,25 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/core/constants/app_colors.dart';
 import 'package:flutter_frontend/core/constants/app_strings.dart';
+import 'package:flutter_frontend/core/models/attachment_models.dart';
 
 class AddFlowAttachmentsSection extends StatelessWidget {
   const AddFlowAttachmentsSection({
     super.key,
     this.onTap,
-    this.attachments = const <String>[],
+    this.attachments = const <AttachmentUploadItem>[],
     this.onRemoveAttachment,
-    this.isUploading = false,
+    this.onRetryAttachment,
   });
 
   final VoidCallback? onTap;
-  final List<String> attachments;
-  final ValueChanged<int>? onRemoveAttachment;
-  final bool isUploading;
+  final List<AttachmentUploadItem> attachments;
+  final ValueChanged<String>? onRemoveAttachment;
+  final ValueChanged<String>? onRetryAttachment;
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final hasAttachments = attachments.isNotEmpty;
+    final hasPendingUploads = attachments.any(
+      (attachment) => attachment.isPending,
+    );
     final titleColor = isDark ? AppColors.onSurfaceDark : AppColors.onSurface;
     final uploadBackground = isDark
         ? AppColors.quickActionIconBackgroundDark
@@ -50,7 +54,7 @@ class AddFlowAttachmentsSection extends StatelessWidget {
         const SizedBox(height: 12),
         Center(
           child: InkWell(
-            onTap: isUploading ? null : onTap,
+            onTap: hasPendingUploads ? null : onTap,
             borderRadius: BorderRadius.circular(24),
             child: Container(
               width: 140,
@@ -63,7 +67,7 @@ class AddFlowAttachmentsSection extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  isUploading
+                  hasPendingUploads
                       ? const SizedBox(
                           width: 34,
                           height: 34,
@@ -76,7 +80,9 @@ class AddFlowAttachmentsSection extends StatelessWidget {
                         ),
                   const SizedBox(height: 8),
                   Text(
-                    AppStrings.uploadDocuments,
+                    hasPendingUploads
+                        ? 'Uploading...'
+                        : AppStrings.uploadDocuments,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 12,
@@ -103,7 +109,8 @@ class AddFlowAttachmentsSection extends StatelessWidget {
         if (hasAttachments) ...[
           const SizedBox(height: 14),
           ...List.generate(attachments.length, (index) {
-            final fileName = attachments[index];
+            final attachment = attachments[index];
+            final status = _statusMetadata(attachment.status, isDark: isDark);
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Container(
@@ -118,24 +125,51 @@ class AddFlowAttachmentsSection extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    Icon(
-                      Icons.insert_drive_file_outlined,
-                      size: 18,
-                      color: helperColor,
-                    ),
+                    Icon(status.icon, size: 18, color: status.color),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: Text(
-                        fileName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: attachmentText),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            attachment.fileName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: attachmentText),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            status.label,
+                            style: TextStyle(
+                              color: status.color,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          if (attachment.errorMessage != null &&
+                              attachment.errorMessage!.trim().isNotEmpty)
+                            Text(
+                              attachment.errorMessage!,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: helperColor,
+                                fontSize: 11,
+                              ),
+                            ),
+                        ],
                       ),
                     ),
+                    if (attachment.isFailed && onRetryAttachment != null)
+                      IconButton(
+                        onPressed: () => onRetryAttachment!(attachment.localId),
+                        icon: Icon(Icons.refresh_rounded, color: helperColor),
+                        tooltip: 'Retry attachment',
+                      ),
                     IconButton(
                       onPressed: onRemoveAttachment == null
                           ? null
-                          : () => onRemoveAttachment!(index),
+                          : () => onRemoveAttachment!(attachment.localId),
                       icon: Icon(Icons.close_rounded, color: helperColor),
                       tooltip: 'Remove attachment',
                     ),
@@ -148,4 +182,55 @@ class AddFlowAttachmentsSection extends StatelessWidget {
       ],
     );
   }
+}
+
+class _AttachmentStatusMetadata {
+  const _AttachmentStatusMetadata({
+    required this.icon,
+    required this.color,
+    required this.label,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String label;
+}
+
+_AttachmentStatusMetadata _statusMetadata(
+  AttachmentUploadStatus status, {
+  required bool isDark,
+}) {
+  final successColor = isDark ? AppColors.positiveTextDark : AppColors.success;
+  final warningColor = isDark
+      ? AppColors.smartAlertWarningTextDark
+      : AppColors.warning;
+  final errorColor = isDark ? AppColors.negativeTextDark : AppColors.error;
+
+  return switch (status) {
+    AttachmentUploadStatus.queued => _AttachmentStatusMetadata(
+      icon: Icons.schedule_rounded,
+      color: warningColor,
+      label: 'Queued',
+    ),
+    AttachmentUploadStatus.processing => _AttachmentStatusMetadata(
+      icon: Icons.tune_rounded,
+      color: warningColor,
+      label: 'Preparing',
+    ),
+    AttachmentUploadStatus.uploading => _AttachmentStatusMetadata(
+      icon: Icons.cloud_upload_outlined,
+      color: warningColor,
+      label: 'Uploading',
+    ),
+    AttachmentUploadStatus.succeeded => _AttachmentStatusMetadata(
+      icon: Icons.check_circle_outline_rounded,
+      color: successColor,
+      label: 'Uploaded',
+    ),
+    AttachmentUploadStatus.failed => _AttachmentStatusMetadata(
+      icon: Icons.error_outline_rounded,
+      color: errorColor,
+      label: 'Failed',
+    ),
+  };
 }
