@@ -7,6 +7,7 @@ import '../network/api_exception.dart';
 import 'attachment_upload_service.dart';
 import 'local_database_service.dart';
 import 'response_cache_service.dart';
+import 'telemetry_service.dart';
 
 class PetService {
   PetService._();
@@ -37,16 +38,26 @@ class PetService {
   final LocalDatabaseService _localDb = LocalDatabaseService();
   final AttachmentUploadService _attachmentUploadService =
       AttachmentUploadService();
+  final TelemetryService _telemetryService = TelemetryService();
 
   Future<List<PetModel>> getPets({bool forceRefresh = false}) async {
     final cachedEntry = await _cache.get(_petsCacheKey);
     if (!forceRefresh &&
         cachedEntry != null &&
         cachedEntry.isFresh(_petsCacheTtl)) {
+      final cacheLoadStartTime = DateTime.now();
       final cachedPets = _tryParsePets(cachedEntry.body);
       if (cachedPets != null) {
         unawaited(_persistPetsFromBody(cachedEntry.body));
-        return await _mergeLocalPets(cachedPets);
+        final mergedPets = await _mergeLocalPets(cachedPets);
+        final cacheLoadEndTime = DateTime.now();
+        unawaited(
+          _telemetryService.logCachedPetProfileLoadExecution(
+            startTime: cacheLoadStartTime,
+            endTime: cacheLoadEndTime,
+          ),
+        );
+        return mergedPets;
       }
     }
 

@@ -182,6 +182,39 @@ class TelemetryService {
     }
   }
 
+  Future<void> logCachedPetProfileLoadExecution({
+    required DateTime startTime,
+    required DateTime endTime,
+  }) async {
+    if (featureLoadCachedPetProfileId.isEmpty) {
+      return;
+    }
+
+    final userId = await _getUserId();
+    if (userId == null) {
+      return;
+    }
+
+    final totalTimeMs = endTime.difference(startTime).inMilliseconds;
+    final payload = <String, dynamic>{
+      'schema': 1,
+      'userId': userId,
+      'featureId': featureLoadCachedPetProfileId,
+      'startTime': startTime.toIso8601String(),
+      'endTime': endTime.toIso8601String(),
+      'totalTime': totalTimeMs,
+      'downloadSpeed': 0,
+      'uploadSpeed': 0,
+      'appType': 'Flutter',
+    };
+
+    try {
+      await _apiClient.post(_featureExecutionLogsPath, body: payload);
+    } catch (_) {
+      // Telemetry should never block the UI or crash the app.
+    }
+  }
+
   Future<String?> _getUserId() async {
     final cached = _cachedUserId;
     if (cached != null && cached.isNotEmpty) {
