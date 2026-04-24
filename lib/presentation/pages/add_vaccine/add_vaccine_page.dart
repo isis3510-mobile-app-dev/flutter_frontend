@@ -61,6 +61,9 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
 
   int _step = 0;
 
+  bool get _isEditingVaccination =>
+      _editingVaccinationId != null && _editingVaccinationId!.trim().isNotEmpty;
+
   @override
   void initState() {
     super.initState();
@@ -523,15 +526,13 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
     setState(() => _isSubmitting = true);
 
     try {
-      if (_editingVaccinationId != null &&
-          _editingVaccinationId!.trim().isNotEmpty &&
+      if (_isEditingVaccination &&
           !_didTouchAttachments &&
           !_didHydrateExistingAttachments) {
         await _loadEditingVaccinationIfNeeded(force: true);
       }
 
-      if (_editingVaccinationId != null &&
-          _editingVaccinationId!.trim().isNotEmpty &&
+      if (_isEditingVaccination &&
           !_didTouchAttachments &&
           !_didHydrateExistingAttachments) {
         if (!mounted) {
@@ -572,13 +573,9 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
             .toList(growable: false),
       };
 
-      if (widget.prefill == null) {
+      if (!_isEditingVaccination) {
         await _petService.addVaccination(petId: _selectedPetId!, data: payload);
       } else {
-        if (_editingVaccinationId == null ||
-            _editingVaccinationId!.trim().isEmpty) {
-          throw Exception('Missing vaccination id for update.');
-        }
         await _petService.updateVaccination(
           petId: _selectedPetId!,
           vaccinationId: _editingVaccinationId!,
@@ -591,7 +588,7 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            widget.prefill == null
+            !_isEditingVaccination
                 ? 'Vaccine saved successfully.'
                 : 'Vaccine updated successfully.',
           ),
@@ -826,7 +823,7 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
       currentStep: _step,
       stepContent: _buildStepContent(),
       primaryButtonText: _step == 2
-          ? (widget.prefill == null
+          ? (!_isEditingVaccination
                 ? AppStrings.semanticAddVaccineButton
                 : AppStrings.semanticUpdateVaccineButton)
           : AppStrings.semanticContinueButton,
