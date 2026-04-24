@@ -832,10 +832,7 @@ class _AddEventPageState extends State<AddEventPage> {
       }
 
       _didTouchAttachments = true;
-      await _attachmentUploadCoordinator.enqueueUploads(
-        petId: petId,
-        uploads: uploads,
-      );
+      _startAttachmentUploads(petId: petId, uploads: uploads);
     } catch (_) {
       if (!mounted) {
         return;
@@ -845,6 +842,30 @@ class _AddEventPageState extends State<AddEventPage> {
         context,
       ).showSnackBar(const SnackBar(content: Text(AppStrings.errorGeneric)));
     }
+  }
+
+  void _startAttachmentUploads({
+    required String petId,
+    required List<PendingAttachmentUpload> uploads,
+  }) {
+    unawaited(
+      _attachmentUploadCoordinator
+          .enqueueUploads(petId: petId, uploads: uploads)
+          .then((_) {
+            if (!mounted) {
+              return;
+            }
+            setState(() {});
+          })
+          .catchError((_) {
+            if (!mounted) {
+              return;
+            }
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text(AppStrings.errorGeneric)),
+            );
+          }),
+    );
   }
 
   Future<_AttachmentSource?> _showAttachmentSourcePicker() {
