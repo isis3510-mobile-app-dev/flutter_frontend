@@ -364,6 +364,8 @@ abstract class AppStrings {
   static const String smartAlertsFilterAll = 'All';
   static const String smartAlertsEmpty =
       'No health alerts available right now.';
+  static const String smartAlertsInternetNotice =
+      'For new notifications please connect to internet.';
   static const String smartAlertsShowLess = 'Show less';
 
   // --- Welcome pages ---
