@@ -65,6 +65,7 @@ class _NfcPageState extends State<NfcPage> {
   @override
   void initState() {
     super.initState();
+    unawaited(_nfcService.setTagIntentBlocked(true));
     _checkNfcAvailability();
     _loadPets();
   }
@@ -154,6 +155,7 @@ class _NfcPageState extends State<NfcPage> {
   @override
   void dispose() {
     unawaited(_nfcService.stopSession());
+    unawaited(_nfcService.setTagIntentBlocked(false));
     super.dispose();
   }
 
@@ -270,6 +272,8 @@ class _NfcPageState extends State<NfcPage> {
             ? 'Could not read NFC tag. Please try again.'
             : 'Could not write NFC tag. Please try again.',
       );
+    } finally {
+      await _nfcService.setTagIntentBlocked(true);
     }
   }
 
@@ -364,6 +368,7 @@ class _NfcPageState extends State<NfcPage> {
 
   Future<void> _cancelScanning() async {
     await _nfcService.stopSession();
+    await _nfcService.setTagIntentBlocked(true);
     if (!mounted) {
       return;
     }
