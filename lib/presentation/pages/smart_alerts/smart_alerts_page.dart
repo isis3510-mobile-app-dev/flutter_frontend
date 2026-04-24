@@ -159,37 +159,47 @@ class _SmartAlertsPageState extends State<SmartAlertsPage> {
     }
 
     if (_errorMessage != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppDimensions.spaceXL),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.cloud_off_rounded,
-                size: 56,
-                color: AppColors.grey300,
+      return Column(
+        children: [
+          const SizedBox(height: AppDimensions.spaceS),
+          _buildInternetNotice(),
+          Expanded(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppDimensions.spaceXL),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.cloud_off_rounded,
+                      size: 56,
+                      color: AppColors.grey300,
+                    ),
+                    const SizedBox(height: AppDimensions.spaceM),
+                    Text(
+                      _errorMessage!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: AppColors.grey700),
+                    ),
+                    const SizedBox(height: AppDimensions.spaceM),
+                    OutlinedButton(
+                      onPressed: _loadAlerts,
+                      child: const Text(AppStrings.petsRetry),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: AppDimensions.spaceM),
-              Text(
-                _errorMessage!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.grey700),
-              ),
-              const SizedBox(height: AppDimensions.spaceM),
-              OutlinedButton(
-                onPressed: _loadAlerts,
-                child: const Text(AppStrings.petsRetry),
-              ),
-            ],
+            ),
           ),
-        ),
+        ],
       );
     }
 
     return Column(
       children: [
         const SizedBox(height: AppDimensions.spaceS),
+        _buildInternetNotice(),
+        const SizedBox(height: AppDimensions.spaceM),
         _buildFilterBar(),
         const SizedBox(height: AppDimensions.spaceM),
         Expanded(
@@ -219,6 +229,44 @@ class _SmartAlertsPageState extends State<SmartAlertsPage> {
                 ),
         ),
       ],
+    );
+  }
+
+  Widget _buildInternetNotice() {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(
+        horizontal: AppDimensions.pageHorizontalPadding,
+      ),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppDimensions.spaceM,
+        vertical: AppDimensions.spaceM,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.smartAlertInfoBg,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.wifi_off_rounded,
+            color: AppColors.smartAlertInfoText,
+            size: 20,
+          ),
+          SizedBox(width: AppDimensions.spaceS),
+          Expanded(
+            child: Text(
+              AppStrings.smartAlertsInternetNotice,
+              style: TextStyle(
+                color: AppColors.smartAlertInfoText,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
