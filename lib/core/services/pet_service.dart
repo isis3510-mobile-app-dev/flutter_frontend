@@ -262,9 +262,10 @@ class PetService {
   }) async {
     final normalizedPetId = petId.trim();
     try {
+      final apiData = await _prepareVaccinationPayloadForApi(data);
       final response = await _apiClient.post(
         '$petsPath$normalizedPetId/vaccinations/',
-        body: data,
+        body: apiData,
       );
 
       if (response.body.trim().isNotEmpty) {
@@ -278,7 +279,8 @@ class PetService {
       }
       await _invalidatePetsCache();
     } catch (error) {
-      if (!_shouldQueueOffline(error)) {
+      if (!_shouldQueueOffline(error) &&
+          !_shouldQueuePendingAttachmentResolution(error, data)) {
         rethrow;
       }
 
@@ -327,9 +329,10 @@ class PetService {
     }
 
     try {
+      final apiData = await _prepareVaccinationPayloadForApi(data);
       await _apiClient.put(
         '$petsPath$normalizedPetId/vaccinations/$normalizedVaccinationId/',
-        body: data,
+        body: apiData,
       );
 
       final current =
@@ -341,7 +344,7 @@ class PetService {
             'id': normalizedVaccinationId,
             'petId': normalizedPetId,
           };
-      final merged = <String, dynamic>{...current, ..._asPetMap(data)};
+      final merged = <String, dynamic>{...current, ..._asPetMap(apiData)};
       merged['id'] = normalizedVaccinationId;
       merged['petId'] = normalizedPetId;
       await _localDb.upsertEntity(
@@ -355,7 +358,8 @@ class PetService {
       );
       await _invalidatePetsCache();
     } catch (error) {
-      if (!_shouldQueueOffline(error)) {
+      if (!_shouldQueueOffline(error) &&
+          !_shouldQueuePendingAttachmentResolution(error, data)) {
         rethrow;
       }
 
@@ -764,6 +768,63 @@ class PetService {
 
   bool _shouldQueueOffline(Object error) {
     return error is ApiException && error.type == ApiErrorType.network;
+  }
+
+  bool _shouldQueuePendingAttachmentResolution(
+    Object error,
+    Map<String, dynamic> data,
+  ) {
+    final message = error.toString();
+    return message.contains('Attachment upload still pending') &&
+        _hasPendingAttachmentUpload(data);
+  }
+
+  bool _hasPendingAttachmentUpload(Map<String, dynamic> data) {
+    final documents = data['attachedDocuments'];
+    if (documents is! List) {
+      return false;
+    }
+
+    return documents.map(_asPetMap).any((document) {
+      return document['pendingUpload'] == true ||
+          ((document['fileUri'] as String?)?.trim().isEmpty ?? true) &&
+              ((document['storagePath'] as String?)?.trim().isNotEmpty ??
+                  false);
+    });
+  }
+
+  Future<Map<String, dynamic>> _prepareVaccinationPayloadForApi(
+    Map<String, dynamic> data,
+  ) async {
+    final resolved = await _attachmentUploadService
+        .resolvePendingAttachmentsInPayload(_asPetMap(data));
+    return _sanitizeAttachmentPayloadForApi(resolved);
+  }
+
+  Map<String, dynamic> _sanitizeAttachmentPayloadForApi(
+    Map<String, dynamic> payload,
+  ) {
+    final documents = payload['attachedDocuments'];
+    if (documents is! List) {
+      return payload;
+    }
+
+    return <String, dynamic>{
+      ...payload,
+      'attachedDocuments': documents
+          .map(_sanitizeDocumentForApi)
+          .toList(growable: false),
+    };
+  }
+
+  Map<String, dynamic> _sanitizeDocumentForApi(dynamic value) {
+    final document = _asPetMap(value);
+    return <String, dynamic>{
+      if ((document['documentId'] as String?)?.trim().isNotEmpty == true)
+        'documentId': (document['documentId'] as String).trim(),
+      'fileName': ((document['fileName'] as String?) ?? '').trim(),
+      'fileUri': ((document['fileUri'] as String?) ?? '').trim(),
+    };
   }
 
   String _newLocalId(String prefix) {
