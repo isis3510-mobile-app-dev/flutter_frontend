@@ -1,19 +1,25 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_frontend/core/models/attachment_models.dart';
 
 import 'attachment_preprocessing_service.dart';
 import 'attachment_upload_service.dart';
+import 'telemetry_service.dart';
 
 class AttachmentUploadCoordinator extends ChangeNotifier {
   AttachmentUploadCoordinator({
     AttachmentUploadService? uploadService,
     AttachmentPreprocessingService? preprocessingService,
+    TelemetryService? telemetryService,
   }) : _uploadService = uploadService ?? AttachmentUploadService(),
        _preprocessingService =
-           preprocessingService ?? const AttachmentPreprocessingService();
+           preprocessingService ?? const AttachmentPreprocessingService(),
+       _telemetryService = telemetryService ?? TelemetryService();
 
   final AttachmentUploadService _uploadService;
   final AttachmentPreprocessingService _preprocessingService;
+  final TelemetryService _telemetryService;
   final List<AttachmentUploadItem> _items = <AttachmentUploadItem>[];
   final Map<String, _QueuedAttachmentUpload> _queuedUploads =
       <String, _QueuedAttachmentUpload>{};
@@ -122,6 +128,7 @@ class AttachmentUploadCoordinator extends ChangeNotifier {
         }
 
         try {
+          final startTime = DateTime.now();
           Uint8List bytes = request.upload.bytes;
           if (request.upload.isImage) {
             _updateStatus(
@@ -153,6 +160,7 @@ class AttachmentUploadCoordinator extends ChangeNotifier {
             fileName: request.upload.fileName,
             category: request.upload.category,
           );
+          final endTime = DateTime.now();
 
           _updateStatus(
             nextItem.localId,
@@ -160,6 +168,15 @@ class AttachmentUploadCoordinator extends ChangeNotifier {
               status: AttachmentUploadStatus.succeeded,
               attachment: EditableAttachmentModel.fromUploaded(uploaded),
               clearErrorMessage: true,
+            ),
+          );
+
+          unawaited(
+            _logAttachmentUploadExecution(
+              category: request.upload.category,
+              startTime: startTime,
+              endTime: endTime,
+              uploadBytes: bytes.lengthInBytes,
             ),
           );
         } catch (error) {
@@ -193,6 +210,32 @@ class AttachmentUploadCoordinator extends ChangeNotifier {
     }
     _items[index] = updatedItem;
     notifyListeners();
+  }
+
+  Future<void> _logAttachmentUploadExecution({
+    required String category,
+    required DateTime startTime,
+    required DateTime endTime,
+    required int uploadBytes,
+  }) async {
+    switch (category.trim().toLowerCase()) {
+      case 'vaccinations':
+        await _telemetryService.logVaccineAttachmentUploadExecution(
+          startTime: startTime,
+          endTime: endTime,
+          uploadBytes: uploadBytes,
+        );
+        break;
+      case 'events':
+        await _telemetryService.logEventAttachmentUploadExecution(
+          startTime: startTime,
+          endTime: endTime,
+          uploadBytes: uploadBytes,
+        );
+        break;
+      default:
+        break;
+    }
   }
 }
 
