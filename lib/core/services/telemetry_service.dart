@@ -52,31 +52,11 @@ class TelemetryService {
     required DateTime startTime,
     required DateTime endTime,
   }) async {
-    if (featureNfcReadId.isEmpty) {
-      return;
-    }
-
-    final userId = await _getUserId();
-    if (userId == null) {
-      return;
-    }
-
-    final totalTimeMs = endTime.difference(startTime).inMilliseconds;
-    final payload = <String, dynamic>{
-      'schema': 1,
-      'userId': userId,
-      'featureId': featureNfcReadId,
-      'startTime': startTime.toIso8601String(),
-      'endTime': endTime.toIso8601String(),
-      'totalTime': totalTimeMs,
-      'appType' : "Flutter"
-    };
-
-    try {
-      await _apiClient.post(_featureExecutionLogsPath, body: payload);
-    } catch (_) {
-      // Telemetry should never block the UI or crash the app.
-    }
+    await _logFeatureExecution(
+      featureId: featureNfcReadId,
+      startTime: startTime,
+      endTime: endTime,
+    );
   }
 
   Future<void> logAddPetExecutionIfPending({required DateTime endTime}) async {
@@ -114,7 +94,7 @@ class TelemetryService {
       'totalTime': totalTimeMs,
       'uploadSpeed': uploadSpeed,
       'downloadSpeed': downloadSpeed,
-      'appType' : "Flutter"
+      'appType': "Flutter",
     };
 
     try {
@@ -144,7 +124,7 @@ class TelemetryService {
       'routeId': featureRouteAddEventId,
       'timestamp': DateTime.now().toIso8601String(),
       'nClicks': nClicks,
-      'appType' : "Flutter"
+      'appType': "Flutter",
     };
 
     try {
@@ -172,7 +152,7 @@ class TelemetryService {
       'startTime': startTime.toIso8601String(),
       'endTime': endTime.toIso8601String(),
       'totalTime': totalTimeMs,
-      'appType' : "Flutter"
+      'appType': "Flutter",
     };
 
     try {
@@ -180,6 +160,32 @@ class TelemetryService {
     } catch (_) {
       // Telemetry should never block the UI or crash the app.
     }
+  }
+
+  Future<void> logVaccineAttachmentUploadExecution({
+    required DateTime startTime,
+    required DateTime endTime,
+    required int uploadBytes,
+  }) async {
+    await _logFeatureExecution(
+      featureId: featureVaccineAttachmentUploadId,
+      startTime: startTime,
+      endTime: endTime,
+      uploadBytes: uploadBytes,
+    );
+  }
+
+  Future<void> logEventAttachmentUploadExecution({
+    required DateTime startTime,
+    required DateTime endTime,
+    required int uploadBytes,
+  }) async {
+    await _logFeatureExecution(
+      featureId: featureEventAttachmentUploadId,
+      startTime: startTime,
+      endTime: endTime,
+      uploadBytes: uploadBytes,
+    );
   }
 
   Future<String?> _getUserId() async {
@@ -194,6 +200,50 @@ class TelemetryService {
       return user.id;
     } catch (_) {
       return null;
+    }
+  }
+
+  Future<void> _logFeatureExecution({
+    required String featureId,
+    required DateTime startTime,
+    required DateTime endTime,
+    int uploadBytes = 0,
+    int downloadBytes = 0,
+  }) async {
+    if (featureId.trim().isEmpty) {
+      return;
+    }
+
+    final userId = await _getUserId();
+    if (userId == null) {
+      return;
+    }
+
+    final totalTimeMs = endTime.difference(startTime).inMilliseconds;
+    final totalSeconds = totalTimeMs <= 0 ? 0 : totalTimeMs / 1000.0;
+    final uploadSpeed = totalSeconds == 0
+        ? 0
+        : (uploadBytes / totalSeconds).round();
+    final downloadSpeed = totalSeconds == 0
+        ? 0
+        : (downloadBytes / totalSeconds).round();
+
+    final payload = <String, dynamic>{
+      'schema': 1,
+      'userId': userId,
+      'featureId': featureId,
+      'startTime': startTime.toIso8601String(),
+      'endTime': endTime.toIso8601String(),
+      'totalTime': totalTimeMs,
+      'uploadSpeed': uploadSpeed,
+      'downloadSpeed': downloadSpeed,
+      'appType': 'Flutter',
+    };
+
+    try {
+      await _apiClient.post(_featureExecutionLogsPath, body: payload);
+    } catch (_) {
+      // Telemetry should never block the UI or crash the app.
     }
   }
 
