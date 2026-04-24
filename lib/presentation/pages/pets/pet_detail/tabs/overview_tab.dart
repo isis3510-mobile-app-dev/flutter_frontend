@@ -273,6 +273,28 @@ class _HealthSummaryCard extends StatelessWidget {
   final PetModel? petDetails;
   final int eventCount;
 
+  bool _isCompletedVaccination(PetVaccinationModel vaccination) {
+    final status = vaccination.status.trim().toLowerCase();
+    if (status == 'completed' || status == 'done' || status == 'applied') {
+      return true;
+    }
+
+    if (status == 'overdue' || status == 'late' || status == 'expired') {
+      return false;
+    }
+
+    final now = DateTime.now();
+    if (vaccination.nextDueDate.year > 1 &&
+        vaccination.nextDueDate.isBefore(now)) {
+      return false;
+    }
+    if (vaccination.dateGiven.year > 1 && vaccination.dateGiven.isAfter(now)) {
+      return false;
+    }
+
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
     final bgColor = isDark
@@ -281,12 +303,9 @@ class _HealthSummaryCard extends StatelessWidget {
 
     final vaccinations = petDetails?.vaccinations ?? const [];
     final totalVaccines = vaccinations.length;
-    final upcoming =
-        vaccinations
-            .where((v) => v.nextDueDate.isAfter(DateTime.now()))
-            .toList(growable: false)
-          ..sort((a, b) => a.nextDueDate.compareTo(b.nextDueDate));
-    final completedVaccines = vaccinations.length - upcoming.length;
+    final completedVaccines = vaccinations
+        .where(_isCompletedVaccination)
+        .length;
     final vaccineMetric = totalVaccines == 0
         ? '0/0'
         : '$completedVaccines/$totalVaccines';

@@ -21,6 +21,7 @@ import '../../../../core/services/smart_feature_service.dart';
 import '../../../../core/services/telemetry_service.dart';
 import '../../../../shared/widgets/quick_actions_fab.dart';
 import '../../add_event/add_event_args.dart';
+import '../../add_vaccine/add_vaccine_args.dart';
 import '../../records/detail/detail_page.dart';
 import '../models/pet_ui_mapper.dart';
 import '../models/pet_ui_model.dart';
@@ -54,8 +55,13 @@ class _PetDetailScreenState extends State<PetDetailScreen>
   final TelemetryService _telemetryService = TelemetryService();
 
   Future<void> _goToAddVaccine() async {
-    final result = await Navigator.pushNamed(context, Routes.addVaccine);
+    final result = await Navigator.pushNamed(
+      context,
+      Routes.addVaccine,
+      arguments: AddVaccineArgs(petId: _pet.id, petName: _pet.name),
+    );
     if (result == true) {
+      _hasMutatedPet = true;
       await _loadPetDetail();
     }
   }
@@ -70,6 +76,11 @@ class _PetDetailScreenState extends State<PetDetailScreen>
       _hasMutatedPet = true;
       await _loadPetDetail();
     }
+  }
+
+  Future<void> _handleVaccinationUpdated() async {
+    _hasMutatedPet = true;
+    await _loadPetDetail();
   }
 
   late PetUiModel _pet;
@@ -520,6 +531,7 @@ class _PetDetailScreenState extends State<PetDetailScreen>
                 pet: _pet,
                 vaccinations: _petDetails?.vaccinations ?? const [],
                 onAddVaccine: _goToAddVaccine,
+                onVaccinationUpdated: _handleVaccinationUpdated,
               ),
               EventsTab(
                 pet: _pet,

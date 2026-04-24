@@ -40,7 +40,9 @@ class PetService {
 
   Future<List<PetModel>> getPets({bool forceRefresh = false}) async {
     final cachedEntry = await _cache.get(_petsCacheKey);
-    if (!forceRefresh && cachedEntry != null && cachedEntry.isFresh(_petsCacheTtl)) {
+    if (!forceRefresh &&
+        cachedEntry != null &&
+        cachedEntry.isFresh(_petsCacheTtl)) {
       final cachedPets = _tryParsePets(cachedEntry.body);
       if (cachedPets != null) {
         unawaited(_persistPetsFromBody(cachedEntry.body));
@@ -126,7 +128,10 @@ class PetService {
       }
 
       final localId = _newLocalId('pet');
-      final pendingPayload = _buildPendingPetPayload(source: data, petId: localId);
+      final pendingPayload = _buildPendingPetPayload(
+        source: data,
+        petId: localId,
+      );
 
       await _localDb.upsertEntity(
         table: LocalDbTables.pets,
@@ -254,7 +259,10 @@ class PetService {
       if (response.body.trim().isNotEmpty) {
         final decoded = jsonDecode(response.body);
         if (decoded is Map<String, dynamic>) {
-          await _persistVaccinationMap(_asPetMap(decoded), petId: normalizedPetId);
+          await _persistVaccinationMap(
+            _asPetMap(decoded),
+            petId: normalizedPetId,
+          );
         }
       }
       await _invalidatePetsCache();
@@ -329,6 +337,10 @@ class PetService {
         table: LocalDbTables.petVaccinations,
         remoteId: normalizedVaccinationId,
         payload: merged,
+      );
+      await _upsertVaccinationIntoPetRow(
+        petId: normalizedPetId,
+        vaccinationJson: merged,
       );
       await _invalidatePetsCache();
     } catch (error) {
@@ -431,7 +443,9 @@ class PetService {
       await _persistVaccinationList(maps, petId: normalizedPetId);
       return maps.map(PetVaccinationModel.fromJson).toList(growable: false);
     } catch (_) {
-      final localVaccinations = await _getVaccinationsFromLocalDb(normalizedPetId);
+      final localVaccinations = await _getVaccinationsFromLocalDb(
+        normalizedPetId,
+      );
       if (localVaccinations.isNotEmpty) {
         return localVaccinations;
       }
@@ -490,7 +504,8 @@ class PetService {
       try {
         switch (operation.action) {
           case _actionCreate:
-            final createPayload = operation.payload ?? const <String, dynamic>{};
+            final createPayload =
+                operation.payload ?? const <String, dynamic>{};
             final response = await _apiClient.post(
               petsPath,
               body: jsonEncode(createPayload),
@@ -554,8 +569,8 @@ class PetService {
 
         switch (operation.action) {
           case _actionAddVaccination:
-            final addData =
-                await _attachmentUploadService.resolvePendingAttachmentsInPayload(
+            final addData = await _attachmentUploadService
+                .resolvePendingAttachmentsInPayload(
                   _asPetMap(payload['data'] ?? const <String, dynamic>{}),
                 );
             final response = await _apiClient.post(
@@ -725,7 +740,9 @@ class PetService {
       return null;
     }
 
-    final mapped = await _localDb.getMetaValue('$_petIdMappingMetaPrefix$trimmed');
+    final mapped = await _localDb.getMetaValue(
+      '$_petIdMappingMetaPrefix$trimmed',
+    );
     final mappedTrimmed = mapped?.trim() ?? '';
     if (mappedTrimmed.isNotEmpty) {
       return mappedTrimmed;
@@ -814,27 +831,26 @@ class PetService {
     final currentVaccinations =
         (petJson['vaccinations'] as List<dynamic>?) ?? const <dynamic>[];
     final nextVaccinations = <Map<String, dynamic>>[];
+    Map<String, dynamic>? existingVaccination;
 
     for (final item in currentVaccinations) {
       final itemMap = _asPetMap(item);
       if (vaccinationId != null && vaccinationId.isNotEmpty) {
         final currentId = _readVaccinationRemoteId(itemMap);
         if (currentId == vaccinationId) {
+          existingVaccination = itemMap;
           continue;
         }
       }
       nextVaccinations.add(itemMap);
     }
 
-    nextVaccinations.add(vaccinationJson);
+    nextVaccinations.add({...?existingVaccination, ...vaccinationJson});
 
     await _localDb.upsertEntity(
       table: LocalDbTables.pets,
       remoteId: petId,
-      payload: <String, dynamic>{
-        ...petJson,
-        'vaccinations': nextVaccinations,
-      },
+      payload: <String, dynamic>{...petJson, 'vaccinations': nextVaccinations},
     );
   }
 
@@ -861,16 +877,17 @@ class PetService {
     await _localDb.upsertEntity(
       table: LocalDbTables.pets,
       remoteId: petId,
-      payload: <String, dynamic>{
-        ...petJson,
-        'vaccinations': nextVaccinations,
-      },
+      payload: <String, dynamic>{...petJson, 'vaccinations': nextVaccinations},
     );
   }
 
-  Future<List<PetVaccinationModel>> _getVaccinationsFromLocalDb(String petId) async {
+  Future<List<PetVaccinationModel>> _getVaccinationsFromLocalDb(
+    String petId,
+  ) async {
     try {
-      final localRows = await _localDb.getAllEntities(LocalDbTables.petVaccinations);
+      final localRows = await _localDb.getAllEntities(
+        LocalDbTables.petVaccinations,
+      );
       final filtered = localRows.where((item) {
         final rowPetId = item['petId'];
         return rowPetId is String && rowPetId.trim() == petId;
@@ -915,7 +932,9 @@ class PetService {
       'administeredBy': map['administeredBy'] ?? map['administered_by'] ?? '',
       'clinicName': map['clinicName'] ?? map['clinic_name'] ?? '',
       'attachedDocuments':
-          map['attachedDocuments'] ?? map['attached_documents'] ?? const <dynamic>[],
+          map['attachedDocuments'] ??
+          map['attached_documents'] ??
+          const <dynamic>[],
     };
   }
 }
