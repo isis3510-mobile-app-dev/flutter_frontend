@@ -357,6 +357,10 @@ abstract class AppStrings {
   static const String petLostConfirmAction = 'Mark Lost';
   static const String petMarkedAsLostMessage = 'Pet marked as lost.';
   static const String petMarkedAsFoundMessage = 'Pet marked as found.';
+  static const String petMarkedAsLostOfflineMessage =
+      'Lost mode saved offline. It will sync when you reconnect.';
+  static const String petMarkedAsFoundOfflineMessage =
+      'Found status saved offline. It will sync when you reconnect.';
   static const String petDetailShareSemantics = 'Share pet';
   static const String petDetailEditSemantics = 'Edit pet';
   static const String petDetailMoreSemantics = 'More options';

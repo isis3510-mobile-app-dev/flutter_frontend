@@ -182,7 +182,7 @@ class PetService {
       }
 
       final pet = PetModel.fromJson(json);
-      await _persistPetMap(_asPetMap(json));
+      await _persistPetMap(_asPetMap(json), preservePendingLocal: false);
       await _invalidatePetsCache();
       return pet;
     } catch (error) {
@@ -248,12 +248,7 @@ class PetService {
     required String petId,
     required String status,
   }) async {
-    await _apiClient.put(
-      '$petsPath$petId/',
-      body: jsonEncode({'status': status}),
-      headers: const {'Content-Type': 'application/json'},
-    );
-    await _invalidatePetsCache();
+    await updatePet(petId: petId, data: <String, dynamic>{'status': status});
   }
 
   Future<void> addVaccination({
@@ -543,11 +538,28 @@ class PetService {
             }
             break;
           case _actionUpdate:
-            await _apiClient.put(
-              '$petsPath${operation.entityId}/',
+            final petId = await _resolvePetIdForSync(operation.entityId);
+            if (petId == null || petId.isEmpty) {
+              throw const ApiException(
+                type: ApiErrorType.unknown,
+                message: 'Missing pet id in queued pet update operation.',
+              );
+            }
+
+            final response = await _apiClient.put(
+              '$petsPath$petId/',
               body: jsonEncode(operation.payload ?? const <String, dynamic>{}),
               headers: const {'Content-Type': 'application/json'},
             );
+            if (response.body.trim().isNotEmpty) {
+              final decoded = jsonDecode(response.body);
+              if (decoded is Map<String, dynamic>) {
+                await _persistPetMap(
+                  _asPetMap(decoded),
+                  preservePendingLocal: false,
+                );
+              }
+            }
             break;
           case _actionDelete:
             await _apiClient.delete('$petsPath${operation.entityId}/');
@@ -697,10 +709,23 @@ class PetService {
     }
   }
 
-  Future<void> _persistPetMap(Map<String, dynamic> petJson) async {
+  Future<void> _persistPetMap(
+    Map<String, dynamic> petJson, {
+    bool preservePendingLocal = true,
+  }) async {
     final remoteId = _readPetRemoteId(petJson);
     if (remoteId == null) {
       return;
+    }
+
+    if (preservePendingLocal) {
+      final syncStatus = await _localDb.getEntitySyncStatus(
+        table: LocalDbTables.pets,
+        remoteId: remoteId,
+      );
+      if (_isPendingSyncStatus(syncStatus)) {
+        return;
+      }
     }
 
     await _localDb.upsertEntity(
@@ -764,6 +789,10 @@ class PetService {
     }
 
     return trimmed;
+  }
+
+  bool _isPendingSyncStatus(String? syncStatus) {
+    return syncStatus != null && syncStatus.startsWith('pending_');
   }
 
   bool _shouldQueueOffline(Object error) {

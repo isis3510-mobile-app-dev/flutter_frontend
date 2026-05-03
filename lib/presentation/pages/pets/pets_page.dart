@@ -4,6 +4,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/services/connectivity_sync_service.dart';
 import '../../../core/services/pet_service.dart';
 import '../../../core/services/profile_photo_service.dart';
 import '../../../core/services/telemetry_service.dart';
@@ -25,6 +26,8 @@ class PetsPage extends StatefulWidget {
 }
 
 class _PetsPageState extends State<PetsPage> {
+  final ConnectivitySyncService _connectivitySyncService =
+      ConnectivitySyncService();
   final PetService _petService = PetService();
   final ProfilePhotoService _photoService = ProfilePhotoService();
   final TelemetryService _telemetryService = TelemetryService();
@@ -142,17 +145,11 @@ class _PetsPageState extends State<PetsPage> {
     Navigator.of(context).pushNamed(Routes.addEvent);
   }
 
-  Future<void> _openPetDetail(
-    PetUiModel pet, {
-    int initialTabIndex = 0,
-  }) async {
+  Future<void> _openPetDetail(PetUiModel pet, {int initialTabIndex = 0}) async {
     final changed = await Navigator.pushNamed(
       context,
       Routes.petDetail,
-      arguments: PetDetailArgs(
-        pet: pet,
-        initialTabIndex: initialTabIndex,
-      ),
+      arguments: PetDetailArgs(pet: pet, initialTabIndex: initialTabIndex),
     );
 
     if (!mounted || changed != true) {
@@ -168,9 +165,7 @@ class _PetsPageState extends State<PetsPage> {
       builder: (dialogContext) {
         return AlertDialog(
           title: const Text(AppStrings.petLostConfirmTitle),
-          content: Text(
-            '${AppStrings.petLostConfirmMessage} (${pet.name})',
-          ),
+          content: Text('${AppStrings.petLostConfirmMessage} (${pet.name})'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -199,6 +194,8 @@ class _PetsPageState extends State<PetsPage> {
     }
 
     try {
+      final wasOffline = !await _connectivitySyncService.hasInternetAccess();
+
       if (isLost) {
         await _petService.markPetAsFound(pet.id);
       } else {
@@ -212,9 +209,11 @@ class _PetsPageState extends State<PetsPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            isLost
-                ? '${pet.name} ${AppStrings.petMarkedAsFoundMessage}'
-                : '${pet.name} ${AppStrings.petMarkedAsLostMessage}',
+            _lostModeMessage(
+              petName: pet.name,
+              wasLost: isLost,
+              wasOffline: wasOffline,
+            ),
           ),
         ),
       );
@@ -223,17 +222,33 @@ class _PetsPageState extends State<PetsPage> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     } catch (_) {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AppStrings.petsLoadError)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text(AppStrings.petsLoadError)));
     }
+  }
+
+  String _lostModeMessage({
+    required String petName,
+    required bool wasLost,
+    required bool wasOffline,
+  }) {
+    if (wasOffline) {
+      return wasLost
+          ? AppStrings.petMarkedAsFoundOfflineMessage
+          : AppStrings.petMarkedAsLostOfflineMessage;
+    }
+
+    return wasLost
+        ? '$petName ${AppStrings.petMarkedAsFoundMessage}'
+        : '$petName ${AppStrings.petMarkedAsLostMessage}';
   }
 
   Future<void> _handleNfcTap(PetUiModel pet) async {
@@ -248,9 +263,9 @@ class _PetsPageState extends State<PetsPage> {
           return;
         }
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${pet.name} NFC deactivated')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('${pet.name} NFC deactivated')));
         await _loadPets();
         return;
       }
@@ -273,17 +288,17 @@ class _PetsPageState extends State<PetsPage> {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     } catch (_) {
       if (!mounted) {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AppStrings.petsLoadError)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text(AppStrings.petsLoadError)));
     }
   }
 

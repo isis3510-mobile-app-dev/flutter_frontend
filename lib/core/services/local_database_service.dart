@@ -201,6 +201,27 @@ class LocalDatabaseService {
     return null;
   }
 
+  Future<String?> getEntitySyncStatus({
+    required String table,
+    required String remoteId,
+  }) async {
+    final db = await database;
+    final rows = await db.query(
+      table,
+      columns: <String>['sync_status'],
+      where: 'remote_id = ?',
+      whereArgs: <Object>[remoteId],
+      limit: 1,
+    );
+
+    if (rows.isEmpty) {
+      return null;
+    }
+
+    final syncStatus = rows.first['sync_status'];
+    return syncStatus is String ? syncStatus : null;
+  }
+
   Future<List<Map<String, dynamic>>> getAllEntities(String table) async {
     final db = await database;
     final rows = await db.query(
