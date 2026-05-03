@@ -32,6 +32,13 @@ class PetService {
   static const String _actionUpdateVaccination = 'update_vaccination';
   static const String _actionDeleteVaccination = 'delete_vaccination';
   static const String _petIdMappingMetaPrefix = 'pet_id_map.';
+  static const String _photoUrlKey = 'photoUrl';
+  static const String _photoPendingUploadKey = 'photoPendingUpload';
+  static const String _photoStoragePathKey = 'photoStoragePath';
+  static const String _photoLocalFilePathKey = 'photoLocalFilePath';
+  static const String _photoFileNameKey = 'photoFileName';
+  static const String _photoContentTypeKey = 'photoContentType';
+  static const String _photoSizeBytesKey = 'photoSizeBytes';
 
   final ApiClient _apiClient = ApiClient();
   final ResponseCacheService _cache = ResponseCacheService();
@@ -546,9 +553,12 @@ class PetService {
               );
             }
 
+            final updatePayload = await _preparePetUpdatePayloadForApi(
+              _asPetMap(operation.payload ?? const <String, dynamic>{}),
+            );
             final response = await _apiClient.put(
               '$petsPath$petId/',
-              body: jsonEncode(operation.payload ?? const <String, dynamic>{}),
+              body: jsonEncode(updatePayload),
               headers: const {'Content-Type': 'application/json'},
             );
             if (response.body.trim().isNotEmpty) {
@@ -790,6 +800,47 @@ class PetService {
 
     return trimmed;
   }
+
+  Future<Map<String, dynamic>> _preparePetUpdatePayloadForApi(
+    Map<String, dynamic> payload,
+  ) async {
+    final prepared = <String, dynamic>{...payload};
+    if (_hasPendingPetPhotoUpload(prepared)) {
+      final resolvedPhotoUrl = await _attachmentUploadService
+          .resolvePendingUploadUrl(
+            storagePath:
+                (prepared[_photoStoragePathKey] as String?)?.trim() ?? '',
+            localFilePath:
+                (prepared[_photoLocalFilePathKey] as String?)?.trim() ?? '',
+            fileName: (prepared[_photoFileNameKey] as String?)?.trim() ?? '',
+            contentType:
+                (prepared[_photoContentTypeKey] as String?)?.trim() ?? '',
+          );
+      prepared[_photoUrlKey] = resolvedPhotoUrl;
+    }
+
+    for (final key in _localPetPhotoSyncKeys) {
+      prepared.remove(key);
+    }
+    return prepared;
+  }
+
+  bool _hasPendingPetPhotoUpload(Map<String, dynamic> payload) {
+    final isPending = payload[_photoPendingUploadKey] == true;
+    final storagePath =
+        (payload[_photoStoragePathKey] as String?)?.trim() ?? '';
+    final photoUrl = (payload[_photoUrlKey] as String?)?.trim() ?? '';
+    return isPending || (photoUrl.isEmpty && storagePath.isNotEmpty);
+  }
+
+  List<String> get _localPetPhotoSyncKeys => const <String>[
+    _photoPendingUploadKey,
+    _photoStoragePathKey,
+    _photoLocalFilePathKey,
+    _photoFileNameKey,
+    _photoContentTypeKey,
+    _photoSizeBytesKey,
+  ];
 
   bool _isPendingSyncStatus(String? syncStatus) {
     return syncStatus != null && syncStatus.startsWith('pending_');

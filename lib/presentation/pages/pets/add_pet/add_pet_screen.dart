@@ -300,7 +300,19 @@ class _AddPetScreenState extends State<AddPetScreen> {
 
         savedPet = await petService.updatePet(
           petId: savedPet.id,
-          data: {...payload, 'photoUrl': uploadedPhoto.downloadUrl},
+          data: {
+            ...payload,
+            'photoUrl': uploadedPhoto.downloadUrl,
+            if (uploadedPhoto.isPendingUpload) ...{
+              'photoPendingUpload': true,
+              'photoStoragePath': uploadedPhoto.storagePath,
+              if (uploadedPhoto.localFilePath?.trim().isNotEmpty == true)
+                'photoLocalFilePath': uploadedPhoto.localFilePath!.trim(),
+              'photoFileName': uploadedPhoto.fileName,
+              'photoContentType': uploadedPhoto.contentType,
+              'photoSizeBytes': uploadedPhoto.sizeBytes,
+            },
+          },
         );
 
         if (uploadedPhoto.localFilePath != null &&

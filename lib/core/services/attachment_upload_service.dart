@@ -195,7 +195,10 @@ class AttachmentUploadService {
         storagePath: storagePath,
         contentType: contentType,
       );
-      await _rememberUploadMapping(storagePath: storagePath, downloadUrl: downloadUrl);
+      await _rememberUploadMapping(
+        storagePath: storagePath,
+        downloadUrl: downloadUrl,
+      );
 
       if (localFilePath != null && localFilePath.trim().isNotEmpty) {
         try {
@@ -308,10 +311,25 @@ class AttachmentUploadService {
         final contentType = (payload['contentType'] as String?)?.trim() ?? '';
         final localPath = (payload['localFilePath'] as String?)?.trim() ?? '';
         final localCategory =
-            (payload['localCategory'] as String?)?.trim() ?? 'documents/general';
-        final localStableId = (payload['localStableId'] as String?)?.trim() ?? '';
+            (payload['localCategory'] as String?)?.trim() ??
+            'documents/general';
+        final localStableId =
+            (payload['localStableId'] as String?)?.trim() ?? '';
 
-        if (storagePath.isEmpty || localPath.isEmpty || fileName.isEmpty) {
+        if (storagePath.isEmpty) {
+          throw Exception('Invalid queued attachment payload.');
+        }
+
+        final existingDownloadUrl = await _localDb.getMetaValue(
+          _attachmentUrlMetaKey(storagePath),
+        );
+        if (existingDownloadUrl != null &&
+            existingDownloadUrl.trim().isNotEmpty) {
+          await _localDb.markSyncOperationCompleted(operation.id);
+          continue;
+        }
+
+        if (localPath.isEmpty || fileName.isEmpty) {
           throw Exception('Invalid queued attachment payload.');
         }
 
@@ -381,6 +399,70 @@ class AttachmentUploadService {
     return resolvedPayload;
   }
 
+  Future<String> resolvePendingUploadUrl({
+    required String storagePath,
+    required String localFilePath,
+    required String fileName,
+    String contentType = '',
+  }) async {
+    final normalizedStoragePath = storagePath.trim();
+    if (normalizedStoragePath.isEmpty) {
+      throw Exception('Attachment upload storage path is missing.');
+    }
+
+    final downloadUrl = await _localDb.getMetaValue(
+      _attachmentUrlMetaKey(normalizedStoragePath),
+    );
+    if (downloadUrl != null && downloadUrl.trim().isNotEmpty) {
+      return downloadUrl.trim();
+    }
+
+    final normalizedLocalFilePath = localFilePath.trim();
+    final normalizedFileName = fileName.trim();
+    if (normalizedLocalFilePath.isEmpty || normalizedFileName.isEmpty) {
+      throw Exception(
+        'Attachment upload still pending for storage path: $normalizedStoragePath',
+      );
+    }
+
+    final hasInternet = await _hasInternetAccess();
+    if (!hasInternet) {
+      throw Exception(
+        'Attachment upload still pending for storage path: $normalizedStoragePath',
+      );
+    }
+
+    final file = File(normalizedLocalFilePath);
+    if (!await file.exists()) {
+      throw Exception(
+        'Local attachment file was not found for queued upload: $normalizedLocalFilePath',
+      );
+    }
+
+    final bytes = await file.readAsBytes();
+    if (bytes.isEmpty) {
+      throw Exception(
+        'Local attachment file is empty for queued upload: $normalizedLocalFilePath',
+      );
+    }
+
+    final resolvedContentType = contentType.trim().isNotEmpty
+        ? contentType.trim()
+        : _contentTypeForFileName(normalizedFileName);
+    final uploadedUrl = await _uploadToFirebase(
+      bytes: bytes,
+      fileName: normalizedFileName,
+      storagePath: normalizedStoragePath,
+      contentType: resolvedContentType,
+    );
+    await _rememberUploadMapping(
+      storagePath: normalizedStoragePath,
+      downloadUrl: uploadedUrl,
+    );
+
+    return uploadedUrl;
+  }
+
   Future<Map<String, dynamic>> _resolvePendingDocument(
     Map<String, dynamic> document,
   ) async {
@@ -394,45 +476,16 @@ class AttachmentUploadService {
       return document;
     }
 
-    final downloadUrl = await _localDb.getMetaValue(
-      _attachmentUrlMetaKey(storagePath),
-    );
-    if (downloadUrl != null && downloadUrl.trim().isNotEmpty) {
-      return <String, dynamic>{...document, 'fileUri': downloadUrl.trim()};
-    }
-
     final localFilePath = (document['localFilePath'] as String?)?.trim() ?? '';
     final fileName = (document['fileName'] as String?)?.trim() ?? '';
-    if (localFilePath.isNotEmpty && fileName.isNotEmpty) {
-      final hasInternet = await _hasInternetAccess();
-      if (hasInternet) {
-        final file = File(localFilePath);
-        if (await file.exists()) {
-          final bytes = await file.readAsBytes();
-          if (bytes.isNotEmpty) {
-            final contentType =
-                (document['contentType'] as String?)?.trim().isNotEmpty == true
-                ? (document['contentType'] as String).trim()
-                : _contentTypeForFileName(fileName);
-            final uploadedUrl = await _uploadToFirebase(
-              bytes: bytes,
-              fileName: fileName,
-              storagePath: storagePath,
-              contentType: contentType,
-            );
-            await _rememberUploadMapping(
-              storagePath: storagePath,
-              downloadUrl: uploadedUrl,
-            );
-            return <String, dynamic>{...document, 'fileUri': uploadedUrl};
-          }
-        }
-      }
-    }
-
-    throw Exception(
-      'Attachment upload still pending for storage path: $storagePath',
+    final contentType = (document['contentType'] as String?)?.trim() ?? '';
+    final resolvedUrl = await resolvePendingUploadUrl(
+      storagePath: storagePath,
+      localFilePath: localFilePath,
+      fileName: fileName,
+      contentType: contentType,
     );
+    return <String, dynamic>{...document, 'fileUri': resolvedUrl};
   }
 
   bool _isRemoteHttpUrl(String value) {
@@ -472,7 +525,9 @@ class AttachmentUploadService {
 
     final downloadUrl = await ref.getDownloadURL().timeout(_uploadTimeout);
 
-    debugPrint('[AttachmentUploadService] download URL resolved path=$storagePath');
+    debugPrint(
+      '[AttachmentUploadService] download URL resolved path=$storagePath',
+    );
     return downloadUrl;
   }
 
