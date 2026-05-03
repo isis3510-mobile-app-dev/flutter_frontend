@@ -32,6 +32,13 @@ class PetService {
   static const String _actionUpdateVaccination = 'update_vaccination';
   static const String _actionDeleteVaccination = 'delete_vaccination';
   static const String _petIdMappingMetaPrefix = 'pet_id_map.';
+  static const String _photoUrlKey = 'photoUrl';
+  static const String _photoPendingUploadKey = 'photoPendingUpload';
+  static const String _photoStoragePathKey = 'photoStoragePath';
+  static const String _photoLocalFilePathKey = 'photoLocalFilePath';
+  static const String _photoFileNameKey = 'photoFileName';
+  static const String _photoContentTypeKey = 'photoContentType';
+  static const String _photoSizeBytesKey = 'photoSizeBytes';
 
   final ApiClient _apiClient = ApiClient();
   final ResponseCacheService _cache = ResponseCacheService();
@@ -95,8 +102,20 @@ class PetService {
       return PetModel.fromJson(localPetJson);
     }
 
+    final resolvedPetId = await _resolvePetIdForSync(trimmedPetId);
+    if (resolvedPetId != null && resolvedPetId != trimmedPetId) {
+      final resolvedLocalPetJson = await _localDb.getEntityById(
+        table: LocalDbTables.pets,
+        remoteId: resolvedPetId,
+      );
+      if (resolvedLocalPetJson != null) {
+        return PetModel.fromJson(resolvedLocalPetJson);
+      }
+    }
+
+    final apiPetId = resolvedPetId ?? trimmedPetId;
     try {
-      final response = await _apiClient.get('$petsPath$trimmedPetId/');
+      final response = await _apiClient.get('$petsPath$apiPetId/');
       final json = jsonDecode(response.body);
 
       if (json is! Map<String, dynamic>) {
@@ -182,7 +201,7 @@ class PetService {
       }
 
       final pet = PetModel.fromJson(json);
-      await _persistPetMap(_asPetMap(json));
+      await _persistPetMap(_asPetMap(json), preservePendingLocal: false);
       await _invalidatePetsCache();
       return pet;
     } catch (error) {
@@ -248,12 +267,7 @@ class PetService {
     required String petId,
     required String status,
   }) async {
-    await _apiClient.put(
-      '$petsPath$petId/',
-      body: jsonEncode({'status': status}),
-      headers: const {'Content-Type': 'application/json'},
-    );
-    await _invalidatePetsCache();
+    await updatePet(petId: petId, data: <String, dynamic>{'status': status});
   }
 
   Future<void> addVaccination({
@@ -543,11 +557,31 @@ class PetService {
             }
             break;
           case _actionUpdate:
-            await _apiClient.put(
-              '$petsPath${operation.entityId}/',
-              body: jsonEncode(operation.payload ?? const <String, dynamic>{}),
+            final petId = await _resolvePetIdForSync(operation.entityId);
+            if (petId == null || petId.isEmpty) {
+              throw const ApiException(
+                type: ApiErrorType.unknown,
+                message: 'Missing pet id in queued pet update operation.',
+              );
+            }
+
+            final updatePayload = await _preparePetUpdatePayloadForApi(
+              _asPetMap(operation.payload ?? const <String, dynamic>{}),
+            );
+            final response = await _apiClient.put(
+              '$petsPath$petId/',
+              body: jsonEncode(updatePayload),
               headers: const {'Content-Type': 'application/json'},
             );
+            if (response.body.trim().isNotEmpty) {
+              final decoded = jsonDecode(response.body);
+              if (decoded is Map<String, dynamic>) {
+                await _persistPetMap(
+                  _asPetMap(decoded),
+                  preservePendingLocal: false,
+                );
+              }
+            }
             break;
           case _actionDelete:
             await _apiClient.delete('$petsPath${operation.entityId}/');
@@ -697,10 +731,23 @@ class PetService {
     }
   }
 
-  Future<void> _persistPetMap(Map<String, dynamic> petJson) async {
+  Future<void> _persistPetMap(
+    Map<String, dynamic> petJson, {
+    bool preservePendingLocal = true,
+  }) async {
     final remoteId = _readPetRemoteId(petJson);
     if (remoteId == null) {
       return;
+    }
+
+    if (preservePendingLocal) {
+      final syncStatus = await _localDb.getEntitySyncStatus(
+        table: LocalDbTables.pets,
+        remoteId: remoteId,
+      );
+      if (_isPendingSyncStatus(syncStatus)) {
+        return;
+      }
     }
 
     await _localDb.upsertEntity(
@@ -764,6 +811,51 @@ class PetService {
     }
 
     return trimmed;
+  }
+
+  Future<Map<String, dynamic>> _preparePetUpdatePayloadForApi(
+    Map<String, dynamic> payload,
+  ) async {
+    final prepared = <String, dynamic>{...payload};
+    if (_hasPendingPetPhotoUpload(prepared)) {
+      final resolvedPhotoUrl = await _attachmentUploadService
+          .resolvePendingUploadUrl(
+            storagePath:
+                (prepared[_photoStoragePathKey] as String?)?.trim() ?? '',
+            localFilePath:
+                (prepared[_photoLocalFilePathKey] as String?)?.trim() ?? '',
+            fileName: (prepared[_photoFileNameKey] as String?)?.trim() ?? '',
+            contentType:
+                (prepared[_photoContentTypeKey] as String?)?.trim() ?? '',
+          );
+      prepared[_photoUrlKey] = resolvedPhotoUrl;
+    }
+
+    for (final key in _localPetPhotoSyncKeys) {
+      prepared.remove(key);
+    }
+    return prepared;
+  }
+
+  bool _hasPendingPetPhotoUpload(Map<String, dynamic> payload) {
+    final isPending = payload[_photoPendingUploadKey] == true;
+    final storagePath =
+        (payload[_photoStoragePathKey] as String?)?.trim() ?? '';
+    final photoUrl = (payload[_photoUrlKey] as String?)?.trim() ?? '';
+    return isPending || (photoUrl.isEmpty && storagePath.isNotEmpty);
+  }
+
+  List<String> get _localPetPhotoSyncKeys => const <String>[
+    _photoPendingUploadKey,
+    _photoStoragePathKey,
+    _photoLocalFilePathKey,
+    _photoFileNameKey,
+    _photoContentTypeKey,
+    _photoSizeBytesKey,
+  ];
+
+  bool _isPendingSyncStatus(String? syncStatus) {
+    return syncStatus != null && syncStatus.startsWith('pending_');
   }
 
   bool _shouldQueueOffline(Object error) {

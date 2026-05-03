@@ -39,7 +39,9 @@ class EventService {
     final cacheKey = _eventsByPetCacheKey(trimmedPetId);
     final cachedEntry = await _cache.get(cacheKey);
 
-    if (!forceRefresh && cachedEntry != null && cachedEntry.isFresh(_eventsByPetCacheTtl)) {
+    if (!forceRefresh &&
+        cachedEntry != null &&
+        cachedEntry.isFresh(_eventsByPetCacheTtl)) {
       final cachedEvents = _tryParseEvents(cachedEntry.body);
       if (cachedEvents != null) {
         unawaited(_persistEventsFromBody(cachedEntry.body));
@@ -74,7 +76,8 @@ class EventService {
 
   Future<EventModel> createEvent(Map<String, dynamic> data) async {
     try {
-      final response = await _apiClient.post(eventsPath, body: data);
+      final apiData = await _prepareEventPayloadForApi(data);
+      final response = await _apiClient.post(eventsPath, body: apiData);
       final createdEvent = _decodeEventMap(
         response.body,
         fallbackMessage: 'Unexpected create event response.',
@@ -83,7 +86,8 @@ class EventService {
       await _invalidateEventsCache();
       return createdEvent;
     } catch (error) {
-      if (!_shouldQueueOffline(error)) {
+      if (!_shouldQueueOffline(error) &&
+          !_shouldQueuePendingAttachmentResolution(error, data)) {
         rethrow;
       }
 
@@ -138,9 +142,10 @@ class EventService {
   }) async {
     final trimmedEventId = eventId.trim();
     try {
+      final apiData = await _prepareEventPayloadForApi(data);
       final response = await _apiClient.put(
         '$eventsPath$trimmedEventId/',
-        body: data,
+        body: apiData,
       );
       final updatedEvent = _decodeEventMap(
         response.body,
@@ -150,7 +155,8 @@ class EventService {
       await _invalidateEventsCache();
       return updatedEvent;
     } catch (error) {
-      if (!_shouldQueueOffline(error)) {
+      if (!_shouldQueueOffline(error) &&
+          !_shouldQueuePendingAttachmentResolution(error, data)) {
         rethrow;
       }
 
@@ -161,7 +167,10 @@ class EventService {
           ) ??
           _buildPendingEventPayload(source: data, eventId: trimmedEventId);
 
-      final merged = <String, dynamic>{...current, ..._asStringDynamicMap(data)};
+      final merged = <String, dynamic>{
+        ...current,
+        ..._asStringDynamicMap(data),
+      };
       merged['id'] = trimmedEventId;
 
       await _localDb.upsertEntity(
@@ -221,12 +230,9 @@ class EventService {
             final createPayload = _asStringDynamicMap(
               operation.payload ?? const <String, dynamic>{},
             );
-            final resolvedAttachmentPayload = await _attachmentUploadService
-                .resolvePendingAttachmentsInPayload(createPayload);
-            final resolvedCreatePayload =
-                await _resolveEventPayloadPetIdForSync(
-                  resolvedAttachmentPayload,
-                );
+            final resolvedCreatePayload = await _prepareEventPayloadForApi(
+              createPayload,
+            );
             final response = await _apiClient.post(
               eventsPath,
               body: resolvedCreatePayload,
@@ -245,12 +251,9 @@ class EventService {
             final updatePayload = _asStringDynamicMap(
               operation.payload ?? const <String, dynamic>{},
             );
-            final resolvedAttachmentPayload = await _attachmentUploadService
-                .resolvePendingAttachmentsInPayload(updatePayload);
-            final resolvedUpdatePayload =
-                await _resolveEventPayloadPetIdForSync(
-                  resolvedAttachmentPayload,
-                );
+            final resolvedUpdatePayload = await _prepareEventPayloadForApi(
+              updatePayload,
+            );
             await _apiClient.put(
               '$eventsPath${operation.entityId}/',
               body: resolvedUpdatePayload,
@@ -324,14 +327,14 @@ class EventService {
     return '$_eventsByPetCachePrefix$petId';
   }
 
-  EventModel _decodeEventMap(String responseBody, {required String fallbackMessage}) {
+  EventModel _decodeEventMap(
+    String responseBody, {
+    required String fallbackMessage,
+  }) {
     final decoded = _decodeJson(responseBody);
 
     if (decoded is! Map<String, dynamic>) {
-      throw ApiException(
-        type: ApiErrorType.unknown,
-        message: fallbackMessage,
-      );
+      throw ApiException(type: ApiErrorType.unknown, message: fallbackMessage);
     }
 
     return EventModel.fromJson(decoded);
@@ -478,13 +481,52 @@ class EventService {
       return null;
     }
 
-    final mapped = await _localDb.getMetaValue('$_petIdMappingMetaPrefix$trimmed');
+    final mapped = await _localDb.getMetaValue(
+      '$_petIdMappingMetaPrefix$trimmed',
+    );
     final mappedTrimmed = mapped?.trim() ?? '';
     if (mappedTrimmed.isNotEmpty) {
       return mappedTrimmed;
     }
 
     return trimmed;
+  }
+
+  Future<Map<String, dynamic>> _prepareEventPayloadForApi(
+    Map<String, dynamic> data,
+  ) async {
+    final resolvedAttachments = await _attachmentUploadService
+        .resolvePendingAttachmentsInPayload(_asStringDynamicMap(data));
+    final resolvedPetId = await _resolveEventPayloadPetIdForSync(
+      resolvedAttachments,
+    );
+    return _sanitizeAttachmentPayloadForApi(resolvedPetId);
+  }
+
+  Map<String, dynamic> _sanitizeAttachmentPayloadForApi(
+    Map<String, dynamic> payload,
+  ) {
+    final documents = payload['attachedDocuments'];
+    if (documents is! List) {
+      return payload;
+    }
+
+    return <String, dynamic>{
+      ...payload,
+      'attachedDocuments': documents
+          .map(_sanitizeDocumentForApi)
+          .toList(growable: false),
+    };
+  }
+
+  Map<String, dynamic> _sanitizeDocumentForApi(dynamic value) {
+    final document = _asStringDynamicMap(value);
+    return <String, dynamic>{
+      if ((document['documentId'] as String?)?.trim().isNotEmpty == true)
+        'documentId': (document['documentId'] as String).trim(),
+      'fileName': ((document['fileName'] as String?) ?? '').trim(),
+      'fileUri': ((document['fileUri'] as String?) ?? '').trim(),
+    };
   }
 
   Map<String, dynamic> _eventToMap(EventModel event) {
@@ -517,6 +559,29 @@ class EventService {
     return error is ApiException && error.type == ApiErrorType.network;
   }
 
+  bool _shouldQueuePendingAttachmentResolution(
+    Object error,
+    Map<String, dynamic> data,
+  ) {
+    final message = error.toString();
+    return message.contains('Attachment upload still pending') &&
+        _hasPendingAttachmentUpload(data);
+  }
+
+  bool _hasPendingAttachmentUpload(Map<String, dynamic> data) {
+    final documents = data['attachedDocuments'];
+    if (documents is! List) {
+      return false;
+    }
+
+    return documents.map(_asStringDynamicMap).any((document) {
+      return document['pendingUpload'] == true ||
+          ((document['fileUri'] as String?)?.trim().isEmpty ?? true) &&
+              ((document['storagePath'] as String?)?.trim().isNotEmpty ??
+                  false);
+    });
+  }
+
   String _newLocalId(String prefix) {
     return 'local_${prefix}_${DateTime.now().millisecondsSinceEpoch}';
   }
@@ -539,7 +604,8 @@ class EventService {
       'clinic': map['clinic'] ?? '',
       'description': map['description'] ?? '',
       'followUpDate': map['followUpDate'] ?? map['follow_up_date'],
-      'attachedDocuments': map['attachedDocuments'] ??
+      'attachedDocuments':
+          map['attachedDocuments'] ??
           map['attached_documents'] ??
           const <dynamic>[],
     };

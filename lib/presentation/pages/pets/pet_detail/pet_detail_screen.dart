@@ -14,6 +14,7 @@ import '../../../../core/models/pet_model.dart';
 import '../../../../core/models/smart_alert_model.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/services/app_image_cache_manager.dart';
+import '../../../../core/services/connectivity_sync_service.dart';
 import '../../../../core/services/event_service.dart';
 import '../../../../core/services/pet_service.dart';
 import '../../../../core/services/profile_photo_service.dart';
@@ -48,6 +49,8 @@ class PetDetailScreen extends StatefulWidget {
 class _PetDetailScreenState extends State<PetDetailScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  final ConnectivitySyncService _connectivitySyncService =
+      ConnectivitySyncService();
   final PetService _petService = PetService();
   final EventService _eventService = EventService();
   final SmartFeatureService _smartFeatureService = SmartFeatureService();
@@ -125,21 +128,26 @@ class _PetDetailScreenState extends State<PetDetailScreen>
         detail = localMatch.first;
       }
 
-      final localPath = await _photoService.getPetPhotoPath(widget.pet.id);
+      final effectivePetId = detail.id.trim().isNotEmpty
+          ? detail.id
+          : widget.pet.id;
+      final localPath =
+          await _photoService.getPetPhotoPath(effectivePetId) ??
+          await _photoService.getPetPhotoPath(widget.pet.id);
       final uiPet = detail.toUiModel().copyWith(localPhotoPath: localPath);
       List<EventModel> petEvents = const [];
       List<SmartSuggestionModel> smartSuggestions = const [];
       String? eventsErrorMessage;
 
       try {
-        petEvents = await _eventService.getEventsByPet(widget.pet.id);
+        petEvents = await _eventService.getEventsByPet(effectivePetId);
       } on ApiException catch (error) {
-        final isLocalPet = widget.pet.id.trim().startsWith('local_');
+        final isLocalPet = effectivePetId.trim().startsWith('local_');
         if (!isLocalPet) {
           eventsErrorMessage = error.message;
         }
       } catch (_) {
-        final isLocalPet = widget.pet.id.trim().startsWith('local_');
+        final isLocalPet = effectivePetId.trim().startsWith('local_');
         if (!isLocalPet) {
           eventsErrorMessage = AppStrings.errorGeneric;
         }
@@ -147,7 +155,7 @@ class _PetDetailScreenState extends State<PetDetailScreen>
 
       try {
         final smartResponse = await _smartFeatureService.getPetSmartSuggestions(
-          widget.pet.id,
+          effectivePetId,
         );
         smartSuggestions = smartResponse.suggestions;
       } catch (_) {
@@ -240,6 +248,8 @@ class _PetDetailScreenState extends State<PetDetailScreen>
     }
 
     try {
+      final wasOffline = !await _connectivitySyncService.hasInternetAccess();
+
       if (isLost) {
         await _petService.markPetAsFound(_pet.id);
       } else {
@@ -253,9 +263,11 @@ class _PetDetailScreenState extends State<PetDetailScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            isLost
-                ? '${_pet.name} ${AppStrings.petMarkedAsFoundMessage}'
-                : '${_pet.name} ${AppStrings.petMarkedAsLostMessage}',
+            _lostModeMessage(
+              petName: _pet.name,
+              wasLost: isLost,
+              wasOffline: wasOffline,
+            ),
           ),
         ),
       );
@@ -277,6 +289,22 @@ class _PetDetailScreenState extends State<PetDetailScreen>
         context,
       ).showSnackBar(const SnackBar(content: Text(AppStrings.petsLoadError)));
     }
+  }
+
+  String _lostModeMessage({
+    required String petName,
+    required bool wasLost,
+    required bool wasOffline,
+  }) {
+    if (wasOffline) {
+      return wasLost
+          ? AppStrings.petMarkedAsFoundOfflineMessage
+          : AppStrings.petMarkedAsLostOfflineMessage;
+    }
+
+    return wasLost
+        ? '$petName ${AppStrings.petMarkedAsFoundMessage}'
+        : '$petName ${AppStrings.petMarkedAsLostMessage}';
   }
 
   Future<void> _toggleNfc() async {

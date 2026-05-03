@@ -39,6 +39,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
   bool _isSaving = false;
   bool _isUploadingPhoto = false;
   String _profilePhotoValue = '';
+  Map<String, dynamic> _pendingProfilePhotoSyncPayload =
+      const <String, dynamic>{};
   Uint8List? _selectedPhotoBytes;
   String? _errorMessage;
 
@@ -82,6 +84,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         phone: _phoneController.text.trim(),
         address: _addressController.text.trim(),
         profilePhoto: _profilePhotoValue.trim(),
+        profilePhotoSyncPayload: _pendingProfilePhotoSyncPayload,
       );
 
       if (!mounted) {
@@ -177,8 +180,20 @@ class _EditProfilePageState extends State<EditProfilePage> {
         await _photoService.clearLocalPhoto();
       }
 
+      final pendingProfilePhotoSyncPayload = uploadedPhoto.isPendingUpload
+          ? <String, dynamic>{
+              'profilePhotoPendingUpload': true,
+              'profilePhotoStoragePath': uploadedPhoto.storagePath,
+              'profilePhotoLocalFilePath': uploadedPhoto.localFilePath,
+              'profilePhotoFileName': uploadedPhoto.fileName,
+              'profilePhotoContentType': uploadedPhoto.contentType,
+              'profilePhotoSizeBytes': uploadedPhoto.sizeBytes,
+            }
+          : const <String, dynamic>{};
+
       setState(() {
         _profilePhotoValue = uploadedPhoto.downloadUrl;
+        _pendingProfilePhotoSyncPayload = pendingProfilePhotoSyncPayload;
       });
     } catch (error) {
       if (!mounted) {
@@ -202,6 +217,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     await _photoService.clearLocalPhoto();
     setState(() {
       _profilePhotoValue = '';
+      _pendingProfilePhotoSyncPayload = const <String, dynamic>{};
       _selectedPhotoBytes = null;
     });
   }
