@@ -102,8 +102,20 @@ class PetService {
       return PetModel.fromJson(localPetJson);
     }
 
+    final resolvedPetId = await _resolvePetIdForSync(trimmedPetId);
+    if (resolvedPetId != null && resolvedPetId != trimmedPetId) {
+      final resolvedLocalPetJson = await _localDb.getEntityById(
+        table: LocalDbTables.pets,
+        remoteId: resolvedPetId,
+      );
+      if (resolvedLocalPetJson != null) {
+        return PetModel.fromJson(resolvedLocalPetJson);
+      }
+    }
+
+    final apiPetId = resolvedPetId ?? trimmedPetId;
     try {
-      final response = await _apiClient.get('$petsPath$trimmedPetId/');
+      final response = await _apiClient.get('$petsPath$apiPetId/');
       final json = jsonDecode(response.body);
 
       if (json is! Map<String, dynamic>) {

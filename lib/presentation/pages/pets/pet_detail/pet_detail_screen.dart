@@ -128,21 +128,26 @@ class _PetDetailScreenState extends State<PetDetailScreen>
         detail = localMatch.first;
       }
 
-      final localPath = await _photoService.getPetPhotoPath(widget.pet.id);
+      final effectivePetId = detail.id.trim().isNotEmpty
+          ? detail.id
+          : widget.pet.id;
+      final localPath =
+          await _photoService.getPetPhotoPath(effectivePetId) ??
+          await _photoService.getPetPhotoPath(widget.pet.id);
       final uiPet = detail.toUiModel().copyWith(localPhotoPath: localPath);
       List<EventModel> petEvents = const [];
       List<SmartSuggestionModel> smartSuggestions = const [];
       String? eventsErrorMessage;
 
       try {
-        petEvents = await _eventService.getEventsByPet(widget.pet.id);
+        petEvents = await _eventService.getEventsByPet(effectivePetId);
       } on ApiException catch (error) {
-        final isLocalPet = widget.pet.id.trim().startsWith('local_');
+        final isLocalPet = effectivePetId.trim().startsWith('local_');
         if (!isLocalPet) {
           eventsErrorMessage = error.message;
         }
       } catch (_) {
-        final isLocalPet = widget.pet.id.trim().startsWith('local_');
+        final isLocalPet = effectivePetId.trim().startsWith('local_');
         if (!isLocalPet) {
           eventsErrorMessage = AppStrings.errorGeneric;
         }
@@ -150,7 +155,7 @@ class _PetDetailScreenState extends State<PetDetailScreen>
 
       try {
         final smartResponse = await _smartFeatureService.getPetSmartSuggestions(
-          widget.pet.id,
+          effectivePetId,
         );
         smartSuggestions = smartResponse.suggestions;
       } catch (_) {
