@@ -424,6 +424,40 @@ abstract class AppStrings {
   static const String profileNotifications = 'Notifications';
   static const String profileOffline = 'Offline Mode';
   static const String profileSubtitleSupport = 'Support';
+  static const String profileQueue = 'Sync Queue';
+  static const String profileQueueLoading = 'Loading queue status...';
+  static const String profileQueueEmpty = 'No pending requests';
+  static const String profileQueueLoadError = 'Could not load queue status.';
+  static const String profileQueueDetailsTitle = 'Sync Queue Details';
+  static const String profileQueueDetailsSubtitle =
+      'Use Retry for pending requests or force retry for failed ones.';
+  static const String profileQueueDetailsTotal = 'Total';
+  static const String profileQueueDetailsPending = 'Pending';
+  static const String profileQueueDetailsRetrying = 'Retrying';
+  static const String profileQueueDetailsFailed = 'Failed';
+  static const String profileQueueDetailsPendingOperations = 'Pending requests';
+  static const String profileQueueDetailsFailedOperations = 'Failed requests';
+  static const String profileQueueDetailsOperations = 'Operations';
+  static const String profileQueueDetailsEntity = 'Entity';
+  static const String profileQueueDetailsAction = 'Action';
+  static const String profileQueueDetailsRetries = 'Retries';
+  static const String profileQueueDetailsLastError = 'Last error';
+  static const String profileQueueRetrySuccess = 'Sync queue retry completed.';
+  static const String profileQueueForceRetrySuccess =
+      'Failed requests were reset and queued for retry.';
+  static const String profileQueueRetryFailure = 'Could not retry sync queue.';
+  static const String profileQueueRetryNoInternet =
+      'No internet connection available for retry.';
+  static const String profileQueueRetry = 'Retry';
+    static const String profileRefreshSuccess = 'Data refreshed from server.';
+    static const String profileRefreshFailure = 'Could not refresh data from server.';
+    static const String profileQueueForceRetryFailed = 'Force';
+    static const String profileQueueRetryFailedEmpty = 'No failed requests to retry.';
+    static const String profileQueueClearAll = 'Clear';
+    static const String profileQueueClearAllTitle = 'Delete all queued requests?';
+    static const String profileQueueClearAllMessage =
+            'This will remove every request from the queue and you will need to recreate them manually.';
+    static const String profileQueueClearAllConfirm = 'Clear';
   static const String profileSignOut = 'Sign Out';
   static const String profileEditTitle = 'Edit Profile';
   static const String profileAddress = 'Address';

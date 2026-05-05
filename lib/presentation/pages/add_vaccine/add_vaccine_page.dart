@@ -95,13 +95,15 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
 
     _pendingPrefill = prefill;
 
-    if (prefill.vaccineName != null && prefill.vaccineName!.trim().isNotEmpty) {
-      _vaccineController.text = prefill.vaccineName!.trim();
-      _selectedVaccineName = prefill.vaccineName!.trim();
+    final prefillVaccineName = _normalizeDropdownValue(prefill.vaccineName);
+    if (prefillVaccineName != null) {
+      _vaccineController.text = prefillVaccineName;
+      _selectedVaccineName = prefillVaccineName;
     }
-    if (prefill.petName != null && prefill.petName!.trim().isNotEmpty) {
-      _petNameController.text = prefill.petName!.trim();
-      _selectedPetName = prefill.petName!.trim();
+    final prefillPetName = _normalizeDropdownValue(prefill.petName);
+    if (prefillPetName != null) {
+      _petNameController.text = prefillPetName;
+      _selectedPetName = prefillPetName;
     }
     if (prefill.administeredBy != null &&
         prefill.administeredBy!.trim().isNotEmpty) {
@@ -266,8 +268,8 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
       }
     }
 
-    if (prefill.petName != null && prefill.petName!.trim().isNotEmpty) {
-      final name = prefill.petName!.trim();
+    final name = _normalizeDropdownValue(prefill.petName);
+    if (name != null) {
       final match = _pets.firstWhere(
         (pet) => pet.name == name,
         orElse: () => const PetModel(
@@ -300,8 +302,8 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
   void _setSelectedPet(PetModel pet) {
     setState(() {
       _selectedPetId = pet.id;
-      _selectedPetName = pet.name;
-      _petNameController.text = pet.name;
+      _selectedPetName = _normalizeDropdownValue(pet.name);
+      _petNameController.text = _selectedPetName ?? '';
     });
   }
 
@@ -319,8 +321,8 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
       }
     }
 
-    if (prefill.vaccineName != null && prefill.vaccineName!.trim().isNotEmpty) {
-      final name = prefill.vaccineName!.trim();
+    final name = _normalizeDropdownValue(prefill.vaccineName);
+    if (name != null) {
 
       final firstMatch = _vaccines.firstWhere(
         (vaccine) => vaccine.name == name,
@@ -335,13 +337,11 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
   void _setSelectedVaccine(VaccineModel vaccine, {bool keepProduct = false}) {
     setState(() {
       _selectedVaccineId = vaccine.id;
-      _selectedVaccineName = vaccine.name;
-      _vaccineController.text = vaccine.name;
+      _selectedVaccineName = _normalizeDropdownValue(vaccine.name);
+      _vaccineController.text = _selectedVaccineName ?? '';
 
       if (!keepProduct) {
-        _selectedProductName = vaccine.productName.trim().isEmpty
-            ? null
-            : vaccine.productName;
+        _selectedProductName = _normalizeDropdownValue(vaccine.productName);
         _productController.text = _selectedProductName ?? '';
       } else if (_selectedProductName != null &&
           _selectedProductName!.trim().isNotEmpty) {
@@ -353,7 +353,7 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
   List<String> get _vaccineNameOptions {
     final names = _vaccines
         .map((vaccine) => vaccine.name.trim())
-        .where((name) => name.isNotEmpty)
+      .where((name) => name.isNotEmpty && name != AppStrings.valueNotAvailable)
         .toSet()
         .toList();
     names.sort();
@@ -367,7 +367,8 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
     final products = _vaccines
         .where((vaccine) => vaccine.name == _selectedVaccineName)
         .map((vaccine) => vaccine.productName.trim())
-        .where((product) => product.isNotEmpty)
+      .where((product) =>
+        product.isNotEmpty && product != AppStrings.valueNotAvailable)
         .toSet()
         .toList();
     products.sort();
@@ -377,7 +378,7 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
   List<String> get _petNameOptions {
     final names = _pets
         .map((pet) => pet.name.trim())
-        .where((name) => name.isNotEmpty)
+      .where((name) => name.isNotEmpty && name != AppStrings.valueNotAvailable)
         .toSet()
         .toList();
     final selectedName = _selectedPetName?.trim() ?? '';
@@ -386,6 +387,15 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
     }
     names.sort();
     return names;
+  }
+
+  String? _normalizeDropdownValue(String? value) {
+    final trimmed = value?.trim() ?? '';
+    if (trimmed.isEmpty || trimmed == AppStrings.valueNotAvailable) {
+      return null;
+    }
+
+    return trimmed;
   }
 
   Widget _pickerThemeBuilder(BuildContext context, Widget? child) {

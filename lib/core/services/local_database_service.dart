@@ -35,6 +35,38 @@ class SyncQueueOperation {
   final String? lastError;
 }
 
+class SyncQueueSummary {
+  const SyncQueueSummary({
+    required this.totalCount,
+    required this.pendingCount,
+    required this.retryingCount,
+    required this.failedCount,
+  });
+
+  final int totalCount;
+  final int pendingCount;
+  final int retryingCount;
+  final int failedCount;
+
+  bool get isEmpty => totalCount == 0;
+
+  String get overallStatus {
+    if (isEmpty) {
+      return 'Synced';
+    }
+
+    if (failedCount > 0) {
+      return 'Attention needed';
+    }
+
+    if (retryingCount > 0) {
+      return 'Retrying';
+    }
+
+    return 'Queued';
+  }
+}
+
 class LocalDatabaseService {
   LocalDatabaseService._();
 
@@ -261,8 +293,70 @@ class LocalDatabaseService {
     batch.delete(LocalDbTables.events);
     batch.delete(LocalDbTables.vaccines);
     batch.delete(LocalDbTables.petVaccinations);
-    batch.delete(LocalDbTables.syncQueue);
     await batch.commit(noResult: true);
+  }
+
+  Future<void> clearSyncQueue() async {
+    final db = await database;
+    await db.delete(LocalDbTables.syncQueue);
+  }
+
+  Future<SyncQueueSummary> getSyncQueueSummary({int maxRetries = 5}) async {
+    final db = await database;
+
+    final totalCount = await _countRows(
+      db,
+      LocalDbTables.syncQueue,
+    );
+    final pendingCount = await _countRows(
+      db,
+      LocalDbTables.syncQueue,
+      where: 'retry_count = 0',
+    );
+    final retryingCount = await _countRows(
+      db,
+      LocalDbTables.syncQueue,
+      where: 'retry_count > 0 AND retry_count < ?',
+      whereArgs: <Object>[maxRetries],
+    );
+    final failedCount = await _countRows(
+      db,
+      LocalDbTables.syncQueue,
+      where: 'retry_count >= ?',
+      whereArgs: <Object>[maxRetries],
+    );
+
+    return SyncQueueSummary(
+      totalCount: totalCount,
+      pendingCount: pendingCount,
+      retryingCount: retryingCount,
+      failedCount: failedCount,
+    );
+  }
+
+  Future<List<SyncQueueOperation>> getFailedSyncOperations({
+    String? entityType,
+    int limit = 50,
+    int maxRetries = 5,
+  }) async {
+    final db = await database;
+    final whereClauses = <String>['retry_count >= ?'];
+    final whereArgs = <Object>[maxRetries];
+
+    if (entityType != null && entityType.trim().isNotEmpty) {
+      whereClauses.add('entity_type = ?');
+      whereArgs.add(entityType.trim());
+    }
+
+    final rows = await db.query(
+      LocalDbTables.syncQueue,
+      where: whereClauses.join(' AND '),
+      whereArgs: whereArgs,
+      orderBy: 'created_at ASC',
+      limit: limit,
+    );
+
+    return rows.map(_toSyncQueueOperation).toList(growable: false);
   }
 
   Future<void> enqueueSyncOperation({
@@ -330,6 +424,22 @@ class LocalDatabaseService {
     );
   }
 
+  Future<void> resetSyncOperationRetries(Iterable<int> operationIds) async {
+    final ids = operationIds.toList(growable: false);
+    if (ids.isEmpty) {
+      return;
+    }
+
+    final db = await database;
+    final placeholders = List<String>.filled(ids.length, '?').join(', ');
+    await db.rawUpdate(
+      'UPDATE ${LocalDbTables.syncQueue} '
+      'SET retry_count = 0, last_error = NULL '
+      'WHERE id IN ($placeholders)',
+      ids.cast<Object?>(),
+    );
+  }
+
   Future<void> setMetaValue({required String key, required String value}) async {
     final db = await database;
     await db.insert(
@@ -355,6 +465,22 @@ class LocalDatabaseService {
 
     final value = rows.first['value'];
     return value is String ? value : null;
+  }
+
+  Future<int> _countRows(
+    Database db,
+    String table, {
+    String? where,
+    List<Object?>? whereArgs,
+  }) async {
+    final query = StringBuffer('SELECT COUNT(*) AS count FROM $table');
+    if (where != null && where.trim().isNotEmpty) {
+      query.write(' WHERE $where');
+    }
+
+    final rows = await db.rawQuery(query.toString(), whereArgs);
+    final countValue = rows.isNotEmpty ? rows.first['count'] : 0;
+    return (countValue as num?)?.toInt() ?? 0;
   }
 
   SyncQueueOperation _toSyncQueueOperation(Map<String, Object?> row) {
