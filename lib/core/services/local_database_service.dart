@@ -285,6 +285,31 @@ class LocalDatabaseService {
     );
   }
 
+  Future<void> deleteEntitiesNotIn({
+    required String table,
+    required List<String> keepRemoteIds,
+    bool onlySynced = true,
+  }) async {
+    if (keepRemoteIds.isEmpty) {
+      return;
+    }
+
+    final db = await database;
+    final placeholders = List<String>.filled(keepRemoteIds.length, '?').join(', ');
+    final where = StringBuffer('remote_id NOT IN ($placeholders)');
+    final whereArgs = keepRemoteIds.cast<Object?>();
+
+    if (onlySynced) {
+      where.write(" AND (sync_status IS NULL OR sync_status = 'synced')");
+    }
+
+    await db.delete(
+      table,
+      where: where.toString(),
+      whereArgs: whereArgs,
+    );
+  }
+
   Future<void> clearUserData() async {
     final db = await database;
     final batch = db.batch();

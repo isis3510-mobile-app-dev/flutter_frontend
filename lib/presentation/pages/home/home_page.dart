@@ -108,8 +108,17 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  void _goToPetDetail(PetUiModel pet) {
-    Navigator.of(context).pushNamed(Routes.petDetail, arguments: pet);
+  Future<void> _goToPetDetail(PetUiModel pet) async {
+    final result = await Navigator.of(context).pushNamed(
+      Routes.petDetail,
+      arguments: pet,
+    );
+
+    if (!mounted || result != true) {
+      return;
+    }
+
+    await _loadHomeData();
   }
 
   Future<void> _editEvent(_HomeEventEntry entry) async {

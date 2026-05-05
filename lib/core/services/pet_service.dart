@@ -245,7 +245,16 @@ class PetService {
         remoteId: trimmedPetId,
       );
       await _invalidatePetsCache();
-    } catch (error) {
+    } on ApiException catch (error) {
+      if (error.statusCode == 404) {
+        await _localDb.deleteEntity(
+          table: LocalDbTables.pets,
+          remoteId: trimmedPetId,
+        );
+        await _invalidatePetsCache();
+        return;
+      }
+
       if (!_shouldQueueOffline(error)) {
         rethrow;
       }
@@ -584,7 +593,17 @@ class PetService {
             }
             break;
           case _actionDelete:
-            await _apiClient.delete('$petsPath${operation.entityId}/');
+            try {
+              await _apiClient.delete('$petsPath${operation.entityId}/');
+            } on ApiException catch (error) {
+              if (error.statusCode != 404) {
+                rethrow;
+              }
+            }
+            await _localDb.deleteEntity(
+              table: LocalDbTables.pets,
+              remoteId: operation.entityId,
+            );
             break;
           default:
             break;
@@ -656,8 +675,18 @@ class PetService {
             );
             break;
           case _actionDeleteVaccination:
-            await _apiClient.delete(
-              '$petsPath$petId/vaccinations/${operation.entityId}/',
+            try {
+              await _apiClient.delete(
+                '$petsPath$petId/vaccinations/${operation.entityId}/',
+              );
+            } on ApiException catch (error) {
+              if (error.statusCode != 404) {
+                rethrow;
+              }
+            }
+            await _localDb.deleteEntity(
+              table: LocalDbTables.petVaccinations,
+              remoteId: operation.entityId,
             );
             break;
           default:
@@ -723,8 +752,27 @@ class PetService {
         return;
       }
 
+      final remoteIds = <String>[];
       for (final item in decoded) {
-        await _persistPetMap(_asPetMap(item));
+        final map = _asPetMap(item);
+        await _persistPetMap(map);
+        final remoteId = _readPetRemoteId(map);
+        if (remoteId != null && remoteId.isNotEmpty) {
+          remoteIds.add(remoteId);
+        }
+      }
+
+      // Remove any synced local pet rows that are not present in the latest
+      // server response. Keep pending local rows (e.g. pending creates/updates).
+      try {
+        if (remoteIds.isNotEmpty) {
+          await _localDb.deleteEntitiesNotIn(
+            table: LocalDbTables.pets,
+            keepRemoteIds: remoteIds,
+          );
+        }
+      } catch (_) {
+        // Best-effort cleanup; ignore errors.
       }
     } catch (_) {
       // Local persistence is best effort.
