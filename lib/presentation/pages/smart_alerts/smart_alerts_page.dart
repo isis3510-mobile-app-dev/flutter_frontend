@@ -7,6 +7,7 @@ import '../../../core/models/pet_model.dart';
 import '../../../core/models/smart_alert_model.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/services/pet_service.dart';
+import '../../../core/services/connectivity_sync_service.dart';
 import '../../../core/services/smart_feature_service.dart';
 import '../../../shared/widgets/smart_alert_card.dart';
 
@@ -233,40 +234,54 @@ class _SmartAlertsPageState extends State<SmartAlertsPage> {
   }
 
   Widget _buildInternetNotice() {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.symmetric(
-        horizontal: AppDimensions.pageHorizontalPadding,
-      ),
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppDimensions.spaceM,
-        vertical: AppDimensions.spaceM,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.smartAlertInfoBg,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: const Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            Icons.wifi_off_rounded,
-            color: AppColors.smartAlertInfoText,
-            size: 20,
+    return FutureBuilder<bool>(
+      future: ConnectivitySyncService().hasInternetAccess(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const SizedBox.shrink();
+        }
+
+        final hasInternet = snapshot.data == true;
+        if (hasInternet) {
+          return const SizedBox.shrink();
+        }
+
+        return Container(
+          width: double.infinity,
+          margin: const EdgeInsets.symmetric(
+            horizontal: AppDimensions.pageHorizontalPadding,
           ),
-          SizedBox(width: AppDimensions.spaceS),
-          Expanded(
-            child: Text(
-              AppStrings.smartAlertsInternetNotice,
-              style: TextStyle(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppDimensions.spaceM,
+            vertical: AppDimensions.spaceM,
+          ),
+          decoration: BoxDecoration(
+            color: AppColors.smartAlertInfoBg,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: const Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.wifi_off_rounded,
                 color: AppColors.smartAlertInfoText,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
+                size: 20,
               ),
-            ),
+              SizedBox(width: AppDimensions.spaceS),
+              Expanded(
+                child: Text(
+                  AppStrings.smartAlertsInternetNotice,
+                  style: TextStyle(
+                    color: AppColors.smartAlertInfoText,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 

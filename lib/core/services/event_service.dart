@@ -199,7 +199,16 @@ class EventService {
         remoteId: trimmedEventId,
       );
       await _invalidateEventsCache();
-    } catch (error) {
+    } on ApiException catch (error) {
+      if (error.statusCode == 404) {
+        await _localDb.deleteEntity(
+          table: LocalDbTables.events,
+          remoteId: trimmedEventId,
+        );
+        await _invalidateEventsCache();
+        return;
+      }
+
       if (!_shouldQueueOffline(error)) {
         rethrow;
       }
@@ -260,7 +269,17 @@ class EventService {
             );
             break;
           case _actionDelete:
-            await _apiClient.delete('$eventsPath${operation.entityId}/');
+            try {
+              await _apiClient.delete('$eventsPath${operation.entityId}/');
+            } on ApiException catch (error) {
+              if (error.statusCode != 404) {
+                rethrow;
+              }
+            }
+            await _localDb.deleteEntity(
+              table: LocalDbTables.events,
+              remoteId: operation.entityId,
+            );
             break;
           default:
             break;

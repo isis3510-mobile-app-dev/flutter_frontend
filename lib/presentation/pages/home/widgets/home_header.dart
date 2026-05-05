@@ -12,12 +12,16 @@ class HomeHeader extends StatelessWidget {
     this.hasNotification = false,
     this.onNotificationTap,
     this.onNfcTap,
+    this.onSyncTap,
+    this.isSyncing = false,
   });
 
   final String userName;
   final bool hasNotification;
   final VoidCallback? onNotificationTap;
   final VoidCallback? onNfcTap;
+  final VoidCallback? onSyncTap;
+  final bool isSyncing;
 
   @override
   Widget build(BuildContext context) {
@@ -57,6 +61,41 @@ class HomeHeader extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Sync button
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: onSyncTap,
+                  customBorder: const CircleBorder(),
+                  child: SizedBox(
+                    width: 44,
+                    height: 44,
+                    child: Center(
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: nfcBackground,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: isSyncing
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : Icon(
+                                  Icons.sync_rounded,
+                                  size: 18,
+                                  color: nfcIconColor,
+                                ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
               Material(
                 color: Colors.transparent,
                 child: InkWell(

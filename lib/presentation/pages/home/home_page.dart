@@ -10,6 +10,8 @@ import '../../../core/models/smart_alert_model.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/services/event_service.dart';
 import '../../../core/services/pet_service.dart';
+import '../../../core/services/connectivity_sync_service.dart';
+import '../../../core/services/sync_retry_service.dart';
 import '../../../core/services/profile_photo_service.dart';
 import '../../../core/services/smart_feature_service.dart';
 import '../../../core/services/telemetry_service.dart';
@@ -47,6 +49,7 @@ class _HomePageState extends State<HomePage> {
   final SmartFeatureService _smartFeatureService = SmartFeatureService();
   final ProfilePhotoService _photoService = ProfilePhotoService();
   final TelemetryService _telemetryService = TelemetryService();
+  final ConnectivitySyncService _connectivitySyncService = ConnectivitySyncService();
 
   String _userName = '';
   List<PetUiModel> _pets = const [];
@@ -56,6 +59,7 @@ class _HomePageState extends State<HomePage> {
   _OverdueVaccineData? _overdueVaccineData;
   bool _isLoading = false;
   String? _errorMessage;
+  bool _isRefreshing = false;
 
   @override
   void initState() {
@@ -104,8 +108,17 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  void _goToPetDetail(PetUiModel pet) {
-    Navigator.of(context).pushNamed(Routes.petDetail, arguments: pet);
+  Future<void> _goToPetDetail(PetUiModel pet) async {
+    final result = await Navigator.of(context).pushNamed(
+      Routes.petDetail,
+      arguments: pet,
+    );
+
+    if (!mounted || result != true) {
+      return;
+    }
+
+    await _loadHomeData();
   }
 
   Future<void> _editEvent(_HomeEventEntry entry) async {
@@ -356,6 +369,29 @@ class _HomePageState extends State<HomePage> {
         });
       }
     }
+  }
+
+  Future<void> _refreshAllFromBackend() async {
+    final hasInternet = await _connectivitySyncService.hasInternetAccess();
+    if (!hasInternet) {
+      throw StateError(AppStrings.errorNoConnection);
+    }
+
+    await SyncRetryService().retryPendingWrites();
+
+    await _userService.getCurrentUser(forceRefresh: true);
+    final pets = await _petService.getPets(forceRefresh: true);
+
+    for (final pet in pets) {
+      try {
+        await _eventService.getEventsByPet(pet.id, forceRefresh: true);
+      } catch (_) {
+        // Best-effort per-pet refresh
+      }
+    }
+
+    if (!mounted) return;
+    await _loadHomeData();
   }
 
   String _firstName(String fullName) {
@@ -681,6 +717,26 @@ class _HomePageState extends State<HomePage> {
             onNotificationTap: () =>
                 Navigator.of(context).pushNamed(Routes.smartAlerts),
             onNfcTap: () => Navigator.of(context).pushNamed(Routes.nfc),
+            onSyncTap: _isRefreshing
+                ? null
+                : () async {
+                    try {
+                      setState(() => _isRefreshing = true);
+                      await _refreshAllFromBackend();
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text(AppStrings.profileRefreshSuccess)),
+                      );
+                    } catch (error) {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(error is StateError ? error.message : AppStrings.profileRefreshFailure)),
+                      );
+                    } finally {
+                      if (mounted) setState(() => _isRefreshing = false);
+                    }
+                  },
+            isSyncing: _isRefreshing,
           ),
           const SizedBox(height: AppDimensions.spaceL),
           _buildPetsSection(),

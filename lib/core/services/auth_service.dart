@@ -4,6 +4,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'local_database_service.dart';
 import 'profile_photo_service.dart';
 import 'response_cache_service.dart';
+import 'connectivity_sync_service.dart';
 
 class AuthService {
   AuthService._();
@@ -23,10 +24,19 @@ class AuthService {
   User? get currentUser => _firebaseAuth.currentUser;
 
   Future<UserCredential> signInWithEmail(String email, String password) {
-    return _firebaseAuth.signInWithEmailAndPassword(
+    return _firebaseAuth
+        .signInWithEmailAndPassword(
       email: email,
       password: password,
-    );
+    )
+        .then((credential) async {
+      try {
+        await ConnectivitySyncService().retryNowIfOnline();
+      } catch (_) {
+        // best-effort
+      }
+      return credential;
+    });
   }
 
   Future<UserCredential> signUpWithEmail(
@@ -70,6 +80,11 @@ class AuthService {
     );
 
     await _firebaseAuth.signInWithCredential(credential);
+    try {
+      await ConnectivitySyncService().retryNowIfOnline();
+    } catch (_) {
+      // best-effort
+    }
   }
 
   Future<void> signOut() async {

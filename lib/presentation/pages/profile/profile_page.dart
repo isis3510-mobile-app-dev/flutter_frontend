@@ -7,7 +7,10 @@ import 'package:flutter_frontend/core/models/user_profile.dart';
 import 'package:flutter_frontend/core/network/api_exception.dart';
 import 'package:flutter_frontend/core/services/app_preferences_service.dart';
 import 'package:flutter_frontend/core/services/auth_service.dart';
+import 'package:flutter_frontend/core/services/connectivity_sync_service.dart';
+import 'package:flutter_frontend/core/services/local_database_service.dart';
 import 'package:flutter_frontend/core/services/profile_photo_service.dart';
+import 'package:flutter_frontend/core/services/sync_retry_service.dart';
 import 'package:flutter_frontend/core/services/telemetry_service.dart';
 import 'package:flutter_frontend/core/services/user_service.dart';
 import 'package:flutter_frontend/app/routes.dart';
@@ -29,6 +32,9 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   final AppPreferencesService _preferencesService = AppPreferencesService();
   final AuthService _authService = AuthService();
+  final ConnectivitySyncService _connectivitySyncService =
+      ConnectivitySyncService();
+  final LocalDatabaseService _localDatabaseService = LocalDatabaseService();
   final ProfilePhotoService _photoService = ProfilePhotoService();
   final UserService _userService = UserService();
   final TelemetryService _telemetryService = TelemetryService();
@@ -40,6 +46,9 @@ class _ProfilePageState extends State<ProfilePage> {
   UserProfile? _profile;
   String? _localPhotoPath;
   bool _isLoadingProfile = false;
+  SyncQueueSummary? _syncQueueSummary;
+  bool _isLoadingSyncQueueSummary = false;
+  
 
   // Preference states
   late bool _notificationsEnabled;
@@ -50,6 +59,7 @@ class _ProfilePageState extends State<ProfilePage> {
     _notificationsEnabled = true;
     _loadPreferences();
     _loadProfile();
+    _loadSyncQueueSummary();
   }
 
   Future<void> _loadPreferences() async {
@@ -90,6 +100,35 @@ class _ProfilePageState extends State<ProfilePage> {
       }
     } finally {
       if (mounted) setState(() => _isLoadingProfile = false);
+    }
+  }
+
+  Future<void> _loadSyncQueueSummary() async {
+    if (mounted) {
+      setState(() => _isLoadingSyncQueueSummary = true);
+    }
+
+    try {
+      final summary = await _localDatabaseService.getSyncQueueSummary();
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _syncQueueSummary = summary;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _syncQueueSummary = null;
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingSyncQueueSummary = false);
+      }
     }
   }
 
@@ -513,6 +552,539 @@ class _ProfilePageState extends State<ProfilePage> {
     };
   }
 
+  String _queueSummarySubtitle() {
+    if (_isLoadingSyncQueueSummary) {
+      return AppStrings.profileQueueLoading;
+    }
+
+    final summary = _syncQueueSummary;
+    if (summary == null) {
+      return AppStrings.profileQueueLoadError;
+    }
+
+    return summary.isEmpty
+        ? AppStrings.profileQueueEmpty
+        : summary.overallStatus;
+  }
+
+  Future<_SyncQueueDetails> _loadSyncQueueDetails() async {
+    final summary = await _localDatabaseService.getSyncQueueSummary();
+    final pendingOperations = await _localDatabaseService.getPendingSyncOperations(
+      limit: 20,
+    );
+    final failedOperations = await _localDatabaseService.getFailedSyncOperations(
+      limit: 20,
+    );
+
+    return _SyncQueueDetails(
+      summary: summary,
+      pendingOperations: pendingOperations,
+      failedOperations: failedOperations,
+    );
+  }
+
+  Future<void> _retrySyncQueueAndRefresh() async {
+    final hasInternet = await _connectivitySyncService.hasInternetAccess();
+    if (!hasInternet) {
+      throw StateError(AppStrings.profileQueueRetryNoInternet);
+    }
+
+    await SyncRetryService().retryPendingWrites();
+
+    if (!mounted) {
+      return;
+    }
+
+    await _loadSyncQueueSummary();
+  }
+
+  Future<void> _forceRetryFailedSyncQueueAndRefresh() async {
+    final hasInternet = await _connectivitySyncService.hasInternetAccess();
+    if (!hasInternet) {
+      throw StateError(AppStrings.profileQueueRetryNoInternet);
+    }
+
+    final failedOperations = await _localDatabaseService.getFailedSyncOperations(
+      limit: 20,
+    );
+
+    if (failedOperations.isEmpty) {
+      throw StateError(AppStrings.profileQueueRetryFailedEmpty);
+    }
+
+    await _localDatabaseService.resetSyncOperationRetries(
+      failedOperations.map((operation) => operation.id),
+    );
+
+    await SyncRetryService().retryPendingWrites();
+
+    if (!mounted) {
+      return;
+    }
+
+    await _loadSyncQueueSummary();
+  }
+
+  Future<void> _clearSyncQueueAndRefresh() async {
+    await _localDatabaseService.clearSyncQueue();
+    if (!mounted) {
+      return;
+    }
+
+    await _loadSyncQueueSummary();
+  }
+
+  Future<void> _showSyncQueueDetails() async {
+    final details = await _loadSyncQueueDetails();
+    if (!mounted) {
+      return;
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        final isDark = Theme.of(dialogContext).brightness == Brightness.dark;
+        var summary = details.summary;
+        var pendingOperations = details.pendingOperations;
+        var failedOperations = details.failedOperations;
+        var isRetryingPending = false;
+        var isRetryingFailed = false;
+
+        Future<void> retryPendingAndRefresh(StateSetter setDialogState) async {
+          if (isRetryingPending) {
+            return;
+          }
+
+          setDialogState(() => isRetryingPending = true);
+          try {
+            await _retrySyncQueueAndRefresh();
+            final refreshed = await _loadSyncQueueDetails();
+            if (!mounted) {
+              return;
+            }
+
+            setDialogState(() {
+              summary = refreshed.summary;
+              pendingOperations = refreshed.pendingOperations;
+              failedOperations = refreshed.failedOperations;
+            });
+          } on StateError catch (error) {
+            if (!mounted) {
+              return;
+            }
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(error.message)),
+            );
+          } catch (_) {
+            if (!mounted) {
+              return;
+            }
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(AppStrings.profileQueueRetryFailure),
+              ),
+            );
+          } finally {
+            if (mounted) {
+              setDialogState(() => isRetryingPending = false);
+            }
+          }
+        }
+
+        Future<void> forceRetryFailedAndRefresh(StateSetter setDialogState) async {
+          if (isRetryingFailed) {
+            return;
+          }
+
+          setDialogState(() => isRetryingFailed = true);
+          try {
+            await _forceRetryFailedSyncQueueAndRefresh();
+            final refreshed = await _loadSyncQueueDetails();
+            if (!mounted) {
+              return;
+            }
+
+            setDialogState(() {
+              summary = refreshed.summary;
+              pendingOperations = refreshed.pendingOperations;
+              failedOperations = refreshed.failedOperations;
+            });
+          } on StateError catch (error) {
+            if (!mounted) {
+              return;
+            }
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(error.message)),
+            );
+          } catch (_) {
+            if (!mounted) {
+              return;
+            }
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(AppStrings.profileQueueRetryFailure),
+              ),
+            );
+          } finally {
+            if (mounted) {
+              setDialogState(() => isRetryingFailed = false);
+            }
+          }
+        }
+
+        Future<void> confirmClearAllAndRefresh(StateSetter setDialogState) async {
+          final shouldClear = await showDialog<bool>(
+            context: dialogContext,
+            builder: (confirmContext) {
+              return AlertDialog(
+                title: const Text(AppStrings.profileQueueClearAllTitle),
+                content: const Text(AppStrings.profileQueueClearAllMessage),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(confirmContext).pop(false),
+                    child: const Text('Cancel'),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.of(confirmContext).pop(true),
+                    child: const Text(AppStrings.profileQueueClearAllConfirm),
+                  ),
+                ],
+              );
+            },
+          );
+
+          if (shouldClear != true) {
+            return;
+          }
+
+          setDialogState(() => isRetryingPending = true);
+          setDialogState(() => isRetryingFailed = true);
+          try {
+            await _clearSyncQueueAndRefresh();
+            final refreshed = await _loadSyncQueueDetails();
+            if (!mounted) {
+              return;
+            }
+
+            setDialogState(() {
+              summary = refreshed.summary;
+              pendingOperations = refreshed.pendingOperations;
+              failedOperations = refreshed.failedOperations;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text(AppStrings.profileQueueClearAll)),
+            );
+          } catch (_) {
+            if (!mounted) {
+              return;
+            }
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text(AppStrings.profileQueueRetryFailure)),
+            );
+          } finally {
+            if (mounted) {
+              setDialogState(() => isRetryingPending = false);
+              setDialogState(() => isRetryingFailed = false);
+            }
+          }
+        }
+
+        Widget countChip(String label, int value) {
+          return Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppDimensions.spaceM,
+              vertical: AppDimensions.spaceS,
+            ),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.backgroundDark : AppColors.grey100,
+              borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: isDark ? AppColors.grey300 : AppColors.grey700,
+                  ),
+                ),
+                const SizedBox(height: AppDimensions.spaceXS),
+                Text(
+                  '$value',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? AppColors.onSurfaceDark : AppColors.onSurface,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            Widget circularActionButton({
+              required VoidCallback? onPressed,
+              required IconData icon,
+              required String tooltip,
+              required Color backgroundColor,
+              required Color foregroundColor,
+              Widget? loadingChild,
+            }) {
+              final isDisabled = onPressed == null;
+
+              return Semantics(
+                button: true,
+                label: tooltip,
+                child: Tooltip(
+                  message: tooltip,
+                  child: Material(
+                    color: backgroundColor,
+                    shape: const CircleBorder(),
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      onTap: isDisabled ? null : onPressed,
+                      customBorder: const CircleBorder(),
+                      child: SizedBox(
+                        width: 40,
+                        height: 40,
+                        child: Center(
+                          child: loadingChild ??
+                              Icon(
+                                icon,
+                                size: AppDimensions.iconM,
+                                color: foregroundColor,
+                              ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }
+
+            return AlertDialog(
+              title: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      AppStrings.profileQueueDetailsTitle,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: isRetryingPending || isRetryingFailed
+                        ? null
+                        : () => Navigator.of(dialogContext).pop(),
+                    icon: const Icon(Icons.close_rounded),
+                    tooltip: 'Close',
+                  ),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 360),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(AppStrings.profileQueueDetailsSubtitle),
+                      const SizedBox(height: AppDimensions.spaceL),
+                      Wrap(
+                        spacing: AppDimensions.spaceS,
+                        runSpacing: AppDimensions.spaceS,
+                        children: [
+                            countChip(
+                              AppStrings.profileQueueDetailsTotal,
+                              summary.totalCount,
+                            ),
+                            countChip(
+                              AppStrings.profileQueueDetailsPending,
+                              summary.pendingCount,
+                            ),
+                            countChip(
+                              AppStrings.profileQueueDetailsRetrying,
+                              summary.retryingCount,
+                            ),
+                            countChip(
+                              AppStrings.profileQueueDetailsFailed,
+                              summary.failedCount,
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: AppDimensions.spaceL),
+                      Text(
+                        AppStrings.profileQueueDetailsOperations,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: AppDimensions.spaceS),
+                      if (pendingOperations.isEmpty)
+                        Text(AppStrings.profileQueueEmpty)
+                      else
+                        ...pendingOperations.map(
+                          (operation) => Padding(
+                            padding: const EdgeInsets.only(bottom: AppDimensions.spaceS),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(AppDimensions.spaceM),
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? AppColors.secondaryDark
+                                    : AppColors.grey100,
+                                borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${operation.entityType} · ${operation.action}',
+                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: AppDimensions.spaceXS),
+                                  Text(
+                                    '${AppStrings.profileQueueDetailsEntity}: ${operation.entityId}\n'
+                                    '${AppStrings.profileQueueDetailsRetries}: ${operation.retryCount}',
+                                    style: Theme.of(context).textTheme.bodySmall,
+                                  ),
+                                  if (operation.lastError != null && operation.lastError!.trim().isNotEmpty) ...[
+                                    const SizedBox(height: AppDimensions.spaceXS),
+                                    Text(
+                                      '${AppStrings.profileQueueDetailsLastError}: ${operation.lastError}',
+                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: AppColors.error,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      const SizedBox(height: AppDimensions.spaceM),
+                      Text(
+                        AppStrings.profileQueueDetailsFailedOperations,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: AppDimensions.spaceS),
+                      if (failedOperations.isEmpty)
+                        Text(AppStrings.profileQueueRetryFailedEmpty)
+                      else
+                        ...failedOperations.map(
+                          (operation) => Padding(
+                            padding: const EdgeInsets.only(bottom: AppDimensions.spaceS),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(AppDimensions.spaceM),
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? AppColors.secondaryDark
+                                    : AppColors.grey100,
+                                borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${operation.entityType} · ${operation.action}',
+                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: AppDimensions.spaceXS),
+                                  Text(
+                                    '${AppStrings.profileQueueDetailsEntity}: ${operation.entityId}\n'
+                                    '${AppStrings.profileQueueDetailsRetries}: ${operation.retryCount}',
+                                    style: Theme.of(context).textTheme.bodySmall,
+                                  ),
+                                  if (operation.lastError != null && operation.lastError!.trim().isNotEmpty) ...[
+                                    const SizedBox(height: AppDimensions.spaceXS),
+                                    Text(
+                                      '${AppStrings.profileQueueDetailsLastError}: ${operation.lastError}',
+                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: AppColors.error,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                SizedBox(
+                  width: double.maxFinite,
+                  child: Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: AppDimensions.spaceS,
+                    runSpacing: AppDimensions.spaceS,
+                    children: [
+                      circularActionButton(
+                        onPressed: isRetryingPending
+                            ? null
+                            : () => retryPendingAndRefresh(setDialogState),
+                        icon: Icons.sync_rounded,
+                        tooltip: AppStrings.profileQueueRetry,
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: AppColors.onPrimary,
+                        loadingChild: isRetryingPending
+                            ? const SizedBox(
+                                width: AppDimensions.iconS,
+                                height: AppDimensions.iconS,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : null,
+                      ),
+                      FilledButton.tonalIcon(
+                        onPressed: isRetryingFailed
+                            ? null
+                            : () => forceRetryFailedAndRefresh(setDialogState),
+                        icon: isRetryingFailed
+                            ? const SizedBox(
+                                width: AppDimensions.iconS,
+                                height: AppDimensions.iconS,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.refresh_rounded),
+                        label: const Text(AppStrings.profileQueueForceRetryFailed),
+                      ),
+                      circularActionButton(
+                        onPressed: (isRetryingPending || isRetryingFailed)
+                            ? null
+                            : () => confirmClearAllAndRefresh(setDialogState),
+                        icon: Icons.delete_outline_rounded,
+                        tooltip: AppStrings.profileQueueClearAll,
+                        backgroundColor: AppColors.error,
+                        foregroundColor: AppColors.onPrimary,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeController = ThemeControllerScope.of(context);
@@ -704,6 +1276,21 @@ class _ProfilePageState extends State<ProfilePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   ProfileMenuItem(
+                    icon: Icons.sync_rounded,
+                    title: AppStrings.profileQueue,
+                    subtitle: _queueSummarySubtitle(),
+                    onTap: _showSyncQueueDetails,
+                    isDark: isDark,
+                  ),
+                  Divider(
+                    height: AppDimensions.strokeThin,
+                    indent:
+                        AppDimensions.pageHorizontalPadding +
+                        AppDimensions.iconListItem +
+                        AppDimensions.spaceL,
+                    color: isDark ? AppColors.grey500 : AppColors.grey100,
+                  ),
+                  ProfileMenuItem(
                     imageAssetPath: AppAssets.iconProfileSignOut,
                     title: AppStrings.profileSignOut,
                     onTap: _handleSignOut,
@@ -729,4 +1316,16 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
     );
   }
+}
+
+class _SyncQueueDetails {
+  const _SyncQueueDetails({
+    required this.summary,
+    required this.pendingOperations,
+    required this.failedOperations,
+  });
+
+  final SyncQueueSummary summary;
+  final List<SyncQueueOperation> pendingOperations;
+  final List<SyncQueueOperation> failedOperations;
 }

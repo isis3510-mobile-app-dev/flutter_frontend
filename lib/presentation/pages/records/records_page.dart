@@ -269,7 +269,7 @@ class _RecordsPageState extends State<RecordsPage> {
         )
       );
       if (result == true) {
-        _loadRecords();
+        await _loadRecords();
       }
       return;
     } else if (record.type == _RecordType.event) {
@@ -287,7 +287,7 @@ class _RecordsPageState extends State<RecordsPage> {
       );
 
       if (result == true) {
-        _loadRecords();
+        await _loadRecords();
       }
 
       return;
@@ -318,14 +318,14 @@ class _RecordsPageState extends State<RecordsPage> {
   Future<void> _goToAddVaccine() async {
     final result = await Navigator.of(context).pushNamed(Routes.addVaccine);
     if (result == true) {
-      _loadRecords();
+      await _loadRecords();
     }
   }
 
   Future<void> _goToAddEvent() async {
     final result = await Navigator.of(context).pushNamed(Routes.addEvent);
     if (result == true) {
-      _loadRecords();
+      await _loadRecords();
     }
   }
   
