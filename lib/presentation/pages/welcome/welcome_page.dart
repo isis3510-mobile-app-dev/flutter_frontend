@@ -1,8 +1,8 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/app/routes.dart';
 import 'package:flutter_frontend/core/constants/app_colors.dart';
 import 'package:flutter_frontend/core/constants/app_strings.dart';
+import 'package:flutter_frontend/core/services/app_preferences_service.dart';
 import 'package:flutter_frontend/core/utils/context_extensions.dart';
 import 'package:flutter_frontend/presentation/pages/welcome/widgets/welcome_background_circles.dart';
 import 'package:flutter_frontend/shared/widgets/full_width_button.dart';
@@ -17,11 +17,10 @@ class WelcomePage extends StatefulWidget {
 
   @override
   State<WelcomePage> createState() => _WelcomePageState();
-
 }
 
-
 class _WelcomePageState extends State<WelcomePage> {
+  final AppPreferencesService _preferencesService = AppPreferencesService();
   int _currentIndex = 0;
 
   final List<WelcomeStepModel> _steps = [
@@ -45,18 +44,26 @@ class _WelcomePageState extends State<WelcomePage> {
     ),
   ];
 
-  void _next() {
+  Future<void> _next() async {
     if (_currentIndex < _steps.length - 1) {
       setState(() => _currentIndex++);
     } else {
-      Navigator.of(context).pushNamed(Routes.auth);
+      await _completeWelcome();
     }
   }
 
   void _back() => setState(() => _currentIndex--);
 
-  void _skip() {
-    Navigator.of(context).pushNamed(Routes.auth);
+  Future<void> _skip() async {
+    await _completeWelcome();
+  }
+
+  Future<void> _completeWelcome() async {
+    await _preferencesService.setHasSeenWelcome(true);
+    if (!mounted) {
+      return;
+    }
+    Navigator.of(context).pushReplacementNamed(Routes.auth);
   }
 
   @override
@@ -64,7 +71,7 @@ class _WelcomePageState extends State<WelcomePage> {
     final step = _steps[_currentIndex];
 
     return AnimatedContainer(
-      duration: Duration(milliseconds: 400),
+      duration: const Duration(milliseconds: 400),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
@@ -80,7 +87,7 @@ class _WelcomePageState extends State<WelcomePage> {
           WelcomeBackgroundCircles(),
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 10), 
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 10),
               child: Column(
                 children: [
                   WelcomeControls(
@@ -99,33 +106,36 @@ class _WelcomePageState extends State<WelcomePage> {
                   ),
                   const SizedBox(height: 32),
                   FullWidthButton(
-                    text: _currentIndex < _steps.length -1 ? AppStrings.semanticContinueButton : AppStrings.semanticGetStartedButton, 
+                    text:
+                        _currentIndex < _steps.length - 1
+                            ? AppStrings.semanticContinueButton
+                            : AppStrings.semanticGetStartedButton,
                     onPressed: _next,
                     height: 57,
-                    backgroundColor: Color(0x24FFFFFF),
-                    borderColor: Color(0x99FFFFFF),
+                    backgroundColor: const Color(0x24FFFFFF),
+                    borderColor: const Color(0x99FFFFFF),
                     textColor: Colors.white,
                   ),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        AppStrings.welcomeAlreadyHaveAccount, 
+                        AppStrings.welcomeAlreadyHaveAccount,
                         style: context.textTheme.bodyLarge?.copyWith(
                           color: Colors.white54,
                         ),
                       ),
                       TextButton(
-                        onPressed: _skip, 
+                        onPressed: _skip,
                         child: Text(
                           AppStrings.semanticSignInButton,
                           style: context.textTheme.titleMedium?.copyWith(
-                          color: Colors.white,
+                            color: Colors.white,
                           ),
-                        )
+                        ),
                       ),
                     ],
-                  )
+                  ),
                 ],
               ),
             ),
