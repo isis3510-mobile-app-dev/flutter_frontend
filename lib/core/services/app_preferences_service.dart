@@ -11,6 +11,7 @@ class AppPreferencesService {
   static const String _themePreferenceKey = 'app_preferences.theme_preference';
   static const String _notificationsEnabledKey =
       'app_preferences.notifications_enabled';
+  static const String _hasSeenWelcomeKey = 'app_preferences.has_seen_welcome';
 
   Future<AppThemePreference?> getThemePreference() async {
     final prefs = await SharedPreferences.getInstance();
@@ -38,5 +39,15 @@ class AppPreferencesService {
   Future<void> setNotificationsEnabled(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_notificationsEnabledKey, value);
+  }
+
+  Future<bool> getHasSeenWelcome() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_hasSeenWelcomeKey) ?? false;
+  }
+
+  Future<void> setHasSeenWelcome(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_hasSeenWelcomeKey, value);
   }
 }
