@@ -18,6 +18,9 @@ import '../../../shared/widgets/filter_toggle_bar.dart';
 import '../../../shared/widgets/petcare_bottom_nav_bar.dart';
 import '../../../shared/widgets/quick_actions_fab.dart';
 import 'detail/detail_page.dart';
+import '../medicine_detail/medicine_detail_args.dart';
+import '../pets/models/pet_ui_mapper.dart';
+import '../pets/pet_detail/pet_detail_args.dart';
 
 class RecordsPage extends StatefulWidget {
   const RecordsPage({
@@ -250,6 +253,7 @@ class _RecordsPageState extends State<RecordsPage> {
             iconColor: AppColors.primary,
             iconAssetPath: null,
             sortDate: sortDate,
+            medicine: med,
             pet: pet,
           ),
         );
@@ -345,7 +349,22 @@ class _RecordsPageState extends State<RecordsPage> {
 
       return;
     } else if (record.type == _RecordType.medicine) {
-      _showUnavailableMessage();
+      if (record.pet == null || record.medicine == null) {
+        _showUnavailableMessage();
+        return;
+      }
+
+      final result = await Navigator.of(context).pushNamed(
+        Routes.medicineDetail,
+        arguments: MedicineDetailArgs(
+          medicine: record.medicine!,
+          pet: record.pet!,
+        ),
+      );
+
+      if (result == true) {
+        await _loadRecords();
+      }
       return;
     }
     return;
@@ -561,6 +580,7 @@ class _RecordEntry {
     required this.sortDate,
     this.vaccination,
     this.event,
+    this.medicine,
     this.pet,
   });
 
@@ -575,5 +595,6 @@ class _RecordEntry {
   final DateTime sortDate;
   final PetVaccinationModel? vaccination;
   final EventModel? event;
+  final MedicineModel? medicine;
   final PetModel? pet;
 }

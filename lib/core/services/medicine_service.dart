@@ -64,6 +64,53 @@ class MedicineService {
     }
   }
 
+  Future<MedicineModel> getMedicineById(String medicineId) async {
+    final trimmedMedicineId = medicineId.trim();
+    try {
+      final response = await _apiClient.get('$medicinesPath$trimmedMedicineId/');
+      final body = response.body;
+      final json = jsonDecode(body);
+      if (json is! Map<String, dynamic>) {
+        throw const ApiException(type: ApiErrorType.unknown, message: 'Unexpected medicine detail response.');
+      }
+
+      return MedicineModel.fromJson(_asMap(json));
+    } catch (_) {
+      rethrow;
+    }
+  }
+
+  Future<MedicineModel> updateMedicine({
+    required String medicineId,
+    required Map<String, dynamic> payload,
+  }) async {
+    final trimmedMedicineId = medicineId.trim();
+    try {
+      final response = await _apiClient.put(
+        '$medicinesPath$trimmedMedicineId/',
+        body: payload,
+      );
+      final body = response.body;
+      final json = jsonDecode(body);
+      if (json is! Map<String, dynamic>) {
+        throw const ApiException(type: ApiErrorType.unknown, message: 'Unexpected medicine update response.');
+      }
+
+      return MedicineModel.fromJson(_asMap(json));
+    } catch (_) {
+      rethrow;
+    }
+  }
+
+  Future<void> deleteMedicine(String medicineId) async {
+    final trimmedMedicineId = medicineId.trim();
+    try {
+      await _apiClient.delete('$medicinesPath$trimmedMedicineId/');
+    } catch (_) {
+      rethrow;
+    }
+  }
+
   Map<String, dynamic> _asMap(dynamic item) {
     if (item is Map<String, dynamic>) return item;
     if (item is Map) return item.map((k, v) => MapEntry(k.toString(), v));

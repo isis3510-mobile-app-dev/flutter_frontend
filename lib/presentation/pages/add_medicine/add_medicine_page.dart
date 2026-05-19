@@ -6,6 +6,7 @@ import 'package:flutter_frontend/core/constants/app_colors.dart';
 import 'package:flutter_frontend/core/constants/app_strings.dart';
 import 'package:flutter_frontend/core/forms/app_form_utils.dart';
 import 'package:flutter_frontend/core/forms/app_form_constraints.dart';
+import 'package:flutter_frontend/presentation/pages/add_medicine/add_medicine_args.dart';
 import 'package:flutter_frontend/core/models/pet_model.dart';
 import 'package:flutter_frontend/core/services/medicine_service.dart';
 import 'package:flutter_frontend/core/services/pet_service.dart';
@@ -15,7 +16,9 @@ import 'package:flutter_frontend/presentation/pages/add_vaccine/widgets/app_drop
 import 'package:flutter_frontend/shared/widgets/form_field.dart';
 
 class AddMedicinePage extends StatefulWidget {
-  const AddMedicinePage({super.key});
+  const AddMedicinePage({super.key, this.prefill});
+
+  final AddMedicineArgs? prefill;
 
   @override
   State<AddMedicinePage> createState() => _AddMedicinePageState();
@@ -39,6 +42,10 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
   String? _selectedPetId;
   String? _selectedAdministration;
   String? _selectedDosageUnit;
+  String? _editingMedicineId;
+  String? _photoUrl;
+  bool? _reminderEnabled;
+  DateTime? _lastAdministered;
   int _step = 0;
   bool _isLoadingPets = false;
   bool _isSubmitting = false;
@@ -46,7 +53,48 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
   @override
   void initState() {
     super.initState();
+    _applyPrefill(widget.prefill);
     _loadPets();
+  }
+
+  void _applyPrefill(AddMedicineArgs? prefill) {
+    if (prefill == null) {
+      return;
+    }
+
+    if (prefill.medicineId != null && prefill.medicineId!.trim().isNotEmpty) {
+      _editingMedicineId = prefill.medicineId!.trim();
+    }
+    if (prefill.medicineName != null && prefill.medicineName!.trim().isNotEmpty) {
+      _nameController.text = prefill.medicineName!.trim();
+    }
+    if (prefill.administrationRoute != null && prefill.administrationRoute!.trim().isNotEmpty) {
+      _selectedAdministration = prefill.administrationRoute!.trim();
+    }
+    if (prefill.dosageValue != null) {
+      _dosageController.text = prefill.dosageValue!.toString();
+    }
+    if (prefill.dosageUnit != null && prefill.dosageUnit!.trim().isNotEmpty) {
+      _selectedDosageUnit = prefill.dosageUnit!.trim();
+    }
+    if (prefill.frequency != null) {
+      _frequencyController.text = prefill.frequency.toString();
+    }
+    if (prefill.startDate != null) {
+      _startDateController.text = formatDateForInput(prefill.startDate!);
+    }
+    if (prefill.endDate != null) {
+      _endDateController.text = formatDateForInput(prefill.endDate!);
+    }
+    if (prefill.petId != null && prefill.petId!.trim().isNotEmpty) {
+      _selectedPetId = prefill.petId!.trim();
+    }
+    _photoUrl = prefill.photoUrl?.trim().isNotEmpty == true ? prefill.photoUrl!.trim() : null;
+    _reminderEnabled = prefill.reminderEnabled;
+    _lastAdministered = prefill.lastAdministered;
+    if (_editingMedicineId != null) {
+      _step = 0;
+    }
   }
 
   Future<void> _loadPets() async {
@@ -102,12 +150,21 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
       'frequency': int.tryParse(_frequencyController.text.trim()) ?? 24,
       'startDate': _startDateController.text.trim().isEmpty ? null : formatDateForApi(parseDateInput(_startDateController.text) ?? DateTime.now()),
       'endDate': _endDateController.text.trim().isEmpty ? null : formatDateForApi(parseDateInput(_endDateController.text) ?? DateTime.now()),
-      'reminderEnabled': false,
+      'photoUrl': _photoUrl,
+      'reminderEnabled': _reminderEnabled ?? false,
+      'lastAdministered': _lastAdministered?.toUtc().toIso8601String(),
     }..removeWhere((key, value) => value == null);
 
     setState(() => _isSubmitting = true);
     try {
-      await _medicineService.createMedicine(payload);
+      if (_editingMedicineId == null || _editingMedicineId!.trim().isEmpty) {
+        await _medicineService.createMedicine(payload);
+      } else {
+        await _medicineService.updateMedicine(
+          medicineId: _editingMedicineId!,
+          payload: payload,
+        );
+      }
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (_) {
