@@ -131,7 +131,7 @@ class _QuickActionsFabState extends State<QuickActionsFab>
                 ignoring: !_isOpen,
                 child: _ActionItem(
                   label: 'Add Medicine',
-                  iconAssetPath: 'assets/icons/featureIcons/vaccines.svg',
+                  iconAssetPath: 'assets/icons/featureIcons/medicine.svg',
                   onTap: () => _onActionTap(widget.onAddMedicine!),
                   backgroundColor: pillBackground,
                   textColor: textColor,

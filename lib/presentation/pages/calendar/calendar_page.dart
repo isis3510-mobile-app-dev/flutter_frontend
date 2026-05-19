@@ -529,6 +529,13 @@ class _CalendarPageState extends State<CalendarPage> {
     }
   }
 
+  Future<void> _goToAddMedicine() async {
+    final result = await Navigator.of(context).pushNamed(Routes.addMedicine);
+    if (result == true) {
+      _loadCalendarData();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -634,6 +641,7 @@ class _CalendarPageState extends State<CalendarPage> {
         onAddPet: _goToAddPet,
         onAddVaccine: _goToAddVaccine,
         onAddEvent: _goToAddEvent,
+        onAddMedicine: _goToAddMedicine,
       ),
       bottomNavigationBar: PetcareBottomNavBar(
         currentIndex: _currentIndex,
