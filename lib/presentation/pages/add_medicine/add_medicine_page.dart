@@ -1,17 +1,21 @@
 import 'dart:async';
 
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_frontend/core/constants/app_strings.dart';
 import 'package:flutter_frontend/core/forms/app_form_utils.dart';
 import 'package:flutter_frontend/core/forms/app_form_constraints.dart';
+import 'package:flutter_frontend/core/models/medicine_request.dart';
 import 'package:flutter_frontend/presentation/pages/add_medicine/add_medicine_args.dart';
 import 'package:flutter_frontend/core/models/pet_model.dart';
 import 'package:flutter_frontend/core/services/medicine_service.dart';
 import 'package:flutter_frontend/core/services/pet_service.dart';
+import 'package:flutter_frontend/core/services/profile_photo_service.dart';
 import 'package:flutter_frontend/presentation/pages/add_flow/utils/date_input.dart';
 import 'package:flutter_frontend/presentation/pages/add_flow/widgets/add_flow_scaffold.dart';
 import 'package:flutter_frontend/presentation/pages/add_vaccine/widgets/app_dropdown_field.dart';
+import 'package:flutter_frontend/presentation/pages/pets/add_pet/widgets/pet_photo_picker.dart';
 import 'package:flutter_frontend/shared/widgets/form_field.dart';
 
 class AddMedicinePage extends StatefulWidget {
@@ -33,6 +37,8 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
 
   final MedicineService _medicineService = MedicineService();
   final PetService _petService = PetService();
+  final ProfilePhotoService _photoService = ProfilePhotoService();
+  final ImagePicker _imagePicker = ImagePicker();
 
   final List<String> _administrationOptions = ['oral', 'topical', 'injectable'];
   final List<String> _dosageUnitOptions = ['g', 'mg', 'ml', 'tablet', 'drops'];
@@ -43,6 +49,7 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
   String? _selectedDosageUnit;
   String? _editingMedicineId;
   String? _photoUrl;
+  bool _didRemovePhoto = false;
   bool? _reminderEnabled;
   DateTime? _lastAdministered;
   int _step = 0;
@@ -89,6 +96,7 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
       _selectedPetId = prefill.petId!.trim();
     }
     _photoUrl = prefill.photoUrl?.trim().isNotEmpty == true ? prefill.photoUrl!.trim() : null;
+    _didRemovePhoto = false;
     _reminderEnabled = prefill.reminderEnabled;
     _lastAdministered = prefill.lastAdministered;
     if (_editingMedicineId != null) {
@@ -140,28 +148,34 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
       return;
     }
 
-    final payload = {
-      'petId': _selectedPetId,
-      'medicineName': _nameController.text.trim(),
-      'administrationRoute': _selectedAdministration ?? _administrationOptions.first,
-      'dosageValue': double.tryParse(_dosageController.text.trim()) ?? 0.0,
-      'dosageUnit': _selectedDosageUnit ?? 'mg',
-      'frequency': int.tryParse(_frequencyController.text.trim()) ?? 24,
-      'startDate': _startDateController.text.trim().isEmpty ? null : formatDateForApi(parseDateInput(_startDateController.text) ?? DateTime.now()),
-      'endDate': _endDateController.text.trim().isEmpty ? null : formatDateForApi(parseDateInput(_endDateController.text) ?? DateTime.now()),
-      'photoUrl': _photoUrl,
-      'reminderEnabled': _reminderEnabled ?? false,
-      'lastAdministered': _lastAdministered?.toUtc().toIso8601String(),
-    }..removeWhere((key, value) => value == null);
+    final startDate = parseDateInput(_startDateController.text.trim());
+    final endDate = parseDateInput(_endDateController.text.trim());
+    final currentPhoto = _photoUrl?.trim();
+
+    final request = MedicineRequest(
+      petId: _selectedPetId!,
+      medicineName: _nameController.text.trim(),
+      administrationRoute: _selectedAdministration ?? _administrationOptions.first,
+      dosageValue: double.tryParse(_dosageController.text.trim()) ?? 0.0,
+      dosageUnit: _selectedDosageUnit ?? 'mg',
+      frequency: int.tryParse(_frequencyController.text.trim()) ?? 24,
+      startDate: startDate,
+      endDate: endDate,
+      photoUrl: currentPhoto?.isNotEmpty == true
+          ? currentPhoto
+          : (_didRemovePhoto ? '' : null),
+      reminderEnabled: _reminderEnabled ?? false,
+      lastAdministered: _lastAdministered,
+    );
 
     setState(() => _isSubmitting = true);
     try {
       if (_editingMedicineId == null || _editingMedicineId!.trim().isEmpty) {
-        await _medicineService.createMedicine(payload);
+        await _medicineService.createMedicine(request);
       } else {
         await _medicineService.updateMedicine(
           medicineId: _editingMedicineId!,
-          payload: payload,
+          request: request,
         );
       }
       if (!mounted) return;
@@ -196,6 +210,108 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
     if (_step > 0) setState(() => _step -= 1);
   }
 
+  Future<void> _pickPhotoSource() async {
+    final source = await showModalBottomSheet<_PhotoSource>(
+      context: context,
+      showDragHandle: true,
+      builder: (bottomSheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined),
+                title: const Text('Choose from gallery'),
+                onTap: () => Navigator.pop(bottomSheetContext, _PhotoSource.gallery),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_camera_outlined),
+                title: const Text('Take a photo'),
+                onTap: () => Navigator.pop(bottomSheetContext, _PhotoSource.camera),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (source == null) {
+      return;
+    }
+
+    switch (source) {
+      case _PhotoSource.gallery:
+        await _pickPhoto(ImageSource.gallery);
+        break;
+      case _PhotoSource.camera:
+        await _pickPhoto(ImageSource.camera);
+        break;
+    }
+  }
+
+  Future<void> _pickPhoto(ImageSource source) async {
+    try {
+      final pickedFile = await _imagePicker.pickImage(
+        source: source,
+        imageQuality: 85,
+        maxWidth: 1200,
+        maxHeight: 1200,
+      );
+
+      if (pickedFile == null) {
+        return;
+      }
+
+      final bytes = await pickedFile.readAsBytes();
+      final extension = _extensionFromName(pickedFile.name);
+      final localPath = await _photoService.saveImageFileLocally(
+        bytes: bytes,
+        directoryName: 'medicine_photos',
+        fileNamePrefix: 'medicine_draft',
+        extension: extension,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _photoUrl = localPath;
+        _didRemovePhoto = false;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text(AppStrings.errorGeneric)));
+    }
+  }
+
+  Future<void> _removePhoto() async {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _photoUrl = null;
+      _didRemovePhoto = true;
+    });
+  }
+
+  String _extensionFromName(String fileName) {
+    final lower = fileName.toLowerCase();
+    if (lower.endsWith('.png')) {
+      return 'png';
+    }
+    if (lower.endsWith('.webp')) {
+      return 'webp';
+    }
+    if (lower.endsWith('.heic')) {
+      return 'heic';
+    }
+    return 'jpg';
+  }
+
   @override
   Widget build(BuildContext context) {
     final petOptions = _pets.map((p) => p.name.trim()).toList(growable: false);
@@ -210,6 +326,14 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
     final basic = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        PetPhotoPicker(
+          imagePath: _photoUrl,
+          emptyTitle: 'Medicine Photo',
+          emptyHint: 'Tap to upload or take a photo',
+          onTap: _pickPhotoSource,
+          onRemovePhoto: _removePhoto,
+        ),
+        const SizedBox(height: 18),
         AppDropdownField(
           label: '${AppStrings.labelPetName} *',
           hintText: _isLoadingPets ? 'Loading pets...' : 'Select pet',
@@ -347,3 +471,5 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
     );
   }
 }
+
+enum _PhotoSource { gallery, camera }

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/app/routes.dart';
 import 'package:flutter_frontend/core/constants/app_colors.dart';
@@ -225,19 +227,7 @@ class _MedicineDetailPageState extends State<MedicineDetailPage> {
                             ? AppColors.quickActionIconBackgroundDark
                             : AppColors.quickActionIconBackground,
                         child: photoUrl.isNotEmpty
-                            ? Image.network(
-                                photoUrl,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Icon(
-                                    Icons.broken_image_outlined,
-                                    size: 26,
-                                    color: isDark
-                                        ? AppColors.quickActionIconTintDark
-                                        : AppColors.quickActionIconTint,
-                                  );
-                                },
-                              )
+                            ? _buildPhoto(photoUrl, isDark)
                             : Icon(
                                 Icons.image_outlined,
                                 size: 26,
@@ -414,6 +404,33 @@ class _MedicineDetailPageState extends State<MedicineDetailPage> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildPhoto(String photoUrl, bool isDark) {
+    final uri = Uri.tryParse(photoUrl);
+    final isNetwork =
+        uri != null && (uri.scheme == 'http' || uri.scheme == 'https');
+
+    if (!isNetwork) {
+      final file = File(photoUrl);
+      if (file.existsSync()) {
+        return Image.file(file, fit: BoxFit.cover);
+      }
+    }
+
+    return Image.network(
+      photoUrl,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) {
+        return Icon(
+          Icons.broken_image_outlined,
+          size: 26,
+          color: isDark
+              ? AppColors.quickActionIconTintDark
+              : AppColors.quickActionIconTint,
+        );
+      },
     );
   }
 }

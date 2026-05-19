@@ -20,6 +20,7 @@ import '../../../../core/services/profile_photo_service.dart';
 import '../../../../core/services/smart_feature_service.dart';
 import '../../../../core/services/telemetry_service.dart';
 import '../../../../shared/widgets/quick_actions_fab.dart';
+import '../../add_medicine/add_medicine_args.dart';
 import '../../add_event/add_event_args.dart';
 import '../../add_vaccine/add_vaccine_args.dart';
 import '../../records/detail/detail_page.dart';
@@ -86,6 +87,18 @@ class _PetDetailScreenState extends State<PetDetailScreen>
       context,
       Routes.addEvent,
       arguments: AddEventArgs(petId: _pet.id, petName: _pet.name),
+    );
+    if (result == true) {
+      _hasMutatedPet = true;
+      await _loadPetDetail();
+    }
+  }
+
+  Future<void> _goToAddMedicine() async {
+    final result = await Navigator.pushNamed(
+      context,
+      Routes.addMedicine,
+      arguments: AddMedicineArgs(petId: _pet.id, petName: _pet.name),
     );
     if (result == true) {
       _hasMutatedPet = true;
@@ -431,6 +444,7 @@ class _PetDetailScreenState extends State<PetDetailScreen>
           onAddPet: _goToAddPet,
           onAddVaccine: _goToAddVaccine,
           onAddEvent: _goToAddEvent,
+          onAddMedicine: _goToAddMedicine,
         ),
       ),
     );

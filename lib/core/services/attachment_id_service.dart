@@ -40,6 +40,13 @@ class AttachmentIdService {
     return 'pets/$normalizedPetId/documents/$normalizedCategory/doc_$timestamp.$extension';
   }
 
+  String buildMedicinePhotoPath({required String originalFileName}) {
+    final extension = extensionFromName(originalFileName);
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+
+    return 'medicines/photos/medicine_$timestamp.$extension';
+  }
+
   String extensionFromName(String fileName) {
     final sanitized = sanitizeFileName(fileName);
     final dotIndex = sanitized.lastIndexOf('.');

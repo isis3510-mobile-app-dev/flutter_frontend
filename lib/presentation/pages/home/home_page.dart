@@ -100,6 +100,10 @@ class _HomePageState extends State<HomePage> {
     Navigator.of(context).pushNamed(Routes.addEvent);
   }
 
+  void _goToAddMedicine() {
+    Navigator.of(context).pushNamed(Routes.addMedicine);
+  }
+
   Future<void> _goToAddPet() async {
     final result = await Navigator.of(context).pushNamed(Routes.addPet);
     if (!mounted || result != true) {
@@ -880,6 +884,7 @@ class _HomePageState extends State<HomePage> {
         onAddPet: _goToAddPet,
         onAddVaccine: _goToAddVaccine,
         onAddEvent: _goToAddEvent,
+        onAddMedicine: _goToAddMedicine,
       ),
       bottomNavigationBar: PetcareBottomNavBar(
         currentIndex: _currentIndex,
