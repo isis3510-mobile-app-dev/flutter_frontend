@@ -359,9 +359,11 @@ class _HomePageState extends State<HomePage> {
             )
             .toList(growable: false);
         final now = DateTime.now();
+        final todayStart = DateTime(now.year, now.month, now.day);
+        final todayEnd = todayStart.add(const Duration(days: 1));
         _activeMedicines = allMedicines.where((m) {
-          final hasStarted = m.startDate == null || !m.startDate!.isAfter(now);
-          final notEnded = m.endDate == null || m.endDate!.isAfter(now);
+          final hasStarted = m.startDate == null || !m.startDate!.isAfter(todayEnd.subtract(const Duration(milliseconds: 1)));
+          final notEnded = m.endDate == null || m.endDate!.isAfter(todayStart);
           return hasStarted && notEnded && m.medicineName.trim().isNotEmpty;
         }).toList(growable: false);
       });
