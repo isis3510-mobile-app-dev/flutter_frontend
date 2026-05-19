@@ -3,6 +3,7 @@ import 'package:flutter_frontend/presentation/pages/add_event/add_event_args.dar
 import 'package:flutter_frontend/presentation/pages/add_event/add_event_page.dart';
 import 'package:flutter_frontend/presentation/pages/add_vaccine/add_vaccine_args.dart';
 import 'package:flutter_frontend/presentation/pages/add_vaccine/add_vaccine_page.dart';
+import 'package:flutter_frontend/presentation/pages/add_medicine/add_medicine_page.dart';
 import 'package:flutter_frontend/presentation/pages/auth/auth_gate.dart';
 import 'package:flutter_frontend/presentation/pages/calendar/calendar_page.dart';
 import 'package:flutter_frontend/presentation/pages/nfc/nfc_page.dart';
@@ -45,6 +46,7 @@ class Routes {
   static const String addPet = '/pets/add';
   static const String petDetail = '/pets/detail';
   static const String addVaccine = '/vaccines/add';
+  static const String addMedicine = '/medicines/add';
   static const String vaccineDetail = 'vaccine/detail';
   static const String addEvent = '/event/add';
   static const String eventDetail = 'event/detail';
@@ -121,6 +123,9 @@ class Routes {
           return _buildRoute(AddVaccinePage(prefill: args), settings);
         }
         return _buildRoute(const AddVaccinePage(), settings);
+
+      case addMedicine:
+        return _buildRoute(const AddMedicinePage(), settings);
 
       case nfc:
         final initialPetId = settings.arguments is String

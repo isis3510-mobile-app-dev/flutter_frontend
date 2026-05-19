@@ -252,6 +252,7 @@ abstract class AppStrings {
   static const String labelAdministeredBy = 'Administered By';
   static const String labelAdditionalFiles = 'Additional Files';
   static const String labelEventName = 'Event Name';
+    static const String labelMedicineName = 'Medicine Name';
   static const String labelEventTime = 'Event Time';
   static const String labelEventType = 'Event Type';
   static const String labelEventPrice = 'Price';
@@ -280,6 +281,7 @@ abstract class AppStrings {
       'Open the camera and attach it right away';
   static const String hintEventName = 'e.g. Vet Appointment';
   static const String hintEventTime = 'e.g. 9:00 AM';
+    static const String hintMedicineName = 'e.g. Amoxicillin';
   static const String hintEventType = 'e.g. vet_visit';
   static const String hintEventPrice = 'e.g. 120.00';
   static const String hintEventProvider = 'e.g. Dr. Smith';
@@ -291,6 +293,7 @@ abstract class AppStrings {
   static const String validationRequired = 'This field is required.';
   static const String validationInvalidDate = 'Please enter a valid date.';
   static const String validationInvalidNumber = 'Please enter a valid number.';
+    static const String validationEndBeforeStart = 'End date must be the same or after start date.';
   static const String validationFullNameRequired = 'Full name is required.';
   static const String validationEmailRequired = 'Email address is required.';
   static const String validationPasswordRequired = 'Password is required.';

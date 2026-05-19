@@ -49,6 +49,21 @@ class MedicineService {
     return results;
   }
 
+  Future<MedicineModel> createMedicine(Map<String, dynamic> payload) async {
+    try {
+      final response = await _apiClient.post(medicinesPath, body: payload);
+      final body = response.body;
+      final json = jsonDecode(body);
+      if (json is! Map<String, dynamic>) {
+        throw const ApiException(type: ApiErrorType.unknown, message: 'Unexpected medicine create response.');
+      }
+
+      return MedicineModel.fromJson(_asMap(json));
+    } catch (_) {
+      rethrow;
+    }
+  }
+
   Map<String, dynamic> _asMap(dynamic item) {
     if (item is Map<String, dynamic>) return item;
     if (item is Map) return item.map((k, v) => MapEntry(k.toString(), v));

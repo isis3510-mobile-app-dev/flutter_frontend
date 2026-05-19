@@ -396,9 +396,10 @@ class _RecordsPageState extends State<RecordsPage> {
   }
 
   Future<void> _goToAddMedicine() async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Add medicine not implemented yet.')),
-    );
+    final result = await Navigator.of(context).pushNamed(Routes.addMedicine);
+    if (result == true) {
+      await _loadRecords();
+    }
   }
 
   @override
