@@ -378,6 +378,8 @@ abstract class AppStrings {
   static const String petDetailSectionPetInfo = 'Pet Information';
   static const String petDetailSectionHealthSummary = 'Health Summary';
   static const String petDetailSectionHealthAlerts = 'Health Alerts';
+    static const String petDetailSectionMedicines = 'Med Admin';
+    static const String petDetailMedicinesEmpty = 'No medications for today.';
   static const String petDetailFieldSpecies = 'Species';
   static const String petDetailFieldBreed = 'Breed';
   static const String petDetailFieldDob = 'Date of Birth';

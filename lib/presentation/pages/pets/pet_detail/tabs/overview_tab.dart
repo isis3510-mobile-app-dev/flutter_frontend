@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'dart:io';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../../../core/constants/app_colors.dart';
 import '../../../../../core/constants/app_dimensions.dart';
 import '../../../../../core/constants/app_strings.dart';
 import '../../../../../core/models/pet_model.dart';
-import '../../../../../core/models/smart_alert_model.dart';
-import '../../../../../shared/widgets/smart_alert_card.dart';
+import '../../../../../core/models/medicine_model.dart';
+import '../../../../../core/services/app_image_cache_manager.dart';
+import '../../../../../app/routes.dart';
+import '../../../../../presentation/pages/medicine_detail/medicine_detail_args.dart';
 import '../../models/pet_ui_model.dart';
+import '../../../../../core/models/medicine_request.dart';
+import '../../../../../core/services/medicine_service.dart';
 
 class OverviewTab extends StatefulWidget {
   const OverviewTab({
@@ -15,7 +21,7 @@ class OverviewTab extends StatefulWidget {
     required this.pet,
     required this.petDetails,
     required this.eventCount,
-    required this.smartAlerts,
+    required this.medicines,
     required this.onToggleLostMode,
     required this.onToggleNfc,
   });
@@ -23,7 +29,7 @@ class OverviewTab extends StatefulWidget {
   final PetUiModel pet;
   final PetModel? petDetails;
   final int eventCount;
-  final List<SmartSuggestionModel> smartAlerts;
+  final List<MedicineModel> medicines;
   final VoidCallback onToggleLostMode;
   final VoidCallback onToggleNfc;
 
@@ -32,13 +38,59 @@ class OverviewTab extends StatefulWidget {
 }
 
 class _OverviewTabState extends State<OverviewTab> {
-  bool _showAllSmartAlerts = false;
-
+  final MedicineService _medicineService = MedicineService();
+  final Map<String, DateTime?> _givenStatus = {};
   @override
   void didUpdateWidget(covariant OverviewTab oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.pet.id != oldWidget.pet.id || widget.smartAlerts.length <= 2) {
-      _showAllSmartAlerts = false;
+    // reset local overrides when medicines list changes
+    if (oldWidget.medicines != widget.medicines) {
+      _givenStatus.clear();
+    }
+  }
+
+  bool _isGivenToday(DateTime? lastAdministered) {
+    final override = lastAdministered;
+    if (override == null) return false;
+    final now = DateTime.now();
+    return override.year == now.year && override.month == now.month && override.day == now.day;
+  }
+
+  Future<void> _toggleGivenToday(MedicineModel med) async {
+    final currently = _givenStatus.containsKey(med.id) ? _givenStatus[med.id] : med.lastAdministered;
+    final isGiven = _isGivenToday(currently);
+    final newValue = isGiven ? null : DateTime.now();
+
+    setState(() => _givenStatus[med.id] = newValue);
+
+    final request = MedicineRequest(
+      petId: med.petId,
+      medicineName: med.medicineName,
+      administrationRoute: med.administrationRoute,
+      dosageValue: med.dosageValue ?? 0.0,
+      dosageUnit: med.dosageUnit,
+      frequency: med.frequency,
+      reminderEnabled: med.reminderEnabled,
+      startDate: med.startDate,
+      endDate: med.endDate,
+      photoUrl: med.photoUrl,
+      lastAdministered: newValue,
+    );
+
+    try {
+      await _medicineService.updateMedicine(medicineId: med.id, request: request);
+    } catch (_) {
+      // revert on error
+      setState(() {
+        if (med.lastAdministered != null) {
+          _givenStatus[med.id] = med.lastAdministered;
+        } else {
+          _givenStatus.remove(med.id);
+        }
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not update medicine status.')));
+      }
     }
   }
 
@@ -111,15 +163,12 @@ class _OverviewTabState extends State<OverviewTab> {
             eventCount: widget.eventCount,
           ),
           const SizedBox(height: AppDimensions.spaceM),
-          if (widget.smartAlerts.isNotEmpty) ...[
-            _HealthAlertsSection(
-              alerts: widget.smartAlerts,
-              showAll: _showAllSmartAlerts,
-              onToggleShowAll: () {
-                setState(() {
-                  _showAllSmartAlerts = !_showAllSmartAlerts;
-                });
-              },
+          if (widget.medicines.isNotEmpty) ...[
+            _MedicinesTodaySection(
+              medicines: widget.medicines,
+              pet: widget.petDetails,
+              onToggleGiven: _toggleGivenToday,
+              givenStatus: _givenStatus,
             ),
             const SizedBox(height: AppDimensions.spaceM),
           ],
@@ -363,33 +412,41 @@ class _HealthSummaryCard extends StatelessWidget {
   }
 }
 
-class _HealthAlertsSection extends StatelessWidget {
-  const _HealthAlertsSection({
-    required this.alerts,
-    required this.showAll,
-    required this.onToggleShowAll,
+class _MedicinesTodaySection extends StatelessWidget {
+  const _MedicinesTodaySection({
+    required this.medicines,
+    required this.pet,
+    required this.onToggleGiven,
+    required this.givenStatus,
   });
 
-  final List<SmartSuggestionModel> alerts;
-  final bool showAll;
-  final VoidCallback onToggleShowAll;
+  final List<MedicineModel> medicines;
+  final PetModel? pet;
+  final void Function(MedicineModel) onToggleGiven;
+  final Map<String, DateTime?> givenStatus;
+
+  bool _isForToday(MedicineModel medicine) {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final todayEnd = todayStart.add(const Duration(days: 1));
+
+    final start = medicine.startDate ?? DateTime(1900);
+    final end = medicine.endDate ?? DateTime(3000);
+
+    return !start.isAfter(todayEnd.subtract(const Duration(milliseconds: 1))) && !end.isBefore(todayStart);
+  }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final sectionTitleColor = isDark
-        ? AppColors.onSurfaceDark
-        : AppColors.grey900;
-    final linkColor = isDark ? AppColors.primaryVariant : AppColors.primary;
-    final visibleAlerts = showAll
-        ? alerts
-        : alerts.take(2).toList(growable: false);
+    final sectionTitleColor = isDark ? AppColors.onSurfaceDark : AppColors.grey900;
+    final todays = medicines.where(_isForToday).toList(growable: false);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          AppStrings.petDetailSectionHealthAlerts.toUpperCase(),
+          AppStrings.petDetailSectionMedicines.toUpperCase(),
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
             color: sectionTitleColor,
             letterSpacing: 0.4,
@@ -397,35 +454,84 @@ class _HealthAlertsSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppDimensions.spaceS),
-        for (final alert in visibleAlerts)
-          SmartAlertCard(
-            suggestion: alert,
-            showPetName: false,
-            margin: const EdgeInsets.only(bottom: AppDimensions.spaceS),
-          ),
-        if (alerts.length > 2)
-          Align(
-            alignment: Alignment.centerRight,
-            child: GestureDetector(
-              onTap: onToggleShowAll,
-              child: Padding(
-                padding: const EdgeInsets.only(top: AppDimensions.spaceXS),
-                child: Text(
-                  showAll
-                      ? AppStrings.smartAlertsShowLess
-                      : 'See all ${alerts.length} alerts',
-                  style: TextStyle(
-                    color: linkColor,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
+        if (todays.isEmpty)
+          Text(AppStrings.petDetailMedicinesEmpty, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.grey700)),
+        for (final med in todays)
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: med.photoUrl != null && med.photoUrl!.trim().isNotEmpty
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: _buildMedicineImage(med.photoUrl!),
+                  )
+                : Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.surfaceDark : Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.petFilterInactiveBorder),
+                    ),
+                    child: const Icon(Icons.medication_outlined, size: 28, color: AppColors.grey500),
                   ),
-                ),
-              ),
+            title: Text(med.medicineName, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
+            subtitle: Text(
+              '${med.dosageValue ?? ''}${med.dosageUnit.isNotEmpty ? ' ${med.dosageUnit}' : ''} • ${med.administrationRoute}',
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Builder(builder: (ctx) {
+                  final last = givenStatus.containsKey(med.id) ? givenStatus[med.id] : med.lastAdministered;
+                  final now = DateTime.now();
+                  final isGiven = last != null && last.year == now.year && last.month == now.month && last.day == now.day;
+                  return IconButton(
+                    icon: Icon(isGiven ? Icons.check_circle : Icons.radio_button_unchecked, color: isGiven ? AppColors.primary : AppColors.grey500),
+                    onPressed: () => onToggleGiven(med),
+                    tooltip: isGiven ? 'Marked as given' : 'Mark as given',
+                  );
+                }),
+                IconButton(
+                  icon: const Icon(Icons.chevron_right),
+                  onPressed: pet == null
+                      ? null
+                      : () => Navigator.of(context).pushNamed(
+                            Routes.medicineDetail,
+                            arguments: MedicineDetailArgs(medicine: med, pet: pet!),
+                          ),
+                ),
+              ],
+            ),
+            onTap: null,
           ),
       ],
     );
   }
+}
+
+Widget _buildMedicineImage(String path) {
+  final uri = Uri.tryParse(path);
+  if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https')) {
+    return CachedNetworkImage(
+      imageUrl: path,
+      cacheManager: AppImageCacheManager.instance,
+      width: 48,
+      height: 48,
+      fit: BoxFit.cover,
+      placeholder: (_, __) => const SizedBox(width: 48, height: 48, child: Center(child: CircularProgressIndicator(strokeWidth: 2))),
+      errorWidget: (_, __, ___) => const SizedBox(width: 48, height: 48, child: Icon(Icons.medication_outlined)),
+    );
+  }
+
+  try {
+    final file = File(path);
+    if (file.existsSync()) {
+      return Image.file(file, width: 48, height: 48, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.medication_outlined));
+    }
+  } catch (_) {}
+
+  return const SizedBox(width: 48, height: 48, child: Icon(Icons.medication_outlined));
 }
 
 class _HealthMetricTile extends StatelessWidget {
