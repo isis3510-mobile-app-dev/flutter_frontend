@@ -6,13 +6,18 @@ import 'package:flutter_frontend/presentation/pages/add_vaccine/add_vaccine_page
 import 'package:flutter_frontend/presentation/pages/auth/auth_gate.dart';
 import 'package:flutter_frontend/presentation/pages/calendar/calendar_page.dart';
 import 'package:flutter_frontend/presentation/pages/nfc/nfc_page.dart';
+import 'package:flutter_frontend/core/models/lost_pet_model.dart';
 import 'package:flutter_frontend/core/models/user_profile.dart';
+import 'package:flutter_frontend/presentation/pages/lost_pets/lost_pet_detail_page.dart';
+import 'package:flutter_frontend/presentation/pages/lost_pets/lost_pets_page.dart';
+import 'package:flutter_frontend/presentation/pages/lost_pets/lost_pet_sighting_detail_page.dart';
 import 'package:flutter_frontend/presentation/pages/records/detail/detail_page.dart';
 import 'package:flutter_frontend/presentation/pages/smart_alerts/smart_alerts_page.dart';
 import '../presentation/pages/auth/auth_page.dart';
 import '../presentation/pages/home/home_page.dart';
 import '../presentation/pages/pets/models/pet_ui_model.dart';
 import '../presentation/pages/pets/add_pet/add_pet_screen.dart';
+import '../presentation/pages/pets/lost_mode/lost_mode_form_page.dart';
 import '../presentation/pages/pets/pet_detail/pet_detail_args.dart';
 import '../presentation/pages/pets/pet_detail/pet_detail_screen.dart';
 import '../presentation/pages/pets/pets_page.dart';
@@ -33,6 +38,10 @@ class Routes {
   static const String auth = '/auth';
   static const String welcomePage = '/welcome';
   static const String pets = '/pets';
+  static const String lostPets = '/lost-pets';
+  static const String lostPetDetail = '/lost-pets/detail';
+  static const String lostPetSightingDetail = '/lost-pets/sighting-detail';
+  static const String lostMode = '/pets/lost-mode';
   static const String addPet = '/pets/add';
   static const String petDetail = '/pets/detail';
   static const String addVaccine = '/vaccines/add';
@@ -67,6 +76,36 @@ class Routes {
         return _buildRoute(const HomePage(), settings);
 
       case pets:
+        return _buildRoute(const PetsPage(), settings);
+
+      case lostPets:
+        return _buildRoute(const LostPetsPage(), settings);
+
+      case lostPetDetail:
+        final report = settings.arguments;
+        if (report is LostPetReportModel) {
+          return _buildRoute(
+            LostPetDetailPage(initialReport: report),
+            settings,
+          );
+        }
+        return _buildRoute(const LostPetsPage(), settings);
+
+      case lostPetSightingDetail:
+        final args = settings.arguments;
+        if (args is LostPetSightingDetailArgs) {
+          return _buildRoute(
+            LostPetSightingDetailPage(notification: args.notification),
+            settings,
+          );
+        }
+        return _buildRoute(const LostPetsPage(), settings);
+
+      case lostMode:
+        final pet = settings.arguments;
+        if (pet is PetUiModel) {
+          return _buildRoute(LostModeFormPage(pet: pet), settings);
+        }
         return _buildRoute(const PetsPage(), settings);
 
       case addPet:
@@ -189,7 +228,7 @@ class Routes {
     return switch (index) {
       0 => home,
       1 => pets,
-      2 => records,
+      2 => lostPets,
       3 => calendar,
 
       4 => profile,

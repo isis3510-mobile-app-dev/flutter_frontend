@@ -32,6 +32,27 @@ class NfcBackendService {
     );
   }
 
+  Future<Map<String, dynamic>> recordNfcLostPetSighting({
+    required String petId,
+    required Map<String, dynamic> data,
+  }) async {
+    final normalizedPetId = petId.trim();
+    if (normalizedPetId.isEmpty) {
+      throw const ApiException(
+        type: ApiErrorType.unknown,
+        message: 'Missing pet id to record NFC sighting.',
+      );
+    }
+
+    final response = await _apiClient.post(
+      '/api/nfc/read/$normalizedPetId/sighting/',
+      body: data,
+      authenticated: false,
+    );
+
+    return _decodeOptionalMap(response.body);
+  }
+
   Future<Map<String, dynamic>> getWritePayload(String petId) async {
     final normalizedPetId = petId.trim();
     if (normalizedPetId.isEmpty) {
@@ -41,7 +62,9 @@ class NfcBackendService {
       );
     }
 
-    final response = await _apiClient.get('/api/pets/$normalizedPetId/nfc-payload/');
+    final response = await _apiClient.get(
+      '/api/pets/$normalizedPetId/nfc-payload/',
+    );
 
     return _decodeRequiredMap(
       response.body,
@@ -58,7 +81,9 @@ class NfcBackendService {
       );
     }
 
-    final response = await _apiClient.post('/api/pets/$normalizedPetId/nfc-sync/');
+    final response = await _apiClient.post(
+      '/api/pets/$normalizedPetId/nfc-sync/',
+    );
     return _decodeOptionalMap(response.body);
   }
 
@@ -71,10 +96,7 @@ class NfcBackendService {
       return decoded;
     }
 
-    throw ApiException(
-      type: ApiErrorType.unknown,
-      message: fallbackMessage,
-    );
+    throw ApiException(type: ApiErrorType.unknown, message: fallbackMessage);
   }
 
   Map<String, dynamic> _decodeOptionalMap(String body) {

@@ -31,6 +31,41 @@ abstract class AppStrings {
   static const String homeNeedsAttention = 'Needs Attention';
   static const String homeLost = 'Lost';
 
+  // --- Lost pets ---
+  static const String lostPetsTitle = 'Lost Pets in Bogotá';
+  static const String lostPetsSubtitle = 'Pets that need help right now';
+  static const String lostPetsHelpTitle =
+      'Help reunite pets with their families';
+  static const String lostPetsHelpBody =
+      "If you've seen any of these pets, tap to see contact details and reach out to the owner.";
+  static const String lostPetsEmpty = 'No lost pets reported right now.';
+  static const String lostPetsLoadError =
+      'Could not load lost pets. Please try again.';
+  static const String lostPetsRetry = 'Retry';
+  static const String lostPetDetailTitle = 'Lost Pet Details';
+  static const String lostPetLastSeen = 'Last seen';
+  static const String lostPetMedicalInfo = 'Important medical info';
+  static const String lostPetOwnerContact = 'Owner contact';
+  static const String lostPetEmergencyContacts = 'Emergency contacts';
+  static const String lostPetCall = 'Call';
+  static const String lostPetWhatsApp = 'WhatsApp';
+  static const String lostPetLocationUnavailable =
+      'We could not access your location.';
+  static const String lostModeTitle = 'Lost Mode';
+  static const String lostModeNoteLabel = 'Public note';
+  static const String lostModeNoteHint =
+      'Add allergies, behavior, visible details, or instructions.';
+  static const String lostModeLocationLabel = 'Last seen location';
+  static const String lostModeLocationNameHint = 'Parque El Virrey, Bogotá';
+  static const String lostModeUseCurrentLocation = 'Use current location';
+  static const String lostModeContactName = 'Contact name';
+  static const String lostModeContactPhone = 'Phone';
+  static const String lostModeActivate = 'Activate Lost Mode';
+  static const String lostModeSave = 'Save Lost Mode';
+  static const String lostModeMarkFound = 'Mark as Found';
+  static const String lostModeSaved = 'Lost Mode updated.';
+  static const String lostModeFound = 'Pet marked as found.';
+
   // --- NFC page ---
   static const String nfcTitle = 'NFC Tag';
   static const String nfcReadTag = 'Read Tag';

@@ -9,6 +9,7 @@ class LocalDbTables {
   static const String events = 'events_local';
   static const String vaccines = 'vaccines_local';
   static const String petVaccinations = 'pet_vaccinations_local';
+  static const String lostPets = 'lost_pets_local';
   static const String syncQueue = 'sync_queue';
   static const String appMeta = 'app_meta';
 }
@@ -75,7 +76,7 @@ class LocalDatabaseService {
   factory LocalDatabaseService() => _instance;
 
   static const String _databaseName = 'petcare_offline.db';
-  static const int _databaseVersion = 1;
+  static const int _databaseVersion = 2;
 
   Database? _database;
 
@@ -96,6 +97,7 @@ class LocalDatabaseService {
       fullPath,
       version: _databaseVersion,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON;');
       },
@@ -151,6 +153,8 @@ class LocalDatabaseService {
       )
     ''');
 
+    await _createLostPetsTable(db);
+
     await db.execute('''
       CREATE TABLE ${LocalDbTables.syncQueue} (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -179,6 +183,23 @@ class LocalDatabaseService {
     );
   }
 
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await _createLostPetsTable(db);
+    }
+  }
+
+  Future<void> _createLostPetsTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS ${LocalDbTables.lostPets} (
+        remote_id TEXT PRIMARY KEY,
+        payload TEXT NOT NULL,
+        sync_status TEXT NOT NULL DEFAULT 'synced',
+        updated_at INTEGER NOT NULL
+      )
+    ''');
+  }
+
   Future<void> upsertEntity({
     required String table,
     required String remoteId,
@@ -187,16 +208,12 @@ class LocalDatabaseService {
     DateTime? updatedAt,
   }) async {
     final db = await database;
-    await db.insert(
-      table,
-      <String, Object?>{
-        'remote_id': remoteId,
-        'payload': jsonEncode(payload),
-        'sync_status': syncStatus,
-        'updated_at': (updatedAt ?? DateTime.now()).millisecondsSinceEpoch,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await db.insert(table, <String, Object?>{
+      'remote_id': remoteId,
+      'payload': jsonEncode(payload),
+      'sync_status': syncStatus,
+      'updated_at': (updatedAt ?? DateTime.now()).millisecondsSinceEpoch,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<Map<String, dynamic>?> getEntityById({
@@ -295,7 +312,10 @@ class LocalDatabaseService {
     }
 
     final db = await database;
-    final placeholders = List<String>.filled(keepRemoteIds.length, '?').join(', ');
+    final placeholders = List<String>.filled(
+      keepRemoteIds.length,
+      '?',
+    ).join(', ');
     final where = StringBuffer('remote_id NOT IN ($placeholders)');
     final whereArgs = keepRemoteIds.cast<Object?>();
 
@@ -303,11 +323,7 @@ class LocalDatabaseService {
       where.write(" AND (sync_status IS NULL OR sync_status = 'synced')");
     }
 
-    await db.delete(
-      table,
-      where: where.toString(),
-      whereArgs: whereArgs,
-    );
+    await db.delete(table, where: where.toString(), whereArgs: whereArgs);
   }
 
   Future<void> clearUserData() async {
@@ -318,6 +334,8 @@ class LocalDatabaseService {
     batch.delete(LocalDbTables.events);
     batch.delete(LocalDbTables.vaccines);
     batch.delete(LocalDbTables.petVaccinations);
+    batch.delete(LocalDbTables.lostPets);
+    batch.delete(LocalDbTables.syncQueue);
     await batch.commit(noResult: true);
   }
 
@@ -329,10 +347,7 @@ class LocalDatabaseService {
   Future<SyncQueueSummary> getSyncQueueSummary({int maxRetries = 5}) async {
     final db = await database;
 
-    final totalCount = await _countRows(
-      db,
-      LocalDbTables.syncQueue,
-    );
+    final totalCount = await _countRows(db, LocalDbTables.syncQueue);
     final pendingCount = await _countRows(
       db,
       LocalDbTables.syncQueue,
@@ -436,10 +451,7 @@ class LocalDatabaseService {
     );
   }
 
-  Future<void> markSyncOperationFailed(
-    int operationId, {
-    String? error,
-  }) async {
+  Future<void> markSyncOperationFailed(int operationId, {String? error}) async {
     final db = await database;
     await db.rawUpdate(
       'UPDATE ${LocalDbTables.syncQueue} '
@@ -465,13 +477,15 @@ class LocalDatabaseService {
     );
   }
 
-  Future<void> setMetaValue({required String key, required String value}) async {
+  Future<void> setMetaValue({
+    required String key,
+    required String value,
+  }) async {
     final db = await database;
-    await db.insert(
-      LocalDbTables.appMeta,
-      <String, Object>{'key': key, 'value': value},
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await db.insert(LocalDbTables.appMeta, <String, Object>{
+      'key': key,
+      'value': value,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<String?> getMetaValue(String key) async {

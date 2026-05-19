@@ -9,6 +9,8 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/services/location_service.dart';
+import '../../../core/services/lost_pet_service.dart';
 import '../../../core/services/nfc_backend_service.dart';
 import '../../../core/services/nfc_service.dart';
 import '../../../core/services/pet_service.dart';
@@ -39,6 +41,8 @@ class _NfcPageState extends State<NfcPage> {
 
   final NfcService _nfcService = NfcService();
   final NfcBackendService _nfcBackendService = NfcBackendService();
+  final LostPetService _lostPetService = LostPetService();
+  final LocationService _locationService = LocationService();
   final PetService _petService = PetService();
   final UserService _userService = UserService();
   final TelemetryService _telemetryService = TelemetryService();
@@ -217,9 +221,13 @@ class _NfcPageState extends State<NfcPage> {
           rawPayload: payload,
           payload: parsedPayload,
         );
-        final resolvedReadPayload = _resolveOfflineReadPayload(
+        final offlineReadPayload = _resolveOfflineReadPayload(
           rawPayload: payload,
           parsedPayload: parsedPayload,
+          scannedPetId: scannedPetId,
+        );
+        final resolvedReadPayload = await _enrichReadPayload(
+          offlinePayload: offlineReadPayload,
           scannedPetId: scannedPetId,
         );
 
@@ -237,6 +245,7 @@ class _NfcPageState extends State<NfcPage> {
           _viewState = _NfcViewState.success;
         });
         _logNfcReadIfPossible();
+        unawaited(_openLostPetDetailIfNeeded(resolvedReadPayload));
         return;
       }
 
@@ -333,6 +342,206 @@ class _NfcPageState extends State<NfcPage> {
     }
 
     return <String, dynamic>{'rawText': trimmedPayload};
+  }
+
+  Future<Map<String, dynamic>?> _enrichReadPayload({
+    required Map<String, dynamic>? offlinePayload,
+    required String? scannedPetId,
+  }) async {
+    final petId = scannedPetId?.trim();
+    if (petId == null || petId.isEmpty) {
+      return offlinePayload;
+    }
+
+    try {
+      if (offlinePayload != null &&
+          _isOwnedPet(petId) &&
+          _hasActiveLostReport(offlinePayload)) {
+        return _markOwnedLostPetFoundFromScan(
+          petId: petId,
+          offlinePayload: offlinePayload,
+        );
+      }
+
+      final publicPayload = await _nfcBackendService.readPublicTagData(petId);
+      if (_isOwnedPet(petId) && _hasActiveLostReport(publicPayload)) {
+        return _markOwnedLostPetFoundFromScan(
+          petId: petId,
+          offlinePayload: <String, dynamic>{
+            ...?offlinePayload,
+            ...publicPayload,
+          },
+        );
+      }
+
+      final sightingPayload = await _recordNfcSightingIfLost(
+        petId: petId,
+        publicPayload: publicPayload,
+      );
+      return <String, dynamic>{
+        ...?offlinePayload,
+        ...publicPayload,
+        ...sightingPayload,
+      };
+    } catch (_) {
+      return offlinePayload;
+    }
+  }
+
+  Future<Map<String, dynamic>> _markOwnedLostPetFoundFromScan({
+    required String petId,
+    required Map<String, dynamic>? offlinePayload,
+  }) async {
+    await _lostPetService.markPetAsFound(petId);
+    unawaited(_loadPets());
+    if (mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text(AppStrings.lostModeFound)));
+    }
+    return <String, dynamic>{
+      ...?offlinePayload,
+      'status': 'healthy',
+      'activeLostReportId': '',
+      'lostReportUrl': '',
+    };
+  }
+
+  bool _isOwnedPet(String petId) {
+    return _pets.any((pet) => pet.id == petId);
+  }
+
+  bool _hasActiveLostReport(Map<String, dynamic> payload) {
+    final reportId = _readPayloadOptionalText(payload, const [
+      'activeLostReportId',
+      'active_lost_report_id',
+      'lostReportId',
+    ]);
+    return reportId != null && reportId.isNotEmpty;
+  }
+
+  Future<void> _openLostPetDetailIfNeeded(Map<String, dynamic>? payload) async {
+    final reportId = _readPayloadOptionalText(payload, const [
+      'activeLostReportId',
+      'active_lost_report_id',
+      'lostReportId',
+    ]);
+    if (reportId == null || reportId.isEmpty) {
+      return;
+    }
+
+    try {
+      final report = await _lostPetService.getLostPetDetail(reportId);
+      if (!mounted) {
+        return;
+      }
+      await Navigator.of(
+        context,
+      ).pushNamed(Routes.lostPetDetail, arguments: report);
+    } catch (_) {
+      // Keep the NFC success screen available if the detail fetch fails.
+    }
+  }
+
+  Future<Map<String, dynamic>> _recordNfcSightingIfLost({
+    required String petId,
+    required Map<String, dynamic> publicPayload,
+  }) async {
+    final reportId = _readPayloadOptionalText(publicPayload, const [
+      'activeLostReportId',
+      'active_lost_report_id',
+      'lostReportId',
+    ]);
+    if (reportId == null || reportId.isEmpty || !mounted) {
+      return const <String, dynamic>{};
+    }
+
+    final shareContact = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Share this NFC scan?'),
+          content: const Text(
+            'This pet is marked as lost. You can share the current location with the owner, and optionally your contact profile.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Location only'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Share contact'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shareContact == null) {
+      return const <String, dynamic>{};
+    }
+
+    try {
+      final payload = await _buildNfcScanContext(includeContact: shareContact);
+      final response = await _nfcBackendService.recordNfcLostPetSighting(
+        petId: petId,
+        data: payload,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('The owner was notified.')),
+        );
+      }
+      return response;
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text(AppStrings.lostPetLocationUnavailable)),
+        );
+      }
+      return const <String, dynamic>{};
+    }
+  }
+
+  Future<Map<String, dynamic>> _buildNfcScanContext({
+    required bool includeContact,
+  }) async {
+    final context = <String, dynamic>{
+      'scanSource': 'nfc',
+      'seenAt': DateTime.now().toIso8601String(),
+    };
+
+    final location = await _locationService.getCurrentLocation();
+    context['latitude'] = location.latitude;
+    context['longitude'] = location.longitude;
+    context['location'] = _nearestBogotaZone(
+      latitude: location.latitude,
+      longitude: location.longitude,
+    );
+
+    if (!includeContact) {
+      return context;
+    }
+    try {
+      final profile = await _userService.getCurrentUser();
+      final name = profile.name.trim();
+      final phone = profile.phone.trim();
+      final email = profile.email.trim();
+      if (name.isNotEmpty) {
+        context['reporterName'] = name;
+      }
+      if (phone.isNotEmpty) {
+        context['reporterPhone'] = phone;
+      }
+      if (email.isNotEmpty) {
+        context['reporterEmail'] = email;
+      }
+    } catch (_) {
+      // Reporter profile is optional for public NFC reads.
+    }
+
+    return context;
   }
 
   Future<void> _simulateWriteWithoutNfc() async {
@@ -498,6 +707,39 @@ class _NfcPageState extends State<NfcPage> {
     }
 
     return normalized;
+  }
+
+  String _nearestBogotaZone({
+    required double latitude,
+    required double longitude,
+  }) {
+    const zones = <({String name, double latitude, double longitude})>[
+      (name: 'Usaquén, Bogotá', latitude: 4.7038, longitude: -74.0309),
+      (name: 'Chicó Norte, Bogotá', latitude: 4.6787, longitude: -74.0488),
+      (name: 'Santa Bárbara, Bogotá', latitude: 4.6995, longitude: -74.0443),
+      (name: 'Cedritos, Bogotá', latitude: 4.7284, longitude: -74.0448),
+      (name: 'Parque El Virrey, Bogotá', latitude: 4.6741, longitude: -74.0539),
+      (name: 'Colina Campestre, Bogotá', latitude: 4.7416, longitude: -74.0661),
+      (name: 'Country Club, Bogotá', latitude: 4.7244, longitude: -74.0511),
+      (name: 'La Castellana, Bogotá', latitude: 4.6868, longitude: -74.0648),
+    ];
+
+    var nearest = zones.first;
+    var nearestDistance =
+        ((nearest.latitude - latitude) * (nearest.latitude - latitude)) +
+        ((nearest.longitude - longitude) * (nearest.longitude - longitude));
+
+    for (final zone in zones.skip(1)) {
+      final distance =
+          ((zone.latitude - latitude) * (zone.latitude - latitude)) +
+          ((zone.longitude - longitude) * (zone.longitude - longitude));
+      if (distance < nearestDistance) {
+        nearest = zone;
+        nearestDistance = distance;
+      }
+    }
+
+    return 'Near ${nearest.name}';
   }
 
   Map<String, dynamic> _applyWriteOptions({
@@ -729,7 +971,8 @@ class _NfcPageState extends State<NfcPage> {
     final pet = _selectedPet;
     final selectedPetName = pet?.name ?? 'your pet';
     final canWriteTag = pet != null;
-    final canStartNfc = isReadMode || canWriteTag;
+    final canReadTag = !_isLoadingPets && _petsLoadErrorMessage == null;
+    final canStartNfc = isReadMode ? canReadTag : canWriteTag;
     final isSimulationMode = _isNfcAvailable == false;
     final actionButtonText = isSimulationMode
         ? (isReadMode ? 'Test Read (Simulation)' : 'Test Write (Simulation)')
@@ -754,6 +997,20 @@ class _NfcPageState extends State<NfcPage> {
         if (_operationErrorMessage != null) ...[
           const SizedBox(height: AppDimensions.spaceM),
           NfcStatusBanner(message: _operationErrorMessage!, isAttention: true),
+        ],
+        if (isReadMode && _isLoadingPets) ...[
+          const SizedBox(height: AppDimensions.spaceM),
+          const Center(child: CircularProgressIndicator()),
+        ] else if (isReadMode && _petsLoadErrorMessage != null) ...[
+          const SizedBox(height: AppDimensions.spaceM),
+          NfcStatusBanner(message: _petsLoadErrorMessage!, isAttention: true),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              onPressed: _loadPets,
+              child: const Text(AppStrings.petsRetry),
+            ),
+          ),
         ],
         const SizedBox(height: AppDimensions.spaceXXL),
         if (!isReadMode) ...[
@@ -1561,61 +1818,65 @@ class _NfcPageState extends State<NfcPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: AppDimensions.spaceM),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(AppDimensions.spaceM),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? AppColors.negativeBackgroundDark
-                        : AppColors.petStatusAttentionBg,
-                    borderRadius: BorderRadius.circular(AppDimensions.radiusL),
-                    border: Border.all(
+                if (medicalNotesValue.isNotEmpty) ...[
+                  const SizedBox(height: AppDimensions.spaceM),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(AppDimensions.spaceM),
+                    decoration: BoxDecoration(
                       color: isDark
-                          ? AppColors.negativeTextDark
-                          : AppColors.warning,
-                      width: AppDimensions.strokeRegular,
+                          ? AppColors.negativeBackgroundDark
+                          : AppColors.petStatusAttentionBg,
+                      borderRadius: BorderRadius.circular(
+                        AppDimensions.radiusL,
+                      ),
+                      border: Border.all(
+                        color: isDark
+                            ? AppColors.negativeTextDark
+                            : AppColors.warning,
+                        width: AppDimensions.strokeRegular,
+                      ),
                     ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.warning_amber_rounded,
-                            color: isDark
-                                ? AppColors.negativeTextDark
-                                : AppColors.warning,
-                            size: AppDimensions.iconS,
-                          ),
-                          SizedBox(width: AppDimensions.spaceXXS),
-                          Text(
-                            AppStrings.nfcMedicalNotes,
-                            style: TextStyle(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.warning_amber_rounded,
                               color: isDark
                                   ? AppColors.negativeTextDark
                                   : AppColors.warning,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
+                              size: AppDimensions.iconS,
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppDimensions.spaceXS),
-                      Text(
-                        medicalNotesValue,
-                        style: TextStyle(
-                          color: isDark
-                              ? AppColors.onSurfaceDark
-                              : AppColors.warning,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
+                            SizedBox(width: AppDimensions.spaceXXS),
+                            Text(
+                              AppStrings.nfcMedicalNotes,
+                              style: TextStyle(
+                                color: isDark
+                                    ? AppColors.negativeTextDark
+                                    : AppColors.warning,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: AppDimensions.spaceXS),
+                        Text(
+                          medicalNotesValue,
+                          style: TextStyle(
+                            color: isDark
+                                ? AppColors.onSurfaceDark
+                                : AppColors.warning,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
@@ -1686,7 +1947,7 @@ class _NfcPageState extends State<NfcPage> {
 
   String _buildMedicalNotes(Map<String, dynamic>? payload) {
     if (payload == null) {
-      return AppStrings.nfcMedicalNotesValue;
+      return '';
     }
 
     final parts = <String>[];
@@ -1721,7 +1982,7 @@ class _NfcPageState extends State<NfcPage> {
     }
 
     if (parts.isEmpty) {
-      return AppStrings.nfcMedicalNotesValue;
+      return '';
     }
 
     return parts.join('. ');
