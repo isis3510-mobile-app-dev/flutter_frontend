@@ -58,6 +58,7 @@ class Routes {
   static const int recordsFilterAll = 0;
   static const int recordsFilterVaccines = 1;
   static const int recordsFilterEvents = 2;
+  static const int recordsFilterMedicines = 3;
 
   /// Maps route names to their corresponding page widgets.
   /// Called automatically by MaterialApp when navigating.
@@ -173,11 +174,11 @@ class Routes {
   static MaterialPageRoute _buildRecordsRoute(RouteSettings settings) {
     final argument = settings.arguments;
     final initialFilterIndex =
-        argument is int &&
-            argument >= recordsFilterAll &&
-            argument <= recordsFilterEvents
-        ? argument
-        : recordsFilterAll;
+      argument is int &&
+        argument >= recordsFilterAll &&
+        argument <= recordsFilterMedicines
+      ? argument
+      : recordsFilterAll;
 
     return _buildRoute(
       RecordsPage(initialFilterIndex: initialFilterIndex),

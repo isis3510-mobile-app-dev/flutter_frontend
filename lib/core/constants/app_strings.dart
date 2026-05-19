@@ -199,6 +199,7 @@ abstract class AppStrings {
   static const String recordsFilterAll = 'All';
   static const String recordsFilterVaccines = 'Vaccines';
   static const String recordsFilterEvents = 'Events';
+    static const String recordsFilterMedicines = 'Medicines';
   static const String recordsFilterSummary = 'Displaying';
   static const String recordCheckup = 'Checkup';
   static const String recordEmergency = 'Emergency';

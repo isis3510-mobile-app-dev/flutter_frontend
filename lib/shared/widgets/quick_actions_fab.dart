@@ -10,11 +10,13 @@ class QuickActionsFab extends StatefulWidget {
     required this.onAddPet,
     required this.onAddVaccine,
     required this.onAddEvent,
+    this.onAddMedicine,
   });
 
   final VoidCallback onAddPet;
   final VoidCallback onAddVaccine;
   final VoidCallback onAddEvent;
+  final VoidCallback? onAddMedicine;
 
   @override
   State<QuickActionsFab> createState() => _QuickActionsFabState();
@@ -124,6 +126,22 @@ class _QuickActionsFabState extends State<QuickActionsFab>
               ),
             ),
             const SizedBox(height: _actionSpacing),
+            if (widget.onAddMedicine != null) ...[
+              IgnorePointer(
+                ignoring: !_isOpen,
+                child: _ActionItem(
+                  label: 'Add Medicine',
+                  iconAssetPath: 'assets/icons/featureIcons/vaccines.svg',
+                  onTap: () => _onActionTap(widget.onAddMedicine!),
+                  backgroundColor: pillBackground,
+                  textColor: textColor,
+                  iconBackground: iconBackground,
+                  iconTint: iconTint,
+                  animation: _buildItemAnimation(0.3, 0.7),
+                ),
+              ),
+              const SizedBox(height: _actionSpacing),
+            ],
             IgnorePointer(
               ignoring: !_isOpen,
               child: _ActionItem(
