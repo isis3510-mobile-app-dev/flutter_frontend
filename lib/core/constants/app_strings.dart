@@ -195,7 +195,7 @@ abstract class AppStrings {
   static const String calendarEventDentalCleaning = 'Dental Cleaning';
   static const String calendarEventGroomingSession = 'Grooming Session';
   static const String calendarEventBoosterShot = 'Booster Shot';
-  static const String calendarFilterAppointments = 'Appointments';
+  static const String calendarFilterAppointments = 'Events';
   static const String recordsFilterAll = 'All';
   static const String recordsFilterVaccines = 'Vaccines';
   static const String recordsFilterEvents = 'Events';

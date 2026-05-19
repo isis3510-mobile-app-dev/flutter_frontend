@@ -19,8 +19,6 @@ import '../../../shared/widgets/petcare_bottom_nav_bar.dart';
 import '../../../shared/widgets/quick_actions_fab.dart';
 import 'detail/detail_page.dart';
 import '../medicine_detail/medicine_detail_args.dart';
-import '../pets/models/pet_ui_mapper.dart';
-import '../pets/pet_detail/pet_detail_args.dart';
 
 class RecordsPage extends StatefulWidget {
   const RecordsPage({

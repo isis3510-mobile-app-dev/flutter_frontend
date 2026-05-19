@@ -579,7 +579,7 @@ class _HomePageState extends State<HomePage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Medicine Administration',
+                'Today\'s Meds',
                 style: TextStyle(
                   color: titleColor,
                   fontSize: 18,

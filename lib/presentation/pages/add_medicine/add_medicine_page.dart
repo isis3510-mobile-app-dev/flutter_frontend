@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_frontend/core/constants/app_colors.dart';
 import 'package:flutter_frontend/core/constants/app_strings.dart';
 import 'package:flutter_frontend/core/forms/app_form_utils.dart';
 import 'package:flutter_frontend/core/forms/app_form_constraints.dart';
@@ -279,8 +278,8 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
         ]),
         const SizedBox(height: 18),
         AppFormField(
-          label: 'Frequency (hours)',
-          hintText: 'e.g. 8',
+          label: 'Frequency (per day)',
+          hintText: 'e.g. 2',
           controller: _frequencyController,
           keyboardType: TextInputType.number,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(2)],
@@ -342,7 +341,7 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
       steps: const ['Basic', 'Details'],
       currentStep: _step,
       stepContent: [basic, details],
-      primaryButtonText: _step == 0 ? 'Next' : 'Save',
+      primaryButtonText: _step == 0 ? 'Next' : (_isSubmitting ? 'Saving...' : 'Save'),
       onPrimaryPressed: _nextStep,
       onBackPressed: _previousStep,
     );

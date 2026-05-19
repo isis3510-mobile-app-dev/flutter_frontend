@@ -6,7 +6,6 @@ import 'package:flutter_frontend/core/models/medicine_model.dart';
 import 'package:flutter_frontend/core/models/pet_model.dart';
 import 'package:flutter_frontend/core/services/medicine_service.dart';
 import 'package:flutter_frontend/presentation/pages/add_medicine/add_medicine_args.dart';
-import 'package:flutter_frontend/presentation/pages/add_medicine/add_medicine_page.dart';
 import 'package:flutter_frontend/presentation/pages/medicine_detail/medicine_detail_args.dart';
 import 'package:flutter_frontend/shared/widgets/full_width_button.dart';
 
@@ -154,7 +153,7 @@ class _MedicineDetailPageState extends State<MedicineDetailPage> {
         ? AppStrings.hintNotProvided
         : '${_medicine.dosageValue!.toStringAsFixed(_medicine.dosageValue! % 1 == 0 ? 0 : 2)} ${_medicine.dosageUnit.trim().isNotEmpty ? _medicine.dosageUnit.trim() : ''}'.trim();
     final frequency = _medicine.frequency > 0
-        ? '${_medicine.frequency} hours'
+        ? '${_medicine.frequency} per day'
         : AppStrings.hintNotProvided;
     final startDate = _isValidDate(_medicine.startDate)
         ? _formatDate(_medicine.startDate!)
