@@ -261,13 +261,19 @@ class _PetCardStatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final backgroundColor = switch (status) {
-      'healthy' => isDark? AppColors.positiveBackgroundDark : AppColors.positiveBackground,
-      'lost' => isDark? AppColors.negativeBackgroundDark : AppColors.negativeBackground,
+      'healthy' =>
+        isDark
+            ? AppColors.positiveBackgroundDark
+            : AppColors.positiveBackground,
+      'lost' =>
+        isDark
+            ? AppColors.negativeBackgroundDark
+            : AppColors.negativeBackground,
       _ => AppColors.petStatusAttentionBg,
     };
     final textColor = switch (status) {
-      'healthy' => isDark? AppColors.positiveTextDark : AppColors.positiveText,
-      'lost' => isDark? AppColors.negativeTextDark : AppColors.negativeText,
+      'healthy' => isDark ? AppColors.positiveTextDark : AppColors.positiveText,
+      'lost' => isDark ? AppColors.negativeTextDark : AppColors.negativeText,
       _ => AppColors.petStatusAttentionText,
     };
     final label = switch (status) {
@@ -464,7 +470,7 @@ class _PetCardBottomActions extends StatelessWidget {
           Container(width: 1, color: dividerColor),
           Expanded(
             child: _PetCardActionItem(
-              label: petStatus == 'lost' ? 'Found' : 'Lost Mode',
+              label: petStatus == 'lost' ? 'Manage' : 'Lost Mode',
               assetPath: _PetCardAssets.lostMode,
               color: isDark ? AppColors.onSurfaceDark : AppColors.grey700,
               onTap: onLostModeTap,

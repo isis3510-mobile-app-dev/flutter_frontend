@@ -14,7 +14,6 @@ import '../../../../core/models/pet_model.dart';
 import '../../../../core/models/smart_alert_model.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/services/app_image_cache_manager.dart';
-import '../../../../core/services/connectivity_sync_service.dart';
 import '../../../../core/services/event_service.dart';
 import '../../../../core/services/pet_service.dart';
 import '../../../../core/services/profile_photo_service.dart';
@@ -49,13 +48,26 @@ class PetDetailScreen extends StatefulWidget {
 class _PetDetailScreenState extends State<PetDetailScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
-  final ConnectivitySyncService _connectivitySyncService =
-      ConnectivitySyncService();
   final PetService _petService = PetService();
   final EventService _eventService = EventService();
   final SmartFeatureService _smartFeatureService = SmartFeatureService();
   final ProfilePhotoService _photoService = ProfilePhotoService();
   final TelemetryService _telemetryService = TelemetryService();
+
+  Future<void> _goToAddPet() async {
+    final result = await Navigator.pushNamed(context, Routes.addPet);
+    if (!mounted) {
+      return;
+    }
+
+    if (result == true) {
+      _hasMutatedPet = true;
+      await _loadPetDetail();
+      await _telemetryService.logAddPetExecutionIfPending(
+        endTime: DateTime.now(),
+      );
+    }
+  }
 
   Future<void> _goToAddVaccine() async {
     final result = await Navigator.pushNamed(
@@ -219,92 +231,15 @@ class _PetDetailScreenState extends State<PetDetailScreen>
   }
 
   Future<void> _toggleLostMode() async {
-    final isLost = _pet.status == 'lost';
-
-    if (!isLost) {
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) {
-          return AlertDialog(
-            title: const Text(AppStrings.petLostConfirmTitle),
-            content: Text('${AppStrings.petLostConfirmMessage} (${_pet.name})'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: const Text(AppStrings.petLostConfirmCancel),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.of(dialogContext).pop(true),
-                child: const Text(AppStrings.petLostConfirmAction),
-              ),
-            ],
-          );
-        },
-      );
-
-      if (confirmed != true) {
-        return;
-      }
+    final changed = await Navigator.of(
+      context,
+    ).pushNamed(Routes.lostMode, arguments: _pet);
+    if (!mounted || changed != true) {
+      return;
     }
-
-    try {
-      final wasOffline = !await _connectivitySyncService.hasInternetAccess();
-
-      if (isLost) {
-        await _petService.markPetAsFound(_pet.id);
-      } else {
-        await _petService.markPetAsLost(_pet.id);
-      }
-
-      if (!mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _lostModeMessage(
-              petName: _pet.name,
-              wasLost: isLost,
-              wasOffline: wasOffline,
-            ),
-          ),
-        ),
-      );
-
-      _hasMutatedPet = true;
-      await _loadPetDetail();
-    } on ApiException catch (error) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text(AppStrings.petsLoadError)));
-    }
-  }
-
-  String _lostModeMessage({
-    required String petName,
-    required bool wasLost,
-    required bool wasOffline,
-  }) {
-    if (wasOffline) {
-      return wasLost
-          ? AppStrings.petMarkedAsFoundOfflineMessage
-          : AppStrings.petMarkedAsLostOfflineMessage;
-    }
-
-    return wasLost
-        ? '$petName ${AppStrings.petMarkedAsFoundMessage}'
-        : '$petName ${AppStrings.petMarkedAsLostMessage}';
+    _hasMutatedPet = true;
+    await _petService.getPets(forceRefresh: true);
+    await _loadPetDetail();
   }
 
   Future<void> _toggleNfc() async {
@@ -491,10 +426,11 @@ class _PetDetailScreenState extends State<PetDetailScreen>
             ? AppColors.backgroundDark
             : AppColors.background,
         body: _buildBody(),
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         floatingActionButton: QuickActionsFab(
-          onAddPet: () {},
-          onAddVaccine: () {},
-          onAddEvent: () {},
+          onAddPet: _goToAddPet,
+          onAddVaccine: _goToAddVaccine,
+          onAddEvent: _goToAddEvent,
         ),
       ),
     );

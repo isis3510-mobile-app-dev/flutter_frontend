@@ -26,9 +26,7 @@ class PetcareBottomNavBar extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: backgroundColor,
-        border: Border(
-          top: BorderSide(color: borderColor, width: 1),
-        ),
+        border: Border(top: BorderSide(color: borderColor, width: 1)),
       ),
       child: SafeArea(
         top: false,
@@ -70,9 +68,9 @@ class _NavBarItem extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final color = isActive
         ? AppColors.bottomNavActive
-      : (isDark
-        ? AppColors.bottomNavInactiveDark
-        : AppColors.bottomNavInactive);
+        : (isDark
+              ? AppColors.bottomNavInactiveDark
+              : AppColors.bottomNavInactive);
     final useActiveAsset = isActive && item.activeAssetPath != null;
     final assetPath = useActiveAsset ? item.activeAssetPath! : item.assetPath;
     final iconColor = useActiveAsset ? null : color;
@@ -102,10 +100,7 @@ class _NavBarItem extends StatelessWidget {
 }
 
 class _NavIcon extends StatelessWidget {
-  const _NavIcon({
-    required this.assetPath,
-    required this.color,
-  });
+  const _NavIcon({required this.assetPath, required this.color});
 
   final String assetPath;
   final Color? color;
@@ -151,11 +146,7 @@ const List<_NavItem> _navItems = [
     assetPath: 'assets/icons/featureIcons/pets.svg',
     activeAssetPath: 'assets/icons/featureIcons/petsSecondary.svg',
   ),
-  _NavItem(
-    label: 'Records',
-    assetPath: 'assets/icons/featureIcons/records.svg',
-    activeAssetPath: 'assets/icons/featureIcons/recordsSecondary.svg',
-  ),
+  _NavItem(label: 'Lost', assetPath: 'assets/icons/featureIcons/location.svg'),
   _NavItem(
     label: 'Calendar',
     assetPath: 'assets/icons/featureIcons/calendar.svg',
