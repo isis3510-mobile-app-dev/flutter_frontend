@@ -10,6 +10,7 @@ class LocalDbTables {
   static const String exercises = 'exercises_local';
   static const String vaccines = 'vaccines_local';
   static const String petVaccinations = 'pet_vaccinations_local';
+  static const String medicines = 'medicines_local';
   static const String lostPets = 'lost_pets_local';
   static const String syncQueue = 'sync_queue';
   static const String appMeta = 'app_meta';
@@ -163,6 +164,15 @@ class LocalDatabaseService {
       )
     ''');
 
+    await db.execute('''
+      CREATE TABLE ${LocalDbTables.medicines} (
+        remote_id TEXT PRIMARY KEY,
+        payload TEXT NOT NULL,
+        sync_status TEXT NOT NULL DEFAULT 'synced',
+        updated_at INTEGER NOT NULL
+      )
+    ''');
+
     await _createLostPetsTable(db);
 
     await db.execute('''
@@ -197,9 +207,10 @@ class LocalDatabaseService {
     if (oldVersion < 2) {
       await _createLostPetsTable(db);
     }
+
     if (oldVersion < 3) {
       await db.execute('''
-        CREATE TABLE IF NOT EXISTS ${LocalDbTables.exercises} (
+        CREATE TABLE IF NOT EXISTS ${LocalDbTables.medicines} (
           remote_id TEXT PRIMARY KEY,
           payload TEXT NOT NULL,
           sync_status TEXT NOT NULL DEFAULT 'synced',
@@ -355,6 +366,7 @@ class LocalDatabaseService {
     batch.delete(LocalDbTables.exercises);
     batch.delete(LocalDbTables.vaccines);
     batch.delete(LocalDbTables.petVaccinations);
+    batch.delete(LocalDbTables.medicines);
     batch.delete(LocalDbTables.lostPets);
     batch.delete(LocalDbTables.syncQueue);
     await batch.commit(noResult: true);

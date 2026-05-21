@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/pages/add_event/add_event_args.dart';
 import 'package:flutter_frontend/presentation/pages/add_event/add_event_page.dart';
+import 'package:flutter_frontend/presentation/pages/add_medicine/add_medicine_args.dart';
 import 'package:flutter_frontend/presentation/pages/add_vaccine/add_vaccine_args.dart';
 import 'package:flutter_frontend/presentation/pages/add_vaccine/add_vaccine_page.dart';
+import 'package:flutter_frontend/presentation/pages/add_medicine/add_medicine_page.dart';
 import 'package:flutter_frontend/presentation/pages/auth/auth_gate.dart';
 import 'package:flutter_frontend/presentation/pages/calendar/calendar_page.dart';
 import 'package:flutter_frontend/presentation/pages/exercise/add_exercise/add_exercise_args.dart';
@@ -16,6 +18,8 @@ import 'package:flutter_frontend/core/models/user_profile.dart';
 import 'package:flutter_frontend/presentation/pages/lost_pets/lost_pet_detail_page.dart';
 import 'package:flutter_frontend/presentation/pages/lost_pets/lost_pets_page.dart';
 import 'package:flutter_frontend/presentation/pages/lost_pets/lost_pet_sighting_detail_page.dart';
+import 'package:flutter_frontend/presentation/pages/medicine_detail/medicine_detail_args.dart';
+import 'package:flutter_frontend/presentation/pages/medicine_detail/medicine_detail_page.dart';
 import 'package:flutter_frontend/presentation/pages/records/detail/detail_page.dart';
 import 'package:flutter_frontend/presentation/pages/smart_alerts/smart_alerts_page.dart';
 import '../presentation/pages/auth/auth_page.dart';
@@ -50,6 +54,8 @@ class Routes {
   static const String addPet = '/pets/add';
   static const String petDetail = '/pets/detail';
   static const String addVaccine = '/vaccines/add';
+  static const String addMedicine = '/medicines/add';
+  static const String medicineDetail = '/medicines/detail';
   static const String vaccineDetail = 'vaccine/detail';
   static const String addEvent = '/event/add';
   static const String eventDetail = 'event/detail';
@@ -66,6 +72,7 @@ class Routes {
   static const int recordsFilterAll = 0;
   static const int recordsFilterVaccines = 1;
   static const int recordsFilterEvents = 2;
+  static const int recordsFilterMedicines = 3;
 
   /// Maps route names to their corresponding page widgets.
   /// Called automatically by MaterialApp when navigating.
@@ -149,6 +156,19 @@ class Routes {
           LiveSessionPage(args: args is AddExerciseArgs ? args : null),
           settings,
         );
+      case addMedicine:
+        final medicineArgs = settings.arguments;
+        if (medicineArgs is AddMedicineArgs) {
+          return _buildRoute(AddMedicinePage(prefill: medicineArgs), settings);
+        }
+        return _buildRoute(const AddMedicinePage(), settings);
+
+      case medicineDetail:
+        final args = settings.arguments;
+        if (args is MedicineDetailArgs) {
+          return _buildRoute(MedicineDetailPage(args: args), settings);
+        }
+        return _buildRoute(const HomePage(), settings);
 
       case nfc:
         final initialPetId = settings.arguments is String
@@ -202,11 +222,11 @@ class Routes {
   static MaterialPageRoute _buildRecordsRoute(RouteSettings settings) {
     final argument = settings.arguments;
     final initialFilterIndex =
-        argument is int &&
-            argument >= recordsFilterAll &&
-            argument <= recordsFilterEvents
-        ? argument
-        : recordsFilterAll;
+      argument is int &&
+        argument >= recordsFilterAll &&
+        argument <= recordsFilterMedicines
+      ? argument
+      : recordsFilterAll;
 
     return _buildRoute(
       RecordsPage(initialFilterIndex: initialFilterIndex),

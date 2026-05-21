@@ -17,12 +17,14 @@ import '../../../core/services/smart_feature_service.dart';
 import '../../../core/services/telemetry_service.dart';
 import '../../../core/services/user_service.dart';
 import '../../../core/services/vaccine_service.dart';
+import '../../../core/services/medicine_service.dart';
+import '../../../core/models/medicine_model.dart';
 import '../../../shared/widgets/smart_alert_card.dart';
 import '../../../shared/widgets/petcare_bottom_nav_bar.dart';
 import '../../../shared/widgets/quick_actions_fab.dart';
 import '../add_event/add_event_args.dart';
 import '../add_vaccine/add_vaccine_args.dart';
-import '../pets/pet_detail/pet_detail_args.dart';
+import '../medicine_detail/medicine_detail_args.dart';
 import '../pets/models/pet_ui_mapper.dart';
 import '../pets/models/pet_ui_model.dart';
 import 'widgets/event_card.dart';
@@ -47,6 +49,7 @@ class _HomePageState extends State<HomePage> {
   final PetService _petService = PetService();
   final EventService _eventService = EventService();
   final VaccineService _vaccineService = VaccineService();
+  final MedicineService _medicineService = MedicineService();
   final SmartFeatureService _smartFeatureService = SmartFeatureService();
   final ProfilePhotoService _photoService = ProfilePhotoService();
   final TelemetryService _telemetryService = TelemetryService();
@@ -58,6 +61,7 @@ class _HomePageState extends State<HomePage> {
   List<_UpcomingVaccineData> _upcomingVaccines = const [];
   List<SmartAlertItem> _smartAlerts = const [];
   _OverdueVaccineData? _overdueVaccineData;
+  List<MedicineModel> _activeMedicines = const [];
   bool _isLoading = false;
   String? _errorMessage;
   bool _isRefreshing = false;
@@ -96,22 +100,8 @@ class _HomePageState extends State<HomePage> {
     Navigator.of(context).pushNamed(Routes.addEvent);
   }
 
-  Future<void> _goToExercise() async {
-    if (_pets.isEmpty) {
-      await Navigator.of(context).pushNamed(Routes.pets);
-    } else {
-      await Navigator.of(context).pushNamed(
-        Routes.petDetail,
-        arguments: PetDetailArgs(
-          pet: _pets.first,
-          initialTabIndex: 3,
-        ),
-      );
-    }
-    if (!mounted) {
-      return;
-    }
-    await _loadHomeData();
+  void _goToAddMedicine() {
+    Navigator.of(context).pushNamed(Routes.addMedicine);
   }
 
   Future<void> _goToAddPet() async {
@@ -340,6 +330,8 @@ class _HomePageState extends State<HomePage> {
         return;
       }
 
+      final allMedicines = await _medicineService.getMedicinesForPets(pets.map((p) => p.id).toList());
+
       setState(() {
         _userName = _firstName(profile.name);
         _pets = uiPets;
@@ -365,6 +357,14 @@ class _HomePageState extends State<HomePage> {
                   _UpcomingVaccineData.fromEntry(entry, vaccineNamesById),
             )
             .toList(growable: false);
+        final now = DateTime.now();
+        final todayStart = DateTime(now.year, now.month, now.day);
+        final todayEnd = todayStart.add(const Duration(days: 1));
+        _activeMedicines = allMedicines.where((m) {
+          final hasStarted = m.startDate == null || !m.startDate!.isAfter(todayEnd.subtract(const Duration(milliseconds: 1)));
+          final notEnded = m.endDate == null || m.endDate!.isAfter(todayStart);
+          return hasStarted && notEnded && m.medicineName.trim().isNotEmpty;
+        }).toList(growable: false);
       });
     } on ApiException catch (error) {
       if (!mounted) {
@@ -453,6 +453,18 @@ class _HomePageState extends State<HomePage> {
       'Dec',
     ];
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
+
+  String _formatDosage(MedicineModel med) {
+    final unit = med.dosageUnit.trim();
+    if (med.dosageValue != null) {
+      final value = med.dosageValue!;
+      final formatted = value.toString();
+      return unit.isEmpty ? formatted : '$formatted $unit';
+    }
+
+    if (unit.isNotEmpty) return unit;
+    return AppStrings.valueNotAvailable;
   }
 
   SmartAlertItem _selectHomeAlertByPriority() {
@@ -551,6 +563,200 @@ class _HomePageState extends State<HomePage> {
             vertical: AppDimensions.spaceS,
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildMedicinesSection() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final titleColor = isDark ? AppColors.onBackgroundDark : AppColors.onSurface;
+    final visibleMeds = _activeMedicines.take(3).toList(growable: false);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: AppDimensions.spaceL),
+        Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppDimensions.pageHorizontalPadding,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Today\'s Meds',
+                style: TextStyle(
+                  color: titleColor,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              TextButton(
+                onPressed: () => _goToRecords(Routes.recordsFilterMedicines),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      AppStrings.homeSeeAll,
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: AppDimensions.spaceXXS),
+                    const Icon(
+                      Icons.chevron_right,
+                      color: AppColors.primary,
+                      size: 18,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (visibleMeds.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppDimensions.pageHorizontalPadding,
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(AppDimensions.spaceL),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.secondaryDark : AppColors.secondary,
+                borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
+                border: isDark ? Border.all(color: AppColors.grey700) : null,
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.medication_outlined,
+                    color: isDark ? AppColors.grey500 : AppColors.grey700,
+                    size: AppDimensions.iconM,
+                  ),
+                  const SizedBox(width: AppDimensions.spaceS),
+                  Expanded(
+                    child: Text(
+                      'No active medicines.',
+                      style: TextStyle(
+                        color: isDark ? AppColors.onBackgroundDark : AppColors.onSecondary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        for (final med in visibleMeds)
+          GestureDetector(
+            onTap: () async {
+              try {
+                final pet = await _petService.getPetById(med.petId);
+                if (!mounted) return;
+                Navigator.of(context).pushNamed(
+                  Routes.medicineDetail,
+                  arguments: MedicineDetailArgs(medicine: med, pet: pet),
+                );
+              } catch (_) {
+                // ignore - navigation failure
+              }
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppDimensions.pageHorizontalPadding,
+                vertical: AppDimensions.spaceS,
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.secondaryDark : AppColors.secondary,
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+                  border: isDark ? Border.all(color: AppColors.grey700) : null,
+                  boxShadow: [
+                    BoxShadow(
+                      color: isDark
+                          ? Colors.black.withValues(alpha: 0.16)
+                          : AppColors.shadowSoft,
+                      blurRadius: isDark ? 8 : 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                margin: const EdgeInsets.symmetric(),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppDimensions.spaceL,
+                    vertical: AppDimensions.spaceM,
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: AppColors.infoBackground,
+                          borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+                        ),
+                        child: Center(
+                          child: Icon(
+                            Icons.medication_outlined,
+                            size: 18,
+                            color: AppColors.infoText,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppDimensions.spaceM),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'MEDICINE',
+                              style: TextStyle(
+                                color: isDark ? AppColors.grey500 : AppColors.grey700,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            const SizedBox(height: AppDimensions.spaceXS),
+                            Text(
+                              med.medicineName,
+                              style: TextStyle(
+                                color: titleColor,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: AppDimensions.spaceXS),
+                            Text(
+                              '${_pets.firstWhere((p) => p.id == med.petId, orElse: () => PetUiModel(id: med.petId, userIds: const [], name: med.petId, species: '', breed: '', gender: '', birthDate: DateTime(1970), weight: 0, color: '', status: 'healthy', isNfcSynced: false, knownAllergies: '', defaultVet: '', defaultClinic: '' )).name} • ${_formatDosage(med)}',
+                              style: TextStyle(
+                                color: isDark ? AppColors.grey500 : AppColors.grey700,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: AppDimensions.spaceS),
+                      if (med.reminderEnabled)
+                        const Icon(
+                          Icons.notifications_active,
+                          color: AppColors.primary,
+                          size: 20,
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -679,6 +885,7 @@ class _HomePageState extends State<HomePage> {
         onAddPet: _goToAddPet,
         onAddVaccine: _goToAddVaccine,
         onAddEvent: _goToAddEvent,
+        onAddMedicine: _goToAddMedicine,
       ),
       bottomNavigationBar: PetcareBottomNavBar(
         currentIndex: _currentIndex,
@@ -768,6 +975,7 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: AppDimensions.spaceL),
           _buildHealthAlertsSection(),
           const SizedBox(height: AppDimensions.spaceL),
+          _buildMedicinesSection(),
           _buildVaccinesSection(),
           const SizedBox(height: AppDimensions.spaceL),
           _buildUpcomingEventsSection(),

@@ -1,0 +1,475 @@
+import 'dart:async';
+
+import 'package:image_picker/image_picker.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_frontend/core/constants/app_strings.dart';
+import 'package:flutter_frontend/core/forms/app_form_utils.dart';
+import 'package:flutter_frontend/core/forms/app_form_constraints.dart';
+import 'package:flutter_frontend/core/models/medicine_request.dart';
+import 'package:flutter_frontend/presentation/pages/add_medicine/add_medicine_args.dart';
+import 'package:flutter_frontend/core/models/pet_model.dart';
+import 'package:flutter_frontend/core/services/medicine_service.dart';
+import 'package:flutter_frontend/core/services/pet_service.dart';
+import 'package:flutter_frontend/core/services/profile_photo_service.dart';
+import 'package:flutter_frontend/presentation/pages/add_flow/utils/date_input.dart';
+import 'package:flutter_frontend/presentation/pages/add_flow/widgets/add_flow_scaffold.dart';
+import 'package:flutter_frontend/presentation/pages/add_vaccine/widgets/app_dropdown_field.dart';
+import 'package:flutter_frontend/presentation/pages/pets/add_pet/widgets/pet_photo_picker.dart';
+import 'package:flutter_frontend/shared/widgets/form_field.dart';
+
+class AddMedicinePage extends StatefulWidget {
+  const AddMedicinePage({super.key, this.prefill});
+
+  final AddMedicineArgs? prefill;
+
+  @override
+  State<AddMedicinePage> createState() => _AddMedicinePageState();
+}
+
+class _AddMedicinePageState extends State<AddMedicinePage> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _dosageController = TextEditingController();
+  final _frequencyController = TextEditingController();
+  final _startDateController = TextEditingController();
+  final _endDateController = TextEditingController();
+
+  final MedicineService _medicineService = MedicineService();
+  final PetService _petService = PetService();
+  final ProfilePhotoService _photoService = ProfilePhotoService();
+  final ImagePicker _imagePicker = ImagePicker();
+
+  final List<String> _administrationOptions = ['oral', 'topical', 'injectable'];
+  final List<String> _dosageUnitOptions = ['g', 'mg', 'ml', 'tablet', 'drops'];
+
+  List<PetModel> _pets = [];
+  String? _selectedPetId;
+  String? _selectedAdministration;
+  String? _selectedDosageUnit;
+  String? _editingMedicineId;
+  String? _photoUrl;
+  bool _didRemovePhoto = false;
+  bool? _reminderEnabled;
+  DateTime? _lastAdministered;
+  int _step = 0;
+  bool _isLoadingPets = false;
+  bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _applyPrefill(widget.prefill);
+    _loadPets();
+  }
+
+  void _applyPrefill(AddMedicineArgs? prefill) {
+    if (prefill == null) {
+      return;
+    }
+
+    if (prefill.medicineId != null && prefill.medicineId!.trim().isNotEmpty) {
+      _editingMedicineId = prefill.medicineId!.trim();
+    }
+    if (prefill.medicineName != null && prefill.medicineName!.trim().isNotEmpty) {
+      _nameController.text = prefill.medicineName!.trim();
+    }
+    if (prefill.administrationRoute != null && prefill.administrationRoute!.trim().isNotEmpty) {
+      _selectedAdministration = prefill.administrationRoute!.trim();
+    }
+    if (prefill.dosageValue != null) {
+      _dosageController.text = prefill.dosageValue!.toString();
+    }
+    if (prefill.dosageUnit != null && prefill.dosageUnit!.trim().isNotEmpty) {
+      _selectedDosageUnit = prefill.dosageUnit!.trim();
+    }
+    if (prefill.frequency != null) {
+      _frequencyController.text = prefill.frequency.toString();
+    }
+    if (prefill.startDate != null) {
+      _startDateController.text = formatDateForInput(prefill.startDate!);
+    }
+    if (prefill.endDate != null) {
+      _endDateController.text = formatDateForInput(prefill.endDate!);
+    }
+    if (prefill.petId != null && prefill.petId!.trim().isNotEmpty) {
+      _selectedPetId = prefill.petId!.trim();
+    }
+    _photoUrl = prefill.photoUrl?.trim().isNotEmpty == true ? prefill.photoUrl!.trim() : null;
+    _didRemovePhoto = false;
+    _reminderEnabled = prefill.reminderEnabled;
+    _lastAdministered = prefill.lastAdministered;
+    if (_editingMedicineId != null) {
+      _step = 0;
+    }
+  }
+
+  Future<void> _loadPets() async {
+    setState(() => _isLoadingPets = true);
+    try {
+      final pets = await _petService.getPets();
+      if (!mounted) return;
+      setState(() => _pets = pets);
+    } catch (_) {
+      // ignore
+    } finally {
+      if (mounted) setState(() => _isLoadingPets = false);
+    }
+  }
+
+  Future<void> _pickDate(TextEditingController controller) async {
+    final initial = parseDateInput(controller.text) ?? DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(1900),
+      lastDate: DateTime(2100),
+    );
+    if (picked == null) return;
+    controller.text = formatDateForInput(picked);
+  }
+
+  bool _isValidDate(String value) {
+    return parseDateInput(value) != null;
+  }
+
+  Future<void> _submit() async {
+    AppFormSanitizers.trimControllers([
+      _nameController,
+      _dosageController,
+      _frequencyController,
+      _startDateController,
+      _endDateController,
+    ]);
+
+    if (!_formKey.currentState!.validate()) return;
+    if ((_selectedPetId?.trim() ?? '').isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text(AppStrings.validationSelectPet)));
+      return;
+    }
+
+    final startDate = parseDateInput(_startDateController.text.trim());
+    final endDate = parseDateInput(_endDateController.text.trim());
+    final currentPhoto = _photoUrl?.trim();
+
+    final request = MedicineRequest(
+      petId: _selectedPetId!,
+      medicineName: _nameController.text.trim(),
+      administrationRoute: _selectedAdministration ?? _administrationOptions.first,
+      dosageValue: double.tryParse(_dosageController.text.trim()) ?? 0.0,
+      dosageUnit: _selectedDosageUnit ?? 'mg',
+      frequency: int.tryParse(_frequencyController.text.trim()) ?? 24,
+      startDate: startDate,
+      endDate: endDate,
+      photoUrl: currentPhoto?.isNotEmpty == true
+          ? currentPhoto
+          : (_didRemovePhoto ? '' : null),
+      reminderEnabled: _reminderEnabled ?? false,
+      lastAdministered: _lastAdministered,
+    );
+
+    setState(() => _isSubmitting = true);
+    try {
+      if (_editingMedicineId == null || _editingMedicineId!.trim().isEmpty) {
+        await _medicineService.createMedicine(request);
+      } else {
+        await _medicineService.updateMedicine(
+          medicineId: _editingMedicineId!,
+          request: request,
+        );
+      }
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text(AppStrings.errorGeneric)));
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _dosageController.dispose();
+    _frequencyController.dispose();
+    _startDateController.dispose();
+    _endDateController.dispose();
+    super.dispose();
+  }
+
+  void _nextStep() {
+    if (_step < 1) {
+      setState(() => _step += 1);
+      return;
+    }
+    _submit();
+  }
+
+  void _previousStep() {
+    if (_step > 0) setState(() => _step -= 1);
+  }
+
+  Future<void> _pickPhotoSource() async {
+    final source = await showModalBottomSheet<_PhotoSource>(
+      context: context,
+      showDragHandle: true,
+      builder: (bottomSheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined),
+                title: const Text('Choose from gallery'),
+                onTap: () => Navigator.pop(bottomSheetContext, _PhotoSource.gallery),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_camera_outlined),
+                title: const Text('Take a photo'),
+                onTap: () => Navigator.pop(bottomSheetContext, _PhotoSource.camera),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (source == null) {
+      return;
+    }
+
+    switch (source) {
+      case _PhotoSource.gallery:
+        await _pickPhoto(ImageSource.gallery);
+        break;
+      case _PhotoSource.camera:
+        await _pickPhoto(ImageSource.camera);
+        break;
+    }
+  }
+
+  Future<void> _pickPhoto(ImageSource source) async {
+    try {
+      final pickedFile = await _imagePicker.pickImage(
+        source: source,
+        imageQuality: 85,
+        maxWidth: 1200,
+        maxHeight: 1200,
+      );
+
+      if (pickedFile == null) {
+        return;
+      }
+
+      final bytes = await pickedFile.readAsBytes();
+      final extension = _extensionFromName(pickedFile.name);
+      final localPath = await _photoService.saveImageFileLocally(
+        bytes: bytes,
+        directoryName: 'medicine_photos',
+        fileNamePrefix: 'medicine_draft',
+        extension: extension,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _photoUrl = localPath;
+        _didRemovePhoto = false;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text(AppStrings.errorGeneric)));
+    }
+  }
+
+  Future<void> _removePhoto() async {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _photoUrl = null;
+      _didRemovePhoto = true;
+    });
+  }
+
+  String _extensionFromName(String fileName) {
+    final lower = fileName.toLowerCase();
+    if (lower.endsWith('.png')) {
+      return 'png';
+    }
+    if (lower.endsWith('.webp')) {
+      return 'webp';
+    }
+    if (lower.endsWith('.heic')) {
+      return 'heic';
+    }
+    return 'jpg';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final petOptions = _pets.map((p) => p.name.trim()).toList(growable: false);
+    final selectedPetName = _selectedPetId == null
+      ? null
+      : _pets
+        .where((p) => p.id == _selectedPetId)
+        .map((p) => p.name.trim())
+        .cast<String?>()
+        .firstWhere((name) => name != null && name.isNotEmpty, orElse: () => null);
+
+    final basic = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        PetPhotoPicker(
+          imagePath: _photoUrl,
+          emptyTitle: 'Medicine Photo',
+          emptyHint: 'Tap to upload or take a photo',
+          onTap: _pickPhotoSource,
+          onRemovePhoto: _removePhoto,
+        ),
+        const SizedBox(height: 18),
+        AppDropdownField(
+          label: '${AppStrings.labelPetName} *',
+          hintText: _isLoadingPets ? 'Loading pets...' : 'Select pet',
+          value: selectedPetName,
+          items: petOptions,
+          enabled: !_isLoadingPets && petOptions.isNotEmpty,
+          onChanged: (name) {
+            final normalizedName = (name ?? '').trim();
+            final match = _pets.firstWhere(
+              (p) => p.name.trim() == normalizedName,
+              orElse: () => PetModel(id: '', schema: 1, owners: [], name: '', species: '', breed: '', gender: '', birthDate: null, weight: null, color: '', photoUrl: null, status: '', isNfcSynced: false, knownAllergies: '', defaultVet: '', defaultClinic: '', vaccinations: []),
+            );
+            if (match.id.isNotEmpty) setState(() => _selectedPetId = match.id);
+          },
+          validator: (value) {
+            if ((value == null || value.trim().isEmpty) || (_selectedPetId == null || _selectedPetId!.trim().isEmpty)) {
+              return AppStrings.validationSelectPet;
+            }
+            return null;
+          },
+        ),
+        const SizedBox(height: 18),
+        AppFormField(
+          label: '${AppStrings.labelMedicineName} *',
+          hintText: AppStrings.hintMedicineName,
+          controller: _nameController,
+          inputFormatters: [LengthLimitingTextInputFormatter(AppFormConstraints.eventTitleMaxLength)],
+          validator: AppFormValidators.required('Enter medicine name'),
+        ),
+        const SizedBox(height: 18),
+        AppDropdownField(
+          label: 'Administration route *',
+          hintText: 'Select route',
+          items: _administrationOptions.map((e) => e[0].toUpperCase() + e.substring(1)).toList(),
+          value: _selectedAdministration == null ? null : (_selectedAdministration![0].toUpperCase() + _selectedAdministration!.substring(1)),
+          onChanged: (v) {
+            if (v == null) return;
+            final normalized = v.toLowerCase();
+            setState(() => _selectedAdministration = normalized);
+          },
+          validator: (v) => (v == null || v.trim().isEmpty) ? 'Select administration route' : null,
+        ),
+        const SizedBox(height: 18),
+        Row(children: [
+          Expanded(
+            child: AppFormField(
+              label: 'Dosage',
+              hintText: 'Value',
+              controller: _dosageController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: AppInputFormatters.decimal(maxWholeDigits: 6, decimalDigits: 2),
+              validator: AppFormValidators.optionalDecimal(invalidMessage: 'Invalid number'),
+            ),
+          ),
+          const SizedBox(width: 12),
+          SizedBox(
+            width: 140,
+            child: AppDropdownField(
+              label: 'Unit',
+              hintText: 'Unit',
+              items: _dosageUnitOptions.map((u) => u).toList(),
+              value: _selectedDosageUnit,
+              onChanged: (v) => setState(() => _selectedDosageUnit = v),
+            ),
+          ),
+        ]),
+        const SizedBox(height: 18),
+        AppFormField(
+          label: 'Frequency (per day)',
+          hintText: 'e.g. 2',
+          controller: _frequencyController,
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(2)],
+          validator: (v) {
+            final trimmed = v?.trim() ?? '';
+            if (trimmed.isEmpty) return null;
+            final parsed = int.tryParse(trimmed);
+            if (parsed == null) return AppStrings.validationInvalidNumber;
+            if (parsed <= 0 || parsed > 99) return 'Enter a value between 1 and 99.';
+            return null;
+          },
+        ),
+      ],
+    );
+
+    final details = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AppFormField(
+          label: '${AppStrings.labelDate} start',
+          hintText: AppStrings.hintDate,
+          icon: Icons.calendar_today_outlined,
+          controller: _startDateController,
+          readOnly: true,
+          onTap: () => _pickDate(_startDateController),
+          validator: (v) {
+            final trimmed = v?.trim() ?? '';
+            if (trimmed.isEmpty) return null;
+            if (!_isValidDate(trimmed)) return AppStrings.validationInvalidDate;
+            return null;
+          },
+        ),
+        const SizedBox(height: 18),
+        AppFormField(
+          label: '${AppStrings.labelDate} end',
+          hintText: AppStrings.hintDate,
+          icon: Icons.calendar_today_outlined,
+          controller: _endDateController,
+          readOnly: true,
+          onTap: () => _pickDate(_endDateController),
+          validator: (v) {
+            final trimmed = v?.trim() ?? '';
+            if (trimmed.isEmpty) return null;
+            if (!_isValidDate(trimmed)) return AppStrings.validationInvalidDate;
+            final start = parseDateInput(_startDateController.text);
+            final end = parseDateInput(trimmed);
+            if (start != null && end != null && end.isBefore(start)) {
+              return AppStrings.validationEndBeforeStart;
+            }
+            return null;
+          },
+        ),
+      ],
+    );
+
+    return AddFlowScaffold(
+      title: 'Add Medicine',
+      formKey: _formKey,
+      steps: const ['Basic', 'Details'],
+      currentStep: _step,
+      stepContent: [basic, details],
+      primaryButtonText: _step == 0 ? 'Next' : (_isSubmitting ? 'Saving...' : 'Save'),
+      onPrimaryPressed: _nextStep,
+      onBackPressed: _previousStep,
+    );
+  }
+}
+
+enum _PhotoSource { gallery, camera }

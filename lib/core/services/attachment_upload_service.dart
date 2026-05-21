@@ -139,6 +139,23 @@ class AttachmentUploadService {
     );
   }
 
+  Future<UploadedAttachmentModel> uploadMedicinePhoto({
+    required Uint8List bytes,
+    required String fileName,
+  }) {
+    final storagePath = _attachmentIdService.buildMedicinePhotoPath(
+      originalFileName: fileName,
+    );
+
+    return _uploadBytes(
+      bytes: bytes,
+      fileName: fileName,
+      storagePath: storagePath,
+      localCategory: 'medicine_photos',
+      localStableId: storagePath,
+    );
+  }
+
   Future<UploadedAttachmentModel> _uploadBytes({
     required Uint8List bytes,
     required String fileName,

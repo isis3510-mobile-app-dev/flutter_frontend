@@ -15,11 +15,15 @@ class PetPhotoPicker extends StatelessWidget {
     this.onTap,
     this.onRemovePhoto,
     this.imagePath,
+    this.emptyTitle,
+    this.emptyHint,
   });
 
   final VoidCallback? onTap;
   final VoidCallback? onRemovePhoto;
   final String? imagePath;
+  final String? emptyTitle;
+  final String? emptyHint;
 
   @override
   Widget build(BuildContext context) {
@@ -98,7 +102,7 @@ class PetPhotoPicker extends StatelessWidget {
             const SizedBox(height: AppDimensions.spaceS),
           ],
           Text(
-            AppStrings.addPetPhotoHint,
+            emptyHint ?? AppStrings.addPetPhotoHint,
             textAlign: TextAlign.center,
             style: Theme.of(
               context,
@@ -127,11 +131,15 @@ class PetPhotoPicker extends StatelessWidget {
             colorFilter: ColorFilter.mode(accentColor, BlendMode.srcIn),
           ),
           const SizedBox(height: AppDimensions.spaceS),
-          Text(
-            AppStrings.addPetPhotoTitle,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: accentColor,
-              fontWeight: FontWeight.w600,
+          SizedBox(
+            width: 118,
+            child: Text(
+              emptyTitle ?? AppStrings.addPetPhotoTitle,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: accentColor,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
