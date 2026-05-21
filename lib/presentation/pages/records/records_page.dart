@@ -8,6 +8,8 @@ import 'package:flutter_frontend/core/services/event_service.dart';
 import 'package:flutter_frontend/core/services/pet_service.dart';
 import 'package:flutter_frontend/core/services/telemetry_service.dart';
 import 'package:flutter_frontend/core/services/vaccine_service.dart';
+import 'package:flutter_frontend/core/services/medicine_service.dart';
+import 'package:flutter_frontend/core/models/medicine_model.dart';
 import 'package:flutter_frontend/presentation/pages/records/widgets/record_list_item.dart';
 import '../../../app/routes.dart';
 import '../../../core/constants/app_strings.dart';
@@ -16,6 +18,7 @@ import '../../../shared/widgets/filter_toggle_bar.dart';
 import '../../../shared/widgets/petcare_bottom_nav_bar.dart';
 import '../../../shared/widgets/quick_actions_fab.dart';
 import 'detail/detail_page.dart';
+import '../medicine_detail/medicine_detail_args.dart';
 
 class RecordsPage extends StatefulWidget {
   const RecordsPage({
@@ -35,6 +38,7 @@ class _RecordsPageState extends State<RecordsPage> {
 
   final PetService _petService = PetService();
   final VaccineService _vaccineService = VaccineService();
+  final MedicineService _medicineService = MedicineService();
   final EventService _eventService = EventService();
   final TelemetryService _telemetryService = TelemetryService();
 
@@ -54,6 +58,10 @@ class _RecordsPageState extends State<RecordsPage> {
       label: AppStrings.recordsFilterEvents,
       icon: Icons.event_note_outlined,
     ),
+    const FilterOption(
+      label: AppStrings.recordsFilterMedicines,
+      icon: Icons.medication,
+    ),
   ];
 
   List<_RecordEntry> _records = [];
@@ -62,7 +70,7 @@ class _RecordsPageState extends State<RecordsPage> {
   void initState() {
     super.initState();
     _selectedFilterIndex = widget.initialFilterIndex >= Routes.recordsFilterAll &&
-            widget.initialFilterIndex <= Routes.recordsFilterEvents
+          widget.initialFilterIndex <= Routes.recordsFilterMedicines
         ? widget.initialFilterIndex
         : Routes.recordsFilterAll;
       _loadRecords();
@@ -74,6 +82,8 @@ class _RecordsPageState extends State<RecordsPage> {
       final results = await Future.wait<dynamic>([
         _petService.getPets(),
         _vaccineService.getVaccines(),
+        // medicines fetched per pet below, but include a placeholder call to ensure service readiness
+        Future.value(<dynamic>[]),
       ]);
       final pets = results[0] as List<PetModel>;
       final vaccineCatalog = results[1] as List<dynamic>;
@@ -117,6 +127,9 @@ class _RecordsPageState extends State<RecordsPage> {
       if (!mounted) {
         return;
       }
+      // fetch medicines for all pets
+      final petIds = pets.map((p) => p.id).where((id) => id.trim().isNotEmpty).toList(growable: false);
+      final petMedicines = await _medicineService.getMedicinesForPets(petIds);
 
       setState(() {
         final vaccineRecords = _buildVaccineRecords(
@@ -125,8 +138,9 @@ class _RecordsPageState extends State<RecordsPage> {
           vaccineInfoMap,
         );
         final eventRecords = _buildEventRecords(pets, petEvents);
+        final medicineRecords = _buildMedicineRecords(pets, petMedicines);
 
-        _records = [...vaccineRecords, ...eventRecords]
+        _records = [...vaccineRecords, ...medicineRecords, ...eventRecords]
           ..sort((a, b) => b.sortDate.compareTo(a.sortDate));
       });
     } on ApiException catch (error) {
@@ -197,6 +211,47 @@ class _RecordsPageState extends State<RecordsPage> {
             iconAssetPath: AppAssets.iconVetCheckClean,
             sortDate: event.date,
             event: event,
+            pet: pet,
+          ),
+        );
+      }
+    }
+
+    records.sort((a, b) => b.sortDate.compareTo(a.sortDate));
+    return records;
+  }
+
+  List<_RecordEntry> _buildMedicineRecords(
+    List<PetModel> pets,
+    List<MedicineModel> medicines,
+  ) {
+    final records = <_RecordEntry>[];
+    final medicinesByPet = <String, List<MedicineModel>>{};
+    for (final med in medicines) {
+      final pid = med.petId;
+      medicinesByPet.putIfAbsent(pid, () => []).add(med);
+    }
+
+    for (final pet in pets) {
+      final meds = medicinesByPet[pet.id] ?? const <MedicineModel>[];
+      for (final med in meds) {
+        final title = med.medicineName.trim().isNotEmpty ? med.medicineName.trim() : AppStrings.valueNotAvailable;
+        final subtitle = '${pet.name} - ${med.administrationRoute.trim().isNotEmpty ? med.administrationRoute : AppStrings.valueNotAvailable}';
+        final meta = med.startDate != null ? _formatDate(med.startDate!) : AppStrings.valueNotAvailable;
+        final sortDate = med.startDate ?? DateTime(0);
+
+        records.add(
+          _RecordEntry(
+            type: _RecordType.medicine,
+            title: title,
+            subtitle: subtitle,
+            meta: meta,
+            icon: Icons.medication,
+            iconBackground: AppColors.infoBackground,
+            iconColor: AppColors.infoText,
+            iconAssetPath: null,
+            sortDate: sortDate,
+            medicine: med,
             pet: pet,
           ),
         );
@@ -291,6 +346,24 @@ class _RecordsPageState extends State<RecordsPage> {
       }
 
       return;
+    } else if (record.type == _RecordType.medicine) {
+      if (record.pet == null || record.medicine == null) {
+        _showUnavailableMessage();
+        return;
+      }
+
+      final result = await Navigator.of(context).pushNamed(
+        Routes.medicineDetail,
+        arguments: MedicineDetailArgs(
+          medicine: record.medicine!,
+          pet: record.pet!,
+        ),
+      );
+
+      if (result == true) {
+        await _loadRecords();
+      }
+      return;
     }
     return;
   }
@@ -339,14 +412,24 @@ class _RecordsPageState extends State<RecordsPage> {
     );
   }
 
+  Future<void> _goToAddMedicine() async {
+    final result = await Navigator.of(context).pushNamed(Routes.addMedicine);
+    if (result == true) {
+      await _loadRecords();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final selectedLabel = _filters[_selectedFilterIndex].label;
     final filteredRecords = _records.where((record) {
-      if (_selectedFilterIndex == 1) {
+      if (_selectedFilterIndex == Routes.recordsFilterVaccines) {
         return record.type == _RecordType.vaccine;
       }
-      if (_selectedFilterIndex == 2) {
+      if (_selectedFilterIndex == Routes.recordsFilterMedicines) {
+        return record.type == _RecordType.medicine;
+      }
+      if (_selectedFilterIndex == Routes.recordsFilterEvents) {
         return record.type == _RecordType.event;
       }
       return true;
@@ -359,6 +442,7 @@ class _RecordsPageState extends State<RecordsPage> {
       floatingActionButton: QuickActionsFab(
         onAddPet: _goToAddPet,
         onAddVaccine: _goToAddVaccine,
+        onAddMedicine: _goToAddMedicine,
         onAddEvent: _goToAddEvent,
       ),
       body: SafeArea(
@@ -432,6 +516,9 @@ class _RecordsPageState extends State<RecordsPage> {
     if (filterIndex == Routes.recordsFilterVaccines) {
       return ('No vaccine records yet.', Icons.vaccines_outlined);
     }
+    if (filterIndex == Routes.recordsFilterMedicines) {
+      return ('No medicine records yet.', Icons.medication);
+    }
     if (filterIndex == Routes.recordsFilterEvents) {
       return ('No event records yet.', Icons.event_note_outlined);
     }
@@ -476,7 +563,7 @@ class _EmptyRecordsState extends StatelessWidget {
   }
 }
 
-enum _RecordType { vaccine, event }
+enum _RecordType { vaccine, medicine, event }
 
 class _RecordEntry {
   const _RecordEntry({
@@ -491,6 +578,7 @@ class _RecordEntry {
     required this.sortDate,
     this.vaccination,
     this.event,
+    this.medicine,
     this.pet,
   });
 
@@ -505,5 +593,6 @@ class _RecordEntry {
   final DateTime sortDate;
   final PetVaccinationModel? vaccination;
   final EventModel? event;
+  final MedicineModel? medicine;
   final PetModel? pet;
 }
