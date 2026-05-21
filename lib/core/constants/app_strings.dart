@@ -371,6 +371,7 @@ abstract class AppStrings {
   static const String petDetailTabOverview = 'Overview';
   static const String petDetailTabVaccines = 'Vaccines';
   static const String petDetailTabEvents = 'Events';
+  static const String petDetailTabExercise = 'Exercise';
   static const String petDetailSectionPetInfo = 'Pet Information';
   static const String petDetailSectionHealthSummary = 'Health Summary';
   static const String petDetailSectionHealthAlerts = 'Health Alerts';

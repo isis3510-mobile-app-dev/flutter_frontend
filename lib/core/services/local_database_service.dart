@@ -7,6 +7,7 @@ class LocalDbTables {
   static const String users = 'users_local';
   static const String pets = 'pets_local';
   static const String events = 'events_local';
+  static const String exercises = 'exercises_local';
   static const String vaccines = 'vaccines_local';
   static const String petVaccinations = 'pet_vaccinations_local';
   static const String lostPets = 'lost_pets_local';
@@ -76,7 +77,7 @@ class LocalDatabaseService {
   factory LocalDatabaseService() => _instance;
 
   static const String _databaseName = 'petcare_offline.db';
-  static const int _databaseVersion = 2;
+  static const int _databaseVersion = 3;
 
   Database? _database;
 
@@ -136,6 +137,15 @@ class LocalDatabaseService {
     ''');
 
     await db.execute('''
+      CREATE TABLE ${LocalDbTables.exercises} (
+        remote_id TEXT PRIMARY KEY,
+        payload TEXT NOT NULL,
+        sync_status TEXT NOT NULL DEFAULT 'synced',
+        updated_at INTEGER NOT NULL
+      )
+    ''');
+
+    await db.execute('''
       CREATE TABLE ${LocalDbTables.vaccines} (
         remote_id TEXT PRIMARY KEY,
         payload TEXT NOT NULL,
@@ -186,6 +196,16 @@ class LocalDatabaseService {
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       await _createLostPetsTable(db);
+    }
+    if (oldVersion < 3) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS ${LocalDbTables.exercises} (
+          remote_id TEXT PRIMARY KEY,
+          payload TEXT NOT NULL,
+          sync_status TEXT NOT NULL DEFAULT 'synced',
+          updated_at INTEGER NOT NULL
+        )
+      ''');
     }
   }
 
@@ -332,6 +352,7 @@ class LocalDatabaseService {
     batch.delete(LocalDbTables.users);
     batch.delete(LocalDbTables.pets);
     batch.delete(LocalDbTables.events);
+    batch.delete(LocalDbTables.exercises);
     batch.delete(LocalDbTables.vaccines);
     batch.delete(LocalDbTables.petVaccinations);
     batch.delete(LocalDbTables.lostPets);

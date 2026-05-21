@@ -22,6 +22,7 @@ import '../../../shared/widgets/petcare_bottom_nav_bar.dart';
 import '../../../shared/widgets/quick_actions_fab.dart';
 import '../add_event/add_event_args.dart';
 import '../add_vaccine/add_vaccine_args.dart';
+import '../pets/pet_detail/pet_detail_args.dart';
 import '../pets/models/pet_ui_mapper.dart';
 import '../pets/models/pet_ui_model.dart';
 import 'widgets/event_card.dart';
@@ -93,6 +94,24 @@ class _HomePageState extends State<HomePage> {
 
   void _goToAddEvent() {
     Navigator.of(context).pushNamed(Routes.addEvent);
+  }
+
+  Future<void> _goToExercise() async {
+    if (_pets.isEmpty) {
+      await Navigator.of(context).pushNamed(Routes.pets);
+    } else {
+      await Navigator.of(context).pushNamed(
+        Routes.petDetail,
+        arguments: PetDetailArgs(
+          pet: _pets.first,
+          initialTabIndex: 3,
+        ),
+      );
+    }
+    if (!mounted) {
+      return;
+    }
+    await _loadHomeData();
   }
 
   Future<void> _goToAddPet() async {
@@ -257,7 +276,6 @@ class _HomePageState extends State<HomePage> {
       final smartAlerts = smartAlertGroups
           .expand((group) => group)
           .toList(growable: false);
-
       final vaccineIds = allVaccinations
           .map((entry) => entry.vaccination.vaccineId.trim())
           .where((id) => id.isNotEmpty)
@@ -675,33 +693,40 @@ class _HomePageState extends State<HomePage> {
     }
 
     if (_errorMessage != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppDimensions.spaceXL),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.cloud_off_rounded,
-                size: 56,
-                color: AppColors.grey300,
-              ),
-              const SizedBox(height: AppDimensions.spaceM),
-              Text(
-                _errorMessage!,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? AppColors.onSurfaceDark
-                      : AppColors.grey700,
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(AppDimensions.spaceXL),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minHeight:
+                MediaQuery.of(context).size.height -
+                AppDimensions.spaceXXL * 2,
+          ),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.cloud_off_rounded,
+                  size: 56,
+                  color: AppColors.grey300,
                 ),
-              ),
-              const SizedBox(height: AppDimensions.spaceM),
-              OutlinedButton(
-                onPressed: _loadHomeData,
-                child: const Text(AppStrings.petsRetry),
-              ),
-            ],
+                const SizedBox(height: AppDimensions.spaceM),
+                Text(
+                  _errorMessage!,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.onSurfaceDark
+                        : AppColors.grey700,
+                  ),
+                ),
+                const SizedBox(height: AppDimensions.spaceM),
+                OutlinedButton(
+                  onPressed: _loadHomeData,
+                  child: const Text(AppStrings.petsRetry),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -740,6 +765,7 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: AppDimensions.spaceL),
           _buildPetsSection(),
+          const SizedBox(height: AppDimensions.spaceL),
           _buildHealthAlertsSection(),
           const SizedBox(height: AppDimensions.spaceL),
           _buildVaccinesSection(),
