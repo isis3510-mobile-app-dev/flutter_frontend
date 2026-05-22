@@ -12,6 +12,8 @@ import '../../pets/models/pet_ui_model.dart';
 class PetCard extends StatelessWidget {
   const PetCard({super.key, required this.pet, this.onTap});
 
+  static const int _thumbnailCacheSize = 128;
+
   final PetUiModel pet;
   final VoidCallback? onTap;
 
@@ -45,9 +47,14 @@ class PetCard extends StatelessWidget {
                               ? CachedNetworkImageProvider(
                                   effectivePhotoPath!,
                                   cacheManager: AppImageCacheManager.instance,
+                                  maxWidth: _thumbnailCacheSize,
+                                  maxHeight: _thumbnailCacheSize,
                                 )
-                              : FileImage(File(effectivePhotoPath!))
-                                    as ImageProvider,
+                              : ResizeImage(
+                                  FileImage(File(effectivePhotoPath!)),
+                                  width: _thumbnailCacheSize,
+                                  height: _thumbnailCacheSize,
+                                ),
                           fit: BoxFit.cover,
                         )
                       : null,
