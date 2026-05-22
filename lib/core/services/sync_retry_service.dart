@@ -1,4 +1,5 @@
 import 'attachment_upload_service.dart';
+import 'exercise_service.dart';
 import 'medicine_service.dart';
 import 'lost_pet_service.dart';
 import 'pet_service.dart';
@@ -14,6 +15,7 @@ class SyncRetryService {
 
   final PetService _petService = PetService();
   final EventService _eventService = EventService();
+  final ExerciseService _exerciseService = ExerciseService();
   final MedicineService _medicineService = MedicineService();
   final UserService _userService = UserService();
   final LostPetService _lostPetService = LostPetService();
@@ -29,5 +31,6 @@ class SyncRetryService {
     await _lostPetService.retryPendingSyncOperations(limit: limitPerEntity);
     await _eventService.retryPendingSyncOperations(limit: limitPerEntity);
     await _medicineService.retryPendingSyncOperations(limit: limitPerEntity);
+    await _exerciseService.retryPendingSyncOperations(limit: limitPerEntity);
   }
 }

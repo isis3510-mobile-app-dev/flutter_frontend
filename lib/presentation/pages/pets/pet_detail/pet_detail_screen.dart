@@ -30,6 +30,7 @@ import '../../add_vaccine/add_vaccine_args.dart';
 import '../../records/detail/detail_page.dart';
 import '../models/pet_ui_mapper.dart';
 import '../models/pet_ui_model.dart';
+import 'tabs/exercise_tab.dart';
 import 'tabs/events_tab.dart';
 import 'tabs/overview_tab.dart';
 import 'tabs/vaccines_tab.dart';
@@ -116,6 +117,11 @@ class _PetDetailScreenState extends State<PetDetailScreen>
     await _loadPetDetail();
   }
 
+  Future<void> _handleExerciseUpdated() async {
+    _hasMutatedPet = true;
+    await _loadPetDetail();
+  }
+
   late PetUiModel _pet;
   PetModel? _petDetails;
   List<EventModel> _petEvents = const [];
@@ -131,9 +137,9 @@ class _PetDetailScreenState extends State<PetDetailScreen>
     super.initState();
     _pet = widget.pet;
     _tabController = TabController(
-      length: 3,
+      length: 4,
       vsync: this,
-      initialIndex: widget.initialTabIndex.clamp(0, 2),
+      initialIndex: widget.initialTabIndex.clamp(0, 3),
     );
     _loadPetDetail();
   }
@@ -578,6 +584,10 @@ class _PetDetailScreenState extends State<PetDetailScreen>
                 onRetry: _loadPetDetail,
                 onOpenEvent: _openEventDetail,
               ),
+              ExerciseTab(
+                pet: _pet,
+                onChanged: _handleExerciseUpdated,
+              ),
             ],
           ),
         ),
@@ -975,6 +985,13 @@ class _PetDetailTabBar extends StatelessWidget {
                   isActive: controller.index == 2,
                   isDark: isDark,
                   onTap: () => controller.animateTo(2),
+                ),
+                _Tab(
+                  label: AppStrings.petDetailTabExercise,
+                  svgPath: 'assets/icons/featureIcons/pets.svg',
+                  isActive: controller.index == 3,
+                  isDark: isDark,
+                  onTap: () => controller.animateTo(3),
                 ),
               ],
             ),

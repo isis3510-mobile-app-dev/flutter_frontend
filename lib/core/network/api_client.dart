@@ -20,7 +20,10 @@ class ApiClient {
   String get _baseUrl {
     try {
       final url = dotenv.env['API_BASE_URL']?.trim();
-      if (url != null && url.isNotEmpty) return url;
+      if (url != null && url.isNotEmpty) {
+        print('Using API base URL from .env: $url');
+        return url;
+      }
     } catch (_) {
       // dotenv not loaded (no .env file) — fall through to default
     }
@@ -230,9 +233,22 @@ class ApiClient {
         }
       }
     } catch (_) {
-      // Fall back to the raw response body.
+      // Fall through to plain-text / HTML handling below.
+    }
+
+    final trimmed = responseBody.trim();
+    if (_looksLikeHtml(trimmed)) {
+      return 'The server returned an unexpected HTML response.';
     }
 
     return responseBody;
+  }
+
+  bool _looksLikeHtml(String value) {
+    final normalized = value.toLowerCase();
+    return normalized.startsWith('<!doctype html') ||
+        normalized.startsWith('<html') ||
+        normalized.contains('<body') ||
+        normalized.contains('<head');
   }
 }

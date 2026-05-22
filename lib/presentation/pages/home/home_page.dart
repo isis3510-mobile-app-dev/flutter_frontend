@@ -266,7 +266,6 @@ class _HomePageState extends State<HomePage> {
       final smartAlerts = smartAlertGroups
           .expand((group) => group)
           .toList(growable: false);
-
       final vaccineIds = allVaccinations
           .map((entry) => entry.vaccination.vaccineId.trim())
           .where((id) => id.isNotEmpty)
@@ -901,33 +900,40 @@ class _HomePageState extends State<HomePage> {
     }
 
     if (_errorMessage != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppDimensions.spaceXL),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.cloud_off_rounded,
-                size: 56,
-                color: AppColors.grey300,
-              ),
-              const SizedBox(height: AppDimensions.spaceM),
-              Text(
-                _errorMessage!,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? AppColors.onSurfaceDark
-                      : AppColors.grey700,
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(AppDimensions.spaceXL),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minHeight:
+                MediaQuery.of(context).size.height -
+                AppDimensions.spaceXXL * 2,
+          ),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.cloud_off_rounded,
+                  size: 56,
+                  color: AppColors.grey300,
                 ),
-              ),
-              const SizedBox(height: AppDimensions.spaceM),
-              OutlinedButton(
-                onPressed: _loadHomeData,
-                child: const Text(AppStrings.petsRetry),
-              ),
-            ],
+                const SizedBox(height: AppDimensions.spaceM),
+                Text(
+                  _errorMessage!,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.onSurfaceDark
+                        : AppColors.grey700,
+                  ),
+                ),
+                const SizedBox(height: AppDimensions.spaceM),
+                OutlinedButton(
+                  onPressed: _loadHomeData,
+                  child: const Text(AppStrings.petsRetry),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -966,6 +972,7 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: AppDimensions.spaceL),
           _buildPetsSection(),
+          const SizedBox(height: AppDimensions.spaceL),
           _buildHealthAlertsSection(),
           const SizedBox(height: AppDimensions.spaceL),
           _buildMedicinesSection(),

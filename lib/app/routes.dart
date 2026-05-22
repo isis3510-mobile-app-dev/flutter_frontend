@@ -7,6 +7,11 @@ import 'package:flutter_frontend/presentation/pages/add_vaccine/add_vaccine_page
 import 'package:flutter_frontend/presentation/pages/add_medicine/add_medicine_page.dart';
 import 'package:flutter_frontend/presentation/pages/auth/auth_gate.dart';
 import 'package:flutter_frontend/presentation/pages/calendar/calendar_page.dart';
+import 'package:flutter_frontend/presentation/pages/exercise/add_exercise/add_exercise_args.dart';
+import 'package:flutter_frontend/presentation/pages/exercise/add_exercise/add_exercise_page.dart';
+import 'package:flutter_frontend/presentation/pages/exercise/detail/exercise_detail_args.dart';
+import 'package:flutter_frontend/presentation/pages/exercise/detail/exercise_detail_page.dart';
+import 'package:flutter_frontend/presentation/pages/exercise/live_session_page.dart';
 import 'package:flutter_frontend/presentation/pages/nfc/nfc_page.dart';
 import 'package:flutter_frontend/core/models/lost_pet_model.dart';
 import 'package:flutter_frontend/core/models/user_profile.dart';
@@ -54,6 +59,9 @@ class Routes {
   static const String vaccineDetail = 'vaccine/detail';
   static const String addEvent = '/event/add';
   static const String eventDetail = 'event/detail';
+  static const String addExercise = '/pets/exercise/add';
+  static const String exerciseDetail = '/pets/exercise/detail';
+  static const String liveExercise = '/pets/exercise/live';
   static const String nfc = '/nfc';
   static const String records = '/records';
   static const String smartAlerts = '/alerts';
@@ -128,6 +136,26 @@ class Routes {
         }
         return _buildRoute(const AddVaccinePage(), settings);
 
+      case addExercise:
+        final args = settings.arguments;
+        return _buildRoute(
+          AddExercisePage(args: args is AddExerciseArgs ? args : null),
+          settings,
+        );
+
+      case exerciseDetail:
+        final args = settings.arguments;
+        if (args is ExerciseDetailArgs) {
+          return _buildRoute(ExerciseDetailPage(args: args), settings);
+        }
+        return _buildRoute(const PetsPage(), settings);
+
+      case liveExercise:
+        final args = settings.arguments;
+        return _buildRoute(
+          LiveSessionPage(args: args is AddExerciseArgs ? args : null),
+          settings,
+        );
       case addMedicine:
         final medicineArgs = settings.arguments;
         if (medicineArgs is AddMedicineArgs) {
