@@ -142,6 +142,10 @@ class _PetsPageState extends State<PetsPage> {
     Navigator.of(context).pushNamed(Routes.addEvent);
   }
 
+  void _goToAddMedicine() {
+    Navigator.of(context).pushNamed(Routes.addMedicine);
+  }
+
   Future<void> _openPetDetail(PetUiModel pet, {int initialTabIndex = 0}) async {
     final changed = await Navigator.pushNamed(
       context,
@@ -272,6 +276,7 @@ class _PetsPageState extends State<PetsPage> {
         onAddPet: _goToAddPet,
         onAddVaccine: _goToAddVaccine,
         onAddEvent: _goToAddEvent,
+        onAddMedicine: _goToAddMedicine,
       ),
       bottomNavigationBar: PetcareBottomNavBar(
         currentIndex: 1,

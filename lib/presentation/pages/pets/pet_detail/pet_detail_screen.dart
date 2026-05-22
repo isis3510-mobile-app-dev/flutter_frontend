@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -18,8 +19,12 @@ import '../../../../core/services/event_service.dart';
 import '../../../../core/services/pet_service.dart';
 import '../../../../core/services/profile_photo_service.dart';
 import '../../../../core/services/smart_feature_service.dart';
+import '../../../../core/services/medicine_service.dart';
+import '../../../../core/models/medicine_model.dart';
+import '../../../../core/models/medicine_request.dart';
 import '../../../../core/services/telemetry_service.dart';
 import '../../../../shared/widgets/quick_actions_fab.dart';
+import '../../add_medicine/add_medicine_args.dart';
 import '../../add_event/add_event_args.dart';
 import '../../add_vaccine/add_vaccine_args.dart';
 import '../../records/detail/detail_page.dart';
@@ -52,6 +57,7 @@ class _PetDetailScreenState extends State<PetDetailScreen>
   final PetService _petService = PetService();
   final EventService _eventService = EventService();
   final SmartFeatureService _smartFeatureService = SmartFeatureService();
+  final MedicineService _medicineService = MedicineService();
   final ProfilePhotoService _photoService = ProfilePhotoService();
   final TelemetryService _telemetryService = TelemetryService();
 
@@ -94,6 +100,18 @@ class _PetDetailScreenState extends State<PetDetailScreen>
     }
   }
 
+  Future<void> _goToAddMedicine() async {
+    final result = await Navigator.pushNamed(
+      context,
+      Routes.addMedicine,
+      arguments: AddMedicineArgs(petId: _pet.id, petName: _pet.name),
+    );
+    if (result == true) {
+      _hasMutatedPet = true;
+      await _loadPetDetail();
+    }
+  }
+
   Future<void> _handleVaccinationUpdated() async {
     _hasMutatedPet = true;
     await _loadPetDetail();
@@ -108,6 +126,7 @@ class _PetDetailScreenState extends State<PetDetailScreen>
   PetModel? _petDetails;
   List<EventModel> _petEvents = const [];
   List<SmartSuggestionModel> _smartSuggestions = const [];
+  List<MedicineModel> _petMedicines = const [];
   bool _isLoading = false;
   bool _hasMutatedPet = false;
   String? _errorMessage;
@@ -123,6 +142,48 @@ class _PetDetailScreenState extends State<PetDetailScreen>
       initialIndex: widget.initialTabIndex.clamp(0, 3),
     );
     _loadPetDetail();
+  }
+
+  Future<void> _cleanupPastMedicineAdministrations(
+    List<MedicineModel> medicines,
+    String petId,
+  ) async {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+
+    for (final med in medicines) {
+      if (med.lastAdministered == null) continue;
+
+      final adminDate = DateTime(
+        med.lastAdministered!.year,
+        med.lastAdministered!.month,
+        med.lastAdministered!.day,
+      );
+      if (adminDate.isBefore(todayStart)) {
+        // lastAdministered is from a past day; clear it
+        try {
+          final request = MedicineRequest(
+            petId: med.petId,
+            medicineName: med.medicineName,
+            administrationRoute: med.administrationRoute,
+            dosageValue: med.dosageValue ?? 0.0,
+            dosageUnit: med.dosageUnit,
+            frequency: med.frequency,
+            reminderEnabled: med.reminderEnabled,
+            startDate: med.startDate,
+            endDate: med.endDate,
+            photoUrl: med.photoUrl,
+            lastAdministered: null,
+          );
+          await _medicineService.updateMedicine(
+            medicineId: med.id,
+            request: request,
+          );
+        } catch (_) {
+          // silently ignore cleanup errors
+        }
+      }
+    }
   }
 
   Future<void> _loadPetDetail() async {
@@ -180,6 +241,15 @@ class _PetDetailScreenState extends State<PetDetailScreen>
         smartSuggestions = const [];
       }
 
+      try {
+        final medicines = await _medicineService.getMedicines(petId: effectivePetId);
+        _petMedicines = medicines;
+        // Clean up past administrations (reset to null if from a previous day)
+        unawaited(_cleanupPastMedicineAdministrations(medicines, effectivePetId));
+      } catch (_) {
+        _petMedicines = const [];
+      }
+
       if (!mounted) {
         return;
       }
@@ -192,6 +262,7 @@ class _PetDetailScreenState extends State<PetDetailScreen>
         _pet = uiPet;
         _petEvents = sortedPetEvents;
         _smartSuggestions = smartSuggestions;
+        _petMedicines = _petMedicines;
         _eventsErrorMessage = eventsErrorMessage;
       });
     } on ApiException catch (error) {
@@ -437,6 +508,7 @@ class _PetDetailScreenState extends State<PetDetailScreen>
           onAddPet: _goToAddPet,
           onAddVaccine: _goToAddVaccine,
           onAddEvent: _goToAddEvent,
+          onAddMedicine: _goToAddMedicine,
         ),
       ),
     );
@@ -493,7 +565,7 @@ class _PetDetailScreenState extends State<PetDetailScreen>
                 pet: _pet,
                 petDetails: _petDetails,
                 eventCount: _petEvents.length,
-                smartAlerts: _smartSuggestions,
+                medicines: _petMedicines,
                 onToggleLostMode: _toggleLostMode,
                 onToggleNfc: _toggleNfc,
               ),

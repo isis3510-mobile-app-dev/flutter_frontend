@@ -512,6 +512,10 @@ class _ProfilePageState extends State<ProfilePage> {
     _showUnavailableMessage();
   }
 
+  void _goToAddMedicine() {
+    Navigator.of(context).pushNamed(Routes.addMedicine);
+  }
+
   String _displayValue(String? value) {
     final trimmed = value?.trim() ?? '';
     return trimmed.isEmpty ? AppStrings.valueNotAvailable : trimmed;
@@ -1309,6 +1313,7 @@ class _ProfilePageState extends State<ProfilePage> {
         onAddPet: _goToAddPet,
         onAddVaccine: _goToAddVaccine,
         onAddEvent: _goToAddEvent,
+        onAddMedicine: _goToAddMedicine,
       ),
       bottomNavigationBar: PetcareBottomNavBar(
         currentIndex: _currentIndex,

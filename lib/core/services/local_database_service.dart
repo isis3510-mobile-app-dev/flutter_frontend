@@ -208,9 +208,10 @@ class LocalDatabaseService {
     if (oldVersion < 2) {
       await _createLostPetsTable(db);
     }
+
     if (oldVersion < 3) {
       await db.execute('''
-        CREATE TABLE IF NOT EXISTS ${LocalDbTables.exercises} (
+        CREATE TABLE IF NOT EXISTS ${LocalDbTables.medicines} (
           remote_id TEXT PRIMARY KEY,
           payload TEXT NOT NULL,
           sync_status TEXT NOT NULL DEFAULT 'synced',

@@ -39,8 +39,9 @@ class MedicineRequest {
       if (endDate != null) 'endDate': endDate!.toUtc().toIso8601String(),
       if (photoValue.isNotEmpty) 'photoUrl': photoValue,
       'reminderEnabled': reminderEnabled,
-      if (lastAdministered != null)
-        'lastAdministered': lastAdministered!.toUtc().toIso8601String(),
+      // Always include the lastAdministered key. When null this signals the API
+      // to clear the value (e.g., when the user unchecks "given today").
+      'lastAdministered': lastAdministered?.toUtc().toIso8601String(),
       'schema': 1,
     };
   }

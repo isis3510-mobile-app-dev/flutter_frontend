@@ -12,6 +12,8 @@ import '../../../core/services/event_service.dart';
 import '../../../core/services/pet_service.dart';
 import '../../../core/services/telemetry_service.dart';
 import '../../../core/services/vaccine_service.dart';
+import '../../../core/services/medicine_service.dart';
+import '../../../core/models/medicine_model.dart';
 import '../../../shared/widgets/petcare_bottom_nav_bar.dart';
 import '../../../shared/widgets/quick_actions_fab.dart';
 import '../pets/models/pet_ui_mapper.dart';
@@ -33,6 +35,7 @@ class _CalendarPageState extends State<CalendarPage> {
   final PetService _petService = PetService();
   final VaccineService _vaccineService = VaccineService();
   final EventService _eventService = EventService();
+  final MedicineService _medicineService = MedicineService();
   final TelemetryService _telemetryService = TelemetryService();
 
   bool _isLoading = false;
@@ -109,11 +112,18 @@ class _CalendarPageState extends State<CalendarPage> {
         vaccineInfoMap[vaccineId] = AppStrings.valueNotAvailable;
       }
 
+      // load medicines for pets
+      final allMedicines = await _medicineService.getMedicinesForPets(pets.map((p) => p.id).toList());
+      final petMedicines = <String, List<MedicineModel>>{
+        for (final pet in pets) pet.id: allMedicines.where((m) => m.petId == pet.id).toList(growable: false),
+      };
+
       final calendarEvents = _buildCalendarEvents(
         pets: pets,
         petVaccinations: petVaccinations,
         petEvents: petEvents,
         vaccineInfoMap: vaccineInfoMap,
+        petMedicines: petMedicines,
       );
 
       final nextSelectedDate = _resolveSelectedDateAfterLoad(calendarEvents);
@@ -168,6 +178,7 @@ class _CalendarPageState extends State<CalendarPage> {
     required Map<String, List<PetVaccinationModel>> petVaccinations,
     required Map<String, List<EventModel>> petEvents,
     required Map<String, String> vaccineInfoMap,
+    required Map<String, List<MedicineModel>> petMedicines,
   }) {
     final calendarEvents = <_CalendarEvent>[];
 
@@ -233,6 +244,43 @@ class _CalendarPageState extends State<CalendarPage> {
             type: _mapEventType(event.eventType),
           ),
         );
+      }
+
+      // medicines: create a daily event between startDate and endDate (inclusive)
+      final medicines = petMedicines[pet.id] ?? const <MedicineModel>[];
+      for (final med in medicines) {
+        final start = med.startDate;
+        final end = med.endDate;
+        if (!_isValidDate(start) || !_isValidDate(end)) continue;
+        final startDay = _dateOnly(start!);
+        final endDay = _dateOnly(end!);
+        if (endDay.isBefore(startDay)) continue;
+
+        for (var d = startDay; !d.isAfter(endDay); d = d.add(const Duration(days: 1))) {
+          final medId = med.id.trim().isNotEmpty ? med.id.trim() : '${pet.id}-${d.toIso8601String()}';
+          final dayId = d.toIso8601String();
+          final clinicName = () {
+            if (med.dosageValue != null) {
+              final unit = med.dosageUnit.trim().isNotEmpty ? med.dosageUnit.trim() : AppStrings.valueNotAvailable;
+              return '${med.dosageValue} $unit';
+            }
+
+            final unit = med.dosageUnit.trim();
+            if (unit.isNotEmpty) return unit;
+            return AppStrings.valueNotAvailable;
+          }();
+
+          calendarEvents.add(
+            _CalendarEvent(
+              id: 'medicine-$medId-$dayId',
+              petId: pet.id,
+              title: med.medicineName.trim().isNotEmpty ? med.medicineName.trim() : AppStrings.valueNotAvailable,
+              clinicName: clinicName,
+              startsAt: DateTime(d.year, d.month, d.day, 9, 0),
+              type: _CalendarEventType.medicine,
+            ),
+          );
+        }
       }
     }
 
@@ -371,6 +419,10 @@ class _CalendarPageState extends State<CalendarPage> {
         label: AppStrings.recordsFilterVaccines,
       ),
       const _CalendarFilterOption(
+        filter: _CalendarEventFilter.medicines,
+        label: AppStrings.recordsFilterMedicines,
+      ),
+      const _CalendarFilterOption(
         filter: _CalendarEventFilter.appointments,
         label: AppStrings.calendarFilterAppointments,
       ),
@@ -383,8 +435,8 @@ class _CalendarPageState extends State<CalendarPage> {
     return switch (_selectedEventFilter) {
       _CalendarEventFilter.all => true,
       _CalendarEventFilter.vaccines => event.type == _CalendarEventType.vaccine,
-      _CalendarEventFilter.appointments =>
-        event.type != _CalendarEventType.vaccine,
+      _CalendarEventFilter.medicines => event.type == _CalendarEventType.medicine,
+      _CalendarEventFilter.appointments => event.type != _CalendarEventType.vaccine && event.type != _CalendarEventType.medicine,
     };
   }
 
@@ -472,6 +524,13 @@ class _CalendarPageState extends State<CalendarPage> {
 
   Future<void> _goToAddVaccine() async {
     final result = await Navigator.of(context).pushNamed(Routes.addVaccine);
+    if (result == true) {
+      _loadCalendarData();
+    }
+  }
+
+  Future<void> _goToAddMedicine() async {
+    final result = await Navigator.of(context).pushNamed(Routes.addMedicine);
     if (result == true) {
       _loadCalendarData();
     }
@@ -582,6 +641,7 @@ class _CalendarPageState extends State<CalendarPage> {
         onAddPet: _goToAddPet,
         onAddVaccine: _goToAddVaccine,
         onAddEvent: _goToAddEvent,
+        onAddMedicine: _goToAddMedicine,
       ),
       bottomNavigationBar: PetcareBottomNavBar(
         currentIndex: _currentIndex,
@@ -704,9 +764,9 @@ class _CalendarFilterOption {
   final String label;
 }
 
-enum _CalendarEventFilter { all, vaccines, appointments }
+enum _CalendarEventFilter { all, vaccines, medicines, appointments }
 
-enum _CalendarEventType { vaccine, appointment, dental, grooming }
+enum _CalendarEventType { vaccine, medicine, appointment, dental, grooming }
 
 class _CalendarEvent {
   const _CalendarEvent({
@@ -736,6 +796,7 @@ class _CalendarEvent {
   String get iconAssetPath {
     return switch (type) {
       _CalendarEventType.vaccine => AppAssets.iconVaccine,
+      _CalendarEventType.medicine => AppAssets.iconVetCheck,
       _CalendarEventType.appointment => AppAssets.iconVetCheckClean,
       _CalendarEventType.dental => AppAssets.iconDentalCheck,
       _CalendarEventType.grooming => AppAssets.iconCalendar,
@@ -749,6 +810,10 @@ Color _eventCardColor(_CalendarEventType type, bool isDark) {
       isDark
           ? AppColors.petDetailHealthSummaryBgDark
           : AppColors.petStatusHealthyBg,
+    _CalendarEventType.medicine =>
+      isDark
+          ? AppColors.timeBackgroundDark
+          : AppColors.timeBackground,
     _CalendarEventType.appointment =>
       isDark 
           ? AppColors.appointmentBackgroundDark
