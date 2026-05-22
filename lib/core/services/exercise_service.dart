@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:isolate';
 
 import 'package:flutter_frontend/core/models/exercise_model.dart';
@@ -23,6 +24,7 @@ class ExerciseService {
   static const String _actionCreate = 'create';
   static const String _actionUpdate = 'update';
   static const String _actionDelete = 'delete';
+  static const String _petIdMappingMetaPrefix = 'pet_id_map.';
   static const int _weeklyGoalMinutes = 150;
 
   final ApiClient _apiClient = ApiClient();
@@ -34,6 +36,7 @@ class ExerciseService {
     bool forceRefresh = false,
   }) async {
     final trimmedPetId = petId.trim();
+    final apiPetId = await _resolvePetIdForSync(trimmedPetId);
     final cacheKey = _exercisesByPetCacheKey(trimmedPetId);
     final cachedEntry = await _cache.get(cacheKey);
     if (!forceRefresh &&
@@ -43,30 +46,46 @@ class ExerciseService {
       if (cachedExercises != null) {
         unawaited(_persistExercisesFromBody(cachedEntry.body));
         final merged = await _mergeLocalExercises(cachedExercises);
-        return _filterExercisesByPet(merged, trimmedPetId);
+        return _filterExercisesByPet(
+          merged,
+          trimmedPetId,
+          mappedPetId: apiPetId,
+        );
       }
     }
 
     try {
-      final response = await _apiClient.get(_exercisesPathForPet(trimmedPetId));
+      final response = await _apiClient.get(_exercisesPathForPet(apiPetId));
       final exercises = _parseExercises(response.body);
       await _cache.set(cacheKey, response.body);
       await _persistExercisesFromBody(response.body);
       final merged = await _mergeLocalExercises(exercises);
-      return _filterExercisesByPet(merged, trimmedPetId);
+      return _filterExercisesByPet(
+        merged,
+        trimmedPetId,
+        mappedPetId: apiPetId,
+      );
     } catch (_) {
       if (cachedEntry != null) {
         final fallbackExercises = _tryParseExercises(cachedEntry.body);
         if (fallbackExercises != null) {
           unawaited(_persistExercisesFromBody(cachedEntry.body));
           final merged = await _mergeLocalExercises(fallbackExercises);
-          return _filterExercisesByPet(merged, trimmedPetId);
+          return _filterExercisesByPet(
+            merged,
+            trimmedPetId,
+            mappedPetId: apiPetId,
+          );
         }
       }
 
       final localExercises = await _getExercisesFromLocalDb();
       if (localExercises.isNotEmpty) {
-        return _filterExercisesByPet(localExercises, trimmedPetId);
+        return _filterExercisesByPet(
+          localExercises,
+          trimmedPetId,
+          mappedPetId: apiPetId,
+        );
       }
       rethrow;
     }
@@ -77,10 +96,15 @@ class ExerciseService {
     required Map<String, dynamic> data,
   }) async {
     final trimmedPetId = petId.trim();
+    final apiPetId = await _resolvePetIdForSync(trimmedPetId);
+    final hasUnresolvedLocalPet =
+        _isLocalId(trimmedPetId) && apiPetId == trimmedPetId;
     try {
-      final apiPayload = _prepareExercisePayloadForApi(data);
+      final apiPayload = _prepareExercisePayloadForApi(
+        _withPetId(data, apiPetId),
+      );
       final response = await _apiClient.post(
-        _exercisesPathForPet(trimmedPetId),
+        _exercisesPathForPet(apiPetId),
         body: apiPayload,
       );
       final createdExercise = _decodeExerciseMap(
@@ -91,7 +115,7 @@ class ExerciseService {
       await _invalidateExercisesCache();
       return createdExercise;
     } catch (error) {
-      if (!_shouldQueueOffline(error)) {
+      if (!_shouldQueueOffline(error) && !hasUnresolvedLocalPet) {
         rethrow;
       }
 
@@ -128,6 +152,9 @@ class ExerciseService {
   }) async {
     final trimmedPetId = petId.trim();
     final trimmedExerciseId = exerciseId.trim();
+    final apiPetId = await _resolvePetIdForSync(trimmedPetId);
+    final hasUnresolvedLocalPet =
+        _isLocalId(trimmedPetId) && apiPetId == trimmedPetId;
     try {
       final current =
           await _localDb.getEntityById(
@@ -137,10 +164,10 @@ class ExerciseService {
           const <String, dynamic>{};
       final response = await _apiClient.put(
         _exerciseDetailPath(
-          petId: trimmedPetId,
+          petId: apiPetId,
           exerciseId: trimmedExerciseId,
         ),
-        body: _prepareExercisePayloadForApi(data),
+        body: _prepareExercisePayloadForApi(_withPetId(data, apiPetId)),
       );
       if (response.body.trim().isNotEmpty) {
         final updatedExercise = _decodeExerciseMap(
@@ -163,7 +190,7 @@ class ExerciseService {
       await _invalidateExercisesCache();
       return ExerciseModel.fromJson(merged);
     } catch (error) {
-      if (!_shouldQueueOffline(error)) {
+      if (!_shouldQueueOffline(error) && !hasUnresolvedLocalPet) {
         rethrow;
       }
 
@@ -208,10 +235,13 @@ class ExerciseService {
   }) async {
     final trimmedPetId = petId.trim();
     final trimmedExerciseId = exerciseId.trim();
+    final apiPetId = await _resolvePetIdForSync(trimmedPetId);
+    final hasUnresolvedLocalPet =
+        _isLocalId(trimmedPetId) && apiPetId == trimmedPetId;
     try {
       await _apiClient.delete(
         _exerciseDetailPath(
-          petId: trimmedPetId,
+          petId: apiPetId,
           exerciseId: trimmedExerciseId,
         ),
       );
@@ -220,8 +250,8 @@ class ExerciseService {
         remoteId: trimmedExerciseId,
       );
       await _invalidateExercisesCache();
-    } on ApiException catch (error) {
-      if (error.statusCode == 404) {
+    } catch (error) {
+      if (error is ApiException && error.statusCode == 404) {
         await _localDb.deleteEntity(
           table: LocalDbTables.exercises,
           remoteId: trimmedExerciseId,
@@ -230,7 +260,7 @@ class ExerciseService {
         return;
       }
 
-      if (!_shouldQueueOffline(error)) {
+      if (!_shouldQueueOffline(error) && !hasUnresolvedLocalPet) {
         rethrow;
       }
 
@@ -261,8 +291,13 @@ class ExerciseService {
             final payload = _asStringDynamicMap(
               operation.payload ?? const <String, dynamic>{},
             );
-            final petId = _readStringValue(payload['petId']);
-            final createPayload = _asStringDynamicMap(payload['data']);
+            final petId = await _resolvePetIdForSync(
+              _readStringValue(payload['petId']),
+            );
+            final createPayload = _withPetId(
+              _asStringDynamicMap(payload['data']),
+              petId,
+            );
             final response = await _apiClient.post(
               _exercisesPathForPet(petId),
               body: _prepareExercisePayloadForApi(createPayload),
@@ -284,8 +319,13 @@ class ExerciseService {
             final payload = _asStringDynamicMap(
               operation.payload ?? const <String, dynamic>{},
             );
-            final petId = _readStringValue(payload['petId']);
-            final updatePayload = _asStringDynamicMap(payload['data']);
+            final petId = await _resolvePetIdForSync(
+              _readStringValue(payload['petId']),
+            );
+            final updatePayload = _withPetId(
+              _asStringDynamicMap(payload['data']),
+              petId,
+            );
             final current =
                 await _localDb.getEntityById(
                   table: LocalDbTables.exercises,
@@ -323,7 +363,9 @@ class ExerciseService {
             final payload = _asStringDynamicMap(
               operation.payload ?? const <String, dynamic>{},
             );
-            final petId = _readStringValue(payload['petId']);
+            final petId = await _resolvePetIdForSync(
+              _readStringValue(payload['petId']),
+            );
             try {
               await _apiClient.delete(
                 _exerciseDetailPath(
@@ -391,10 +433,16 @@ class ExerciseService {
 
   List<ExerciseModel> _filterExercisesByPet(
     List<ExerciseModel> exercises,
-    String petId,
-  ) {
+    String petId, {
+    String? mappedPetId,
+  }) {
+    final allowedPetIds = <String>{
+      petId.trim(),
+      if (mappedPetId != null && mappedPetId.trim().isNotEmpty)
+        mappedPetId.trim(),
+    };
     return exercises
-        .where((exercise) => exercise.petId == petId)
+        .where((exercise) => allowedPetIds.contains(exercise.petId.trim()))
         .toList(growable: false);
   }
 
@@ -536,7 +584,41 @@ class ExerciseService {
   }
 
   bool _shouldQueueOffline(Object error) {
-    return error is ApiException && error.type == ApiErrorType.network;
+    if (error is ApiException) {
+      return error.type == ApiErrorType.network;
+    }
+    if (error is SocketException || error is TimeoutException) {
+      return true;
+    }
+
+    final message = error.toString().toLowerCase();
+    return message.contains('network-request-failed') ||
+        message.contains('network connection failed') ||
+        message.contains('failed host lookup') ||
+        message.contains('connection closed before full header was received') ||
+        message.contains('connection failed') ||
+        message.contains('connection refused') ||
+        message.contains('network is unreachable') ||
+        message.contains('software caused connection abort') ||
+        message.contains('timed out') ||
+        message.contains('timeout');
+  }
+
+  bool _isLocalId(String value) {
+    return value.trim().startsWith('local_');
+  }
+
+  Future<String> _resolvePetIdForSync(String petId) async {
+    final trimmed = petId.trim();
+    if (trimmed.isEmpty) {
+      return '';
+    }
+
+    final mapped = await _localDb.getMetaValue(
+      '$_petIdMappingMetaPrefix$trimmed',
+    );
+    final mappedTrimmed = mapped?.trim() ?? '';
+    return mappedTrimmed.isNotEmpty ? mappedTrimmed : trimmed;
   }
 
   String _newLocalId(String prefix) {
@@ -610,6 +692,19 @@ class ExerciseService {
       if (distanceValue != null) 'distance_km': distanceValue,
       'notes': _readStringValue(map['notes']),
     };
+  }
+
+  Map<String, dynamic> _withPetId(Map<String, dynamic> source, String petId) {
+    final map = <String, dynamic>{..._asStringDynamicMap(source)};
+    if (petId.trim().isEmpty) {
+      return map;
+    }
+
+    map['petId'] = petId.trim();
+    if (map.containsKey('pet_id')) {
+      map['pet_id'] = petId.trim();
+    }
+    return map;
   }
 }
 

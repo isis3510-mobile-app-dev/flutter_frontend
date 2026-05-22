@@ -162,11 +162,11 @@ class _AddExercisePageState extends State<AddExercisePage> {
         return;
       }
       Navigator.of(context).pop(true);
-    } catch (_) {
+    } catch (error) {
       if (!mounted) {
         return;
       }
-      _showMessage('Unable to save exercise right now.');
+      _showMessage('Unable to save exercise right now');
     } finally {
       if (mounted) {
         setState(() => _isSaving = false);

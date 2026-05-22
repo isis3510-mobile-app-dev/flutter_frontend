@@ -10,6 +10,7 @@ class LocalDbTables {
   static const String exercises = 'exercises_local';
   static const String vaccines = 'vaccines_local';
   static const String petVaccinations = 'pet_vaccinations_local';
+  static const String medicines = 'medicines_local';
   static const String lostPets = 'lost_pets_local';
   static const String syncQueue = 'sync_queue';
   static const String appMeta = 'app_meta';
@@ -77,7 +78,7 @@ class LocalDatabaseService {
   factory LocalDatabaseService() => _instance;
 
   static const String _databaseName = 'petcare_offline.db';
-  static const int _databaseVersion = 3;
+  static const int _databaseVersion = 4;
 
   Database? _database;
 
@@ -104,6 +105,7 @@ class LocalDatabaseService {
       },
     );
 
+    await _ensureOptionalEntityTables(db);
     _database = db;
     return db;
   }
@@ -163,6 +165,15 @@ class LocalDatabaseService {
       )
     ''');
 
+    await db.execute('''
+      CREATE TABLE ${LocalDbTables.medicines} (
+        remote_id TEXT PRIMARY KEY,
+        payload TEXT NOT NULL,
+        sync_status TEXT NOT NULL DEFAULT 'synced',
+        updated_at INTEGER NOT NULL
+      )
+    ''');
+
     await _createLostPetsTable(db);
 
     await db.execute('''
@@ -207,6 +218,45 @@ class LocalDatabaseService {
         )
       ''');
     }
+    if (oldVersion < 4) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS ${LocalDbTables.medicines} (
+          remote_id TEXT PRIMARY KEY,
+          payload TEXT NOT NULL,
+          sync_status TEXT NOT NULL DEFAULT 'synced',
+          updated_at INTEGER NOT NULL
+        )
+      ''');
+
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS ${LocalDbTables.exercises} (
+          remote_id TEXT PRIMARY KEY,
+          payload TEXT NOT NULL,
+          sync_status TEXT NOT NULL DEFAULT 'synced',
+          updated_at INTEGER NOT NULL
+        )
+      ''');
+    }
+  }
+
+  Future<void> _ensureOptionalEntityTables(Database db) async {
+    await _createLostPetsTable(db);
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS ${LocalDbTables.medicines} (
+        remote_id TEXT PRIMARY KEY,
+        payload TEXT NOT NULL,
+        sync_status TEXT NOT NULL DEFAULT 'synced',
+        updated_at INTEGER NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS ${LocalDbTables.exercises} (
+        remote_id TEXT PRIMARY KEY,
+        payload TEXT NOT NULL,
+        sync_status TEXT NOT NULL DEFAULT 'synced',
+        updated_at INTEGER NOT NULL
+      )
+    ''');
   }
 
   Future<void> _createLostPetsTable(Database db) async {
@@ -355,6 +405,7 @@ class LocalDatabaseService {
     batch.delete(LocalDbTables.exercises);
     batch.delete(LocalDbTables.vaccines);
     batch.delete(LocalDbTables.petVaccinations);
+    batch.delete(LocalDbTables.medicines);
     batch.delete(LocalDbTables.lostPets);
     batch.delete(LocalDbTables.syncQueue);
     await batch.commit(noResult: true);
