@@ -180,6 +180,8 @@ class _PetCardPhoto extends StatelessWidget {
     required this.isDark,
   });
 
+  static const int _thumbnailCacheSize = 192;
+
   final String? photoPath;
   final String species;
   final bool isDark;
@@ -195,7 +197,7 @@ class _PetCardPhoto extends StatelessWidget {
             : AppColors.petCardQuickActionBg,
         borderRadius: BorderRadius.circular(20),
       ),
-      clipBehavior: Clip.antiAlias,
+      clipBehavior: Clip.hardEdge,
       child: _buildPhoto(),
     );
   }
@@ -210,6 +212,13 @@ class _PetCardPhoto extends StatelessWidget {
       return CachedNetworkImage(
         imageUrl: value,
         cacheManager: AppImageCacheManager.instance,
+        memCacheWidth: _thumbnailCacheSize,
+        memCacheHeight: _thumbnailCacheSize,
+        maxWidthDiskCache: _thumbnailCacheSize,
+        maxHeightDiskCache: _thumbnailCacheSize,
+        fadeInDuration: Duration.zero,
+        fadeOutDuration: Duration.zero,
+        placeholderFadeInDuration: Duration.zero,
         fit: BoxFit.cover,
         placeholder: (_, _) => _PetCardPhotoPlaceholder(isDark: isDark),
         errorWidget: (_, _, _) => _PetCardPhotoPlaceholder(isDark: isDark),
@@ -219,6 +228,8 @@ class _PetCardPhoto extends StatelessWidget {
     return Image.file(
       File(value),
       fit: BoxFit.cover,
+      cacheWidth: _thumbnailCacheSize,
+      cacheHeight: _thumbnailCacheSize,
       errorBuilder: (_, _, _) => _PetCardPhotoPlaceholder(isDark: isDark),
     );
   }
