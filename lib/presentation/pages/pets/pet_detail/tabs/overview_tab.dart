@@ -24,6 +24,7 @@ class OverviewTab extends StatefulWidget {
     required this.medicines,
     required this.onToggleLostMode,
     required this.onToggleNfc,
+    required this.onAddMedicine,
   });
 
   final PetUiModel pet;
@@ -32,6 +33,7 @@ class OverviewTab extends StatefulWidget {
   final List<MedicineModel> medicines;
   final VoidCallback onToggleLostMode;
   final VoidCallback onToggleNfc;
+  final VoidCallback onAddMedicine;
 
   @override
   State<OverviewTab> createState() => _OverviewTabState();
@@ -163,15 +165,14 @@ class _OverviewTabState extends State<OverviewTab> {
             eventCount: widget.eventCount,
           ),
           const SizedBox(height: AppDimensions.spaceM),
-          if (widget.medicines.isNotEmpty) ...[
-            _MedicinesTodaySection(
-              medicines: widget.medicines,
-              pet: widget.petDetails,
-              onToggleGiven: _toggleGivenToday,
-              givenStatus: _givenStatus,
-            ),
-            const SizedBox(height: AppDimensions.spaceM),
-          ],
+          _MedicinesTodaySection(
+            medicines: widget.medicines,
+            pet: widget.petDetails,
+            onToggleGiven: _toggleGivenToday,
+            givenStatus: _givenStatus,
+            onAddMedicine: widget.onAddMedicine,
+          ),
+          const SizedBox(height: AppDimensions.spaceM),
           _StatusRow(
             isNfcActive: widget.pet.isNfcSynced,
             isLost: widget.pet.status == 'lost',
@@ -418,12 +419,14 @@ class _MedicinesTodaySection extends StatelessWidget {
     required this.pet,
     required this.onToggleGiven,
     required this.givenStatus,
+    required this.onAddMedicine,
   });
 
   final List<MedicineModel> medicines;
   final PetModel? pet;
   final void Function(MedicineModel) onToggleGiven;
   final Map<String, DateTime?> givenStatus;
+  final VoidCallback onAddMedicine;
 
   bool _isForToday(MedicineModel medicine) {
     final now = DateTime.now();
@@ -455,57 +458,132 @@ class _MedicinesTodaySection extends StatelessWidget {
         ),
         const SizedBox(height: AppDimensions.spaceS),
         if (todays.isEmpty)
-          Text(AppStrings.petDetailMedicinesEmpty, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.grey700)),
-        for (final med in todays)
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: med.photoUrl != null && med.photoUrl!.trim().isNotEmpty
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: _buildMedicineImage(med.photoUrl!),
-                  )
-                : Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: isDark ? AppColors.surfaceDark : Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.petFilterInactiveBorder),
-                    ),
-                    child: const Icon(Icons.medication_outlined, size: 28, color: AppColors.grey500),
-                  ),
-            title: Text(med.medicineName, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
-            subtitle: Text(
-              '${med.dosageValue ?? ''}${med.dosageUnit.isNotEmpty ? ' ${med.dosageUnit}' : ''} • ${med.administrationRoute}',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Builder(builder: (ctx) {
-                  final last = givenStatus.containsKey(med.id) ? givenStatus[med.id] : med.lastAdministered;
-                  final now = DateTime.now();
-                  final isGiven = last != null && last.year == now.year && last.month == now.month && last.day == now.day;
-                  return IconButton(
-                    icon: Icon(isGiven ? Icons.check_circle : Icons.radio_button_unchecked, color: isGiven ? AppColors.primary : AppColors.grey500),
-                    onPressed: () => onToggleGiven(med),
-                    tooltip: isGiven ? 'Marked as given' : 'Mark as given',
-                  );
-                }),
-                IconButton(
-                  icon: const Icon(Icons.chevron_right),
-                  onPressed: pet == null
-                      ? null
-                      : () => Navigator.of(context).pushNamed(
-                            Routes.medicineDetail,
-                            arguments: MedicineDetailArgs(medicine: med, pet: pet!),
-                          ),
-                ),
-              ],
-            ),
-            onTap: null,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                AppStrings.petDetailMedicinesEmpty,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.grey700),
+              ),
+              const SizedBox(height: AppDimensions.spaceM),
+              _AddMedicineButton(
+                petName: pet?.name ?? '',
+                onTap: onAddMedicine,
+              ),
+            ],
           ),
+        for (final med in todays)
+          Builder(builder: (context) {
+            final last = givenStatus.containsKey(med.id) ? givenStatus[med.id] : med.lastAdministered;
+            final now = DateTime.now();
+            final isGiven = last != null && last.year == now.year && last.month == now.month && last.day == now.day;
+            final cardColor = isGiven
+                ? AppColors.positiveBackground
+                : (isDark ? AppColors.secondaryDark : Colors.white);
+            final borderColor = isGiven
+                ? AppColors.positiveText.withValues(alpha: 0.20)
+                : AppColors.petFilterInactiveBorder;
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: AppDimensions.spaceS),
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
+                border: Border.all(color: borderColor),
+              ),
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: AppDimensions.spaceS,
+                  vertical: AppDimensions.spaceXS,
+                ),
+                leading: med.photoUrl != null && med.photoUrl!.trim().isNotEmpty
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: _buildMedicineImage(med.photoUrl!),
+                      )
+                    : Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: isGiven
+                              ? AppColors.positiveBackground
+                              : (isDark ? AppColors.surfaceDark : Colors.white),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: isGiven ? AppColors.positiveText.withValues(alpha: 0.20) : AppColors.petFilterInactiveBorder),
+                        ),
+                        child: Icon(
+                          Icons.medication_outlined,
+                          size: 28,
+                          color: isGiven ? AppColors.positiveText : AppColors.grey500,
+                        ),
+                      ),
+                title: Text(
+                  med.medicineName,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: isGiven ? AppColors.positiveText : null,
+                  ),
+                ),
+                subtitle: Text(
+                  '${med.dosageValue ?? ''}${med.dosageUnit.isNotEmpty ? ' ${med.dosageUnit}' : ''} • ${med.administrationRoute}',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: isGiven ? AppColors.positiveText.withValues(alpha: 0.9) : null,
+                  ),
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        isGiven ? Icons.check_circle : Icons.radio_button_unchecked,
+                        color: isGiven ? AppColors.positiveText : AppColors.grey500,
+                      ),
+                      onPressed: () => onToggleGiven(med),
+                      tooltip: isGiven ? 'Marked as given' : 'Mark as given',
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.chevron_right),
+                      onPressed: pet == null
+                          ? null
+                          : () => Navigator.of(context).pushNamed(
+                                Routes.medicineDetail,
+                                arguments: MedicineDetailArgs(medicine: med, pet: pet!),
+                              ),
+                    ),
+                  ],
+                ),
+                onTap: null,
+              ),
+            );
+          }),
       ],
+    );
+  }
+}
+
+class _AddMedicineButton extends StatelessWidget {
+  const _AddMedicineButton({required this.petName, required this.onTap});
+
+  final String petName;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.bottomNavActive,
+        side: const BorderSide(color: AppColors.bottomNavActive, width: 2),
+        minimumSize: const Size.fromHeight(AppDimensions.buttonHeightL),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppDimensions.radiusCircle),
+        ),
+      ),
+      onPressed: onTap,
+      child: Text(
+        '+ Add Medicine',
+        semanticsLabel: 'Add medicine for $petName',
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+      ),
     );
   }
 }
@@ -519,15 +597,15 @@ Widget _buildMedicineImage(String path) {
       width: 48,
       height: 48,
       fit: BoxFit.cover,
-      placeholder: (_, __) => const SizedBox(width: 48, height: 48, child: Center(child: CircularProgressIndicator(strokeWidth: 2))),
-      errorWidget: (_, __, ___) => const SizedBox(width: 48, height: 48, child: Icon(Icons.medication_outlined)),
+      placeholder: (context, _) => const SizedBox(width: 48, height: 48, child: Center(child: CircularProgressIndicator(strokeWidth: 2))),
+      errorWidget: (context, error, stackTrace) => const SizedBox(width: 48, height: 48, child: Icon(Icons.medication_outlined)),
     );
   }
 
   try {
     final file = File(path);
     if (file.existsSync()) {
-      return Image.file(file, width: 48, height: 48, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.medication_outlined));
+      return Image.file(file, width: 48, height: 48, fit: BoxFit.cover, errorBuilder: (context, error, stackTrace) => const Icon(Icons.medication_outlined));
     }
   } catch (_) {}
 

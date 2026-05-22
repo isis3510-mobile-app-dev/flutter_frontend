@@ -11,6 +11,7 @@ class AppDropdownField extends StatelessWidget {
     this.onChanged,
     this.validator,
     this.enabled = true,
+    this.itemLabelBuilder,
   });
 
   final String label;
@@ -20,6 +21,7 @@ class AppDropdownField extends StatelessWidget {
   final ValueChanged<String?>? onChanged;
   final FormFieldValidator<String>? validator;
   final bool enabled;
+  final String Function(String item)? itemLabelBuilder;
 
   @override
   Widget build(BuildContext context) {
@@ -30,6 +32,7 @@ class AppDropdownField extends StatelessWidget {
         ? AppColors.onSurfaceDark.withValues(alpha: 0.55)
         : AppColors.grey500;
     final textColor = isDark ? AppColors.onSurfaceDark : AppColors.onSurface;
+    String displayText(String item) => itemLabelBuilder?.call(item) ?? item;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -55,7 +58,7 @@ class AppDropdownField extends StatelessWidget {
                 (item) => DropdownMenuItem<String>(
                   value: item,
                   child: Text(
-                    item,
+                    displayText(item),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(
@@ -70,7 +73,7 @@ class AppDropdownField extends StatelessWidget {
                 (item) => Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    item,
+                    displayText(item),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(
