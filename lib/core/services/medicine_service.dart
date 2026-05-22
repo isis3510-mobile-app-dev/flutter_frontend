@@ -26,6 +26,7 @@ class MedicineService {
   static const String _actionDelete = 'delete';
   static const String _medicinesCachePrefix = 'medicines.';
   static const Duration _medicinesCacheTtl = Duration(minutes: 10);
+  static const String _petIdMappingMetaPrefix = 'pet_id_map.';
 
   final ApiClient _apiClient = ApiClient();
   final ResponseCacheService _cache = ResponseCacheService();
@@ -380,7 +381,8 @@ class MedicineService {
     Map<String, dynamic> payload,
   ) async {
     final prepared = <String, dynamic>{...payload};
-    final photoUrl = (prepared['photoUrl'] as String?)?.trim() ?? '';
+    final resolved = await _resolveMedicinePayloadPetIdForSync(prepared);
+    final photoUrl = (resolved['photoUrl'] as String?)?.trim() ?? '';
     if (photoUrl.isNotEmpty && !_isRemotePhotoUrl(photoUrl)) {
       final file = File(photoUrl);
       if (!await file.exists()) {
@@ -396,10 +398,50 @@ class MedicineService {
         throw Exception('Medicine photo upload still pending.');
       }
 
-      prepared['photoUrl'] = uploaded.downloadUrl;
+      resolved['photoUrl'] = uploaded.downloadUrl;
     }
 
-    return prepared;
+    return resolved;
+  }
+
+  Future<Map<String, dynamic>> _resolveMedicinePayloadPetIdForSync(
+    Map<String, dynamic> payload,
+  ) async {
+    final resolved = <String, dynamic>{...payload};
+    final rawPetId = (resolved['petId'] ?? resolved['pet_id'])?.toString();
+    final mappedPetId = await _resolvePetIdForSync(rawPetId);
+    if (mappedPetId == null || mappedPetId.trim().isEmpty) {
+      return resolved;
+    }
+
+    if (resolved.containsKey('petId')) {
+      resolved['petId'] = mappedPetId;
+    }
+    if (resolved.containsKey('pet_id')) {
+      resolved['pet_id'] = mappedPetId;
+    }
+    if (!resolved.containsKey('petId') && !resolved.containsKey('pet_id')) {
+      resolved['petId'] = mappedPetId;
+    }
+
+    return resolved;
+  }
+
+  Future<String?> _resolvePetIdForSync(String? petId) async {
+    final trimmed = petId?.trim() ?? '';
+    if (trimmed.isEmpty) {
+      return null;
+    }
+
+    final mapped = await _localDb.getMetaValue(
+      '$_petIdMappingMetaPrefix$trimmed',
+    );
+    final mappedTrimmed = mapped?.trim() ?? '';
+    if (mappedTrimmed.isNotEmpty) {
+      return mappedTrimmed;
+    }
+
+    return trimmed;
   }
 
   Future<void> _persistMedicinesFromBody(String responseBody) async {

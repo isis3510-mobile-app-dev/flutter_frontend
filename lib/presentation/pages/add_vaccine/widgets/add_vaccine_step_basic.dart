@@ -21,6 +21,7 @@ class AddVaccineStepBasic extends StatelessWidget {
     required this.onPetChanged,
     required this.onPickDate,
     required this.dateController,
+    required this.vaccineLabelBuilder,
   });
 
   final bool isLoadingVaccines;
@@ -38,6 +39,7 @@ class AddVaccineStepBasic extends StatelessWidget {
   final ValueChanged<String?> onPetChanged;
   final VoidCallback onPickDate;
   final TextEditingController dateController;
+  final String Function(String vaccineName) vaccineLabelBuilder;
 
   bool _isValidDate(String value) {
     final parts = value.split('/');
@@ -69,6 +71,7 @@ class AddVaccineStepBasic extends StatelessWidget {
               : AppStrings.hintVaccineName,
           value: selectedVaccineName,
           items: vaccineNameOptions,
+            itemLabelBuilder: vaccineLabelBuilder,
           enabled: !isLoadingVaccines,
           onChanged: onVaccineChanged,
           validator: (value) {

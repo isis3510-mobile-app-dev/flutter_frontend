@@ -568,6 +568,7 @@ class _PetDetailScreenState extends State<PetDetailScreen>
                 medicines: _petMedicines,
                 onToggleLostMode: _toggleLostMode,
                 onToggleNfc: _toggleNfc,
+                onAddMedicine: _goToAddMedicine,
               ),
               VaccinesTab(
                 pet: _pet,

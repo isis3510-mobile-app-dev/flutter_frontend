@@ -350,13 +350,126 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
     });
   }
 
+  PetModel? _selectedPet() {
+    final selectedPetId = _selectedPetId?.trim() ?? '';
+    if (selectedPetId.isEmpty) {
+      return null;
+    }
+
+    for (final pet in _pets) {
+      if (pet.id == selectedPetId) {
+        return pet;
+      }
+    }
+    return null;
+  }
+
+  bool _isVaccineAllowedForSelectedPet(VaccineModel vaccine) {
+    final pet = _selectedPet();
+
+    final petSpecies = pet?.species.trim().toLowerCase() ?? '';
+    final vaccineSpecies = vaccine.species
+        .map((item) => item.trim().toLowerCase())
+        .where((item) => item.isNotEmpty)
+        .toSet();
+    final vaccineName = vaccine.name.toLowerCase();
+
+    if (petSpecies.contains('dog') || petSpecies.contains('canine')) {
+      if (vaccineSpecies.contains('feline') || vaccineSpecies.contains('cat')) {
+        return false;
+      }
+      if (vaccineName.contains('feline') || vaccineName.contains('cat')) {
+        return false;
+      }
+      return true;
+    }
+
+    if (petSpecies.contains('cat') || petSpecies.contains('feline')) {
+      if (vaccineSpecies.contains('canine') || vaccineSpecies.contains('dog')) {
+        return false;
+      }
+      if (vaccineName.contains('canine') || vaccineName.contains('dog')) {
+        return false;
+      }
+      return true;
+    }
+
+    return true;
+  }
+
+  bool _isEssentialVaccine(VaccineModel vaccine) {
+    final vaccineName = vaccine.name.toLowerCase();
+    final petSpecies = _selectedPet()?.species.toLowerCase() ?? '';
+
+    if (petSpecies.contains('cat') || petSpecies.contains('feline')) {
+      return vaccineName.contains('core') ||
+          vaccineName.contains('chlamydiosis') ||
+          vaccineName.contains('bordetella');
+    }
+
+    if (petSpecies.contains('dog') || petSpecies.contains('canine')) {
+      return vaccineName.contains('distemper') ||
+          vaccineName.contains('hepatitis') ||
+          vaccineName.contains('parvovirus') ||
+          vaccineName.contains('core');
+    }
+
+    return false;
+  }
+
+  String _vaccineDisplayLabel(VaccineModel vaccine) {
+    final name = vaccine.name.trim();
+    if (name.isEmpty) {
+      return name;
+    }
+
+    return _isEssentialVaccine(vaccine) ? '★ $name' : name;
+  }
+
+  String _vaccineDisplayLabelForName(String vaccineName) {
+    for (final vaccine in _visibleVaccines) {
+      if (vaccine.name.trim() == vaccineName.trim()) {
+        return _vaccineDisplayLabel(vaccine);
+      }
+    }
+
+    return vaccineName;
+  }
+
+  List<VaccineModel> get _visibleVaccines {
+    final vaccines = _vaccines
+        .where(_isVaccineAllowedForSelectedPet)
+        .where((vaccine) =>
+            vaccine.name.trim().isNotEmpty &&
+            vaccine.name.trim() != AppStrings.valueNotAvailable)
+        .toList(growable: false);
+
+    vaccines.sort((left, right) {
+      final leftEssential = _isEssentialVaccine(left);
+      final rightEssential = _isEssentialVaccine(right);
+      if (leftEssential != rightEssential) {
+        return leftEssential ? -1 : 1;
+      }
+
+      return left.name.toLowerCase().compareTo(right.name.toLowerCase());
+    });
+
+    return vaccines;
+  }
+
   List<String> get _vaccineNameOptions {
-    final names = _vaccines
-        .map((vaccine) => vaccine.name.trim())
-      .where((name) => name.isNotEmpty && name != AppStrings.valueNotAvailable)
-        .toSet()
-        .toList();
-    names.sort();
+    final seen = <String>{};
+    final names = <String>[];
+
+    for (final vaccine in _visibleVaccines) {
+      final name = vaccine.name.trim();
+      if (name.isEmpty || seen.contains(name)) {
+        continue;
+      }
+      seen.add(name);
+      names.add(name);
+    }
+
     return names;
   }
 
@@ -364,7 +477,7 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
     if (_selectedVaccineName == null || _selectedVaccineName!.trim().isEmpty) {
       return const [];
     }
-    final products = _vaccines
+    final products = _visibleVaccines
         .where((vaccine) => vaccine.name == _selectedVaccineName)
         .map((vaccine) => vaccine.productName.trim())
       .where((product) =>
@@ -925,10 +1038,25 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
                   );
                   _selectedPetId = match.id.isEmpty ? null : match.id;
                 }
+
+                if (_selectedVaccineName != null &&
+                    _selectedVaccineName!.trim().isNotEmpty) {
+                  final matchingVaccine = _visibleVaccines.where(
+                    (vaccine) => vaccine.name == _selectedVaccineName,
+                  );
+                  if (matchingVaccine.isEmpty) {
+                    _selectedVaccineName = null;
+                    _selectedVaccineId = null;
+                    _selectedProductName = null;
+                    _vaccineController.clear();
+                    _productController.clear();
+                  }
+                }
               });
             },
             onPickDate: () => _pickDate(true),
             dateController: _dateController,
+            vaccineLabelBuilder: _vaccineDisplayLabelForName,
           ),
         ];
       case 1:
