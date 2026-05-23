@@ -212,10 +212,6 @@ class _PetCardPhoto extends StatelessWidget {
       return CachedNetworkImage(
         imageUrl: value,
         cacheManager: AppImageCacheManager.instance,
-        memCacheWidth: _thumbnailCacheSize,
-        memCacheHeight: _thumbnailCacheSize,
-        maxWidthDiskCache: _thumbnailCacheSize,
-        maxHeightDiskCache: _thumbnailCacheSize,
         fadeInDuration: Duration.zero,
         fadeOutDuration: Duration.zero,
         placeholderFadeInDuration: Duration.zero,

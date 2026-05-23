@@ -385,31 +385,36 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
               controller: _dosageController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: AppInputFormatters.decimal(maxWholeDigits: 6, decimalDigits: 2),
-              validator: AppFormValidators.optionalDecimal(invalidMessage: 'Invalid number'),
+              validator: (v) {
+                final trimmed = v?.trim() ?? '';
+                if (trimmed.isEmpty) return 'Enter dosage value';
+                return AppFormValidators.optionalDecimal(invalidMessage: 'Invalid number')(v);
+              },
             ),
           ),
           const SizedBox(width: 12),
           SizedBox(
             width: 140,
             child: AppDropdownField(
-              label: 'Unit',
+              label: 'Unit *',
               hintText: 'Unit',
               items: _dosageUnitOptions.map((u) => u).toList(),
               value: _selectedDosageUnit,
               onChanged: (v) => setState(() => _selectedDosageUnit = v),
+              validator: (v) => (v == null || v.trim().isEmpty) ? 'Select dosage unit' : null,
             ),
           ),
         ]),
         const SizedBox(height: 18),
         AppFormField(
-          label: 'Frequency (per day)',
+          label: 'Frequency (per day) *',
           hintText: 'e.g. 2',
           controller: _frequencyController,
           keyboardType: TextInputType.number,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(2)],
           validator: (v) {
             final trimmed = v?.trim() ?? '';
-            if (trimmed.isEmpty) return null;
+            if (trimmed.isEmpty) return 'Enter frequency per day';
             final parsed = int.tryParse(trimmed);
             if (parsed == null) return AppStrings.validationInvalidNumber;
             if (parsed <= 0 || parsed > 99) return 'Enter a value between 1 and 99.';
@@ -423,7 +428,7 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         AppFormField(
-          label: '${AppStrings.labelDate} start',
+          label: '${AppStrings.labelDate} start *',
           hintText: AppStrings.hintDate,
           icon: Icons.calendar_today_outlined,
           controller: _startDateController,
@@ -431,14 +436,14 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
           onTap: () => _pickDate(_startDateController),
           validator: (v) {
             final trimmed = v?.trim() ?? '';
-            if (trimmed.isEmpty) return null;
+            if (trimmed.isEmpty) return 'Enter start date';
             if (!_isValidDate(trimmed)) return AppStrings.validationInvalidDate;
             return null;
           },
         ),
         const SizedBox(height: 18),
         AppFormField(
-          label: '${AppStrings.labelDate} end',
+          label: '${AppStrings.labelDate} end *',
           hintText: AppStrings.hintDate,
           icon: Icons.calendar_today_outlined,
           controller: _endDateController,
@@ -446,7 +451,7 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
           onTap: () => _pickDate(_endDateController),
           validator: (v) {
             final trimmed = v?.trim() ?? '';
-            if (trimmed.isEmpty) return null;
+            if (trimmed.isEmpty) return 'Enter end date';
             if (!_isValidDate(trimmed)) return AppStrings.validationInvalidDate;
             final start = parseDateInput(_startDateController.text);
             final end = parseDateInput(trimmed);

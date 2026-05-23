@@ -27,6 +27,7 @@ class MedicineService {
   static const String _medicinesCachePrefix = 'medicines.';
   static const Duration _medicinesCacheTtl = Duration(minutes: 10);
   static const String _petIdMappingMetaPrefix = 'pet_id_map.';
+  static const String _medicineIdMappingMetaPrefix = 'medicine_id_map.';
 
   final ApiClient _apiClient = ApiClient();
   final ResponseCacheService _cache = ResponseCacheService();
@@ -155,7 +156,7 @@ class MedicineService {
   }
 
   Future<MedicineModel> getMedicineById(String medicineId) async {
-    final trimmedMedicineId = medicineId.trim();
+    final trimmedMedicineId = await _resolveMedicineIdForSync(medicineId);
     try {
       final response = await _apiClient.get('$medicinesPath$trimmedMedicineId/');
       final medicine = _decodeMedicineMap(
@@ -180,7 +181,7 @@ class MedicineService {
     required String medicineId,
     required MedicineRequest request,
   }) async {
-    final trimmedMedicineId = medicineId.trim();
+    final trimmedMedicineId = await _resolveMedicineIdForSync(medicineId);
     try {
       final apiPayload = await _prepareMedicinePayloadForApi(request.toJson());
       final response = await _apiClient.put(
@@ -233,7 +234,7 @@ class MedicineService {
   }
 
   Future<void> deleteMedicine(String medicineId) async {
-    final trimmedMedicineId = medicineId.trim();
+    final trimmedMedicineId = await _resolveMedicineIdForSync(medicineId);
     try {
       await _apiClient.delete('$medicinesPath$trimmedMedicineId/');
       await _localDb.deleteEntity(
@@ -297,16 +298,20 @@ class MedicineService {
               remoteId: operation.entityId,
             );
             await _persistMedicineMap(_medicineToMap(created));
+            await _persistMedicineIdMapping(operation.entityId, created.id);
             break;
           case _actionUpdate:
             final updatePayload = _asStringDynamicMap(
               operation.payload ?? const <String, dynamic>{},
             );
+            final resolvedMedicineId = await _resolveMedicineIdForSync(
+              operation.entityId,
+            );
             final resolvedUpdatePayload = await _prepareMedicinePayloadForApi(
               updatePayload,
             );
             final response = await _apiClient.put(
-              '$medicinesPath${operation.entityId}/',
+              '$medicinesPath$resolvedMedicineId/',
               body: resolvedUpdatePayload,
             );
             final updated = _decodeMedicineMap(
@@ -316,8 +321,11 @@ class MedicineService {
             await _persistMedicineMap(_medicineToMap(updated));
             break;
           case _actionDelete:
+            final resolvedMedicineId = await _resolveMedicineIdForSync(
+              operation.entityId,
+            );
             try {
-              await _apiClient.delete('$medicinesPath${operation.entityId}/');
+              await _apiClient.delete('$medicinesPath$resolvedMedicineId/');
             } on ApiException catch (error) {
               if (error.statusCode != 404) {
                 rethrow;
@@ -444,6 +452,43 @@ class MedicineService {
     return trimmed;
   }
 
+  Future<String> _resolveMedicineIdForSync(String? medicineId) async {
+    final trimmed = medicineId?.trim() ?? '';
+    if (trimmed.isEmpty) {
+      return trimmed;
+    }
+
+    final mapped = await _localDb.getMetaValue(
+      '$_medicineIdMappingMetaPrefix$trimmed',
+    );
+    final mappedTrimmed = mapped?.trim() ?? '';
+    if (mappedTrimmed.isNotEmpty) {
+      return mappedTrimmed;
+    }
+
+    return trimmed;
+  }
+
+  Future<void> _persistMedicineIdMapping(
+    String localMedicineId,
+    String remoteMedicineId,
+  ) async {
+    final trimmedLocal = localMedicineId.trim();
+    final trimmedRemote = remoteMedicineId.trim();
+    if (trimmedLocal.isEmpty || trimmedRemote.isEmpty) {
+      return;
+    }
+
+    if (trimmedLocal == trimmedRemote) {
+      return;
+    }
+
+    await _localDb.setMetaValue(
+      key: '$_medicineIdMappingMetaPrefix$trimmedLocal',
+      value: trimmedRemote,
+    );
+  }
+
   Future<void> _persistMedicinesFromBody(String responseBody) async {
     try {
       final decoded = _decodeJson(responseBody);
@@ -461,7 +506,6 @@ class MedicineService {
     if (remoteId == null) {
       return;
     }
-
     final payload = <String, dynamic>{...medicineJson};
     payload['id'] = remoteId;
 
