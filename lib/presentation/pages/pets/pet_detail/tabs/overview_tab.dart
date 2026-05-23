@@ -45,9 +45,13 @@ class _OverviewTabState extends State<OverviewTab> {
   @override
   void didUpdateWidget(covariant OverviewTab oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // reset local overrides when medicines list changes
+    // When medicines list changes, remove overrides only for medicines
+    // that no longer exist in the new list. Keep overrides for existing
+    // medicines so optimistic UI (mark-as-given) remains visible until
+    // the server/parent confirms the change.
     if (oldWidget.medicines != widget.medicines) {
-      _givenStatus.clear();
+      final newIds = widget.medicines.map((m) => m.id).toSet();
+      _givenStatus.removeWhere((id, _) => !newIds.contains(id));
     }
   }
 
@@ -55,7 +59,8 @@ class _OverviewTabState extends State<OverviewTab> {
     final override = lastAdministered;
     if (override == null) return false;
     final now = DateTime.now();
-    return override.year == now.year && override.month == now.month && override.day == now.day;
+    final local = override.isUtc ? override.toLocal() : override;
+    return local.year == now.year && local.month == now.month && local.day == now.day;
   }
 
   Future<void> _toggleGivenToday(MedicineModel med) async {
@@ -476,7 +481,8 @@ class _MedicinesTodaySection extends StatelessWidget {
           Builder(builder: (context) {
             final last = givenStatus.containsKey(med.id) ? givenStatus[med.id] : med.lastAdministered;
             final now = DateTime.now();
-            final isGiven = last != null && last.year == now.year && last.month == now.month && last.day == now.day;
+            final localLast = (last != null && last.isUtc) ? last.toLocal() : last;
+            final isGiven = localLast != null && localLast.year == now.year && localLast.month == now.month && localLast.day == now.day;
             final cardColor = isGiven
                 ? AppColors.positiveBackground
                 : (isDark ? AppColors.secondaryDark : Colors.white);

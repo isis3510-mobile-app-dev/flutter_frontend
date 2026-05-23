@@ -47,8 +47,6 @@ class PetCard extends StatelessWidget {
                               ? CachedNetworkImageProvider(
                                   effectivePhotoPath!,
                                   cacheManager: AppImageCacheManager.instance,
-                                  maxWidth: _thumbnailCacheSize,
-                                  maxHeight: _thumbnailCacheSize,
                                 )
                               : ResizeImage(
                                   FileImage(File(effectivePhotoPath!)),
