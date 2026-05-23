@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -18,6 +20,7 @@ import '../../../core/services/pet_service.dart';
 import '../../../core/services/connectivity_sync_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/smart_feature_service.dart';
+import '../../../core/services/telemetry_service.dart';
 import '../lost_pets/lost_pet_sighting_detail_page.dart';
 import '../../../shared/widgets/smart_alert_card.dart';
 
@@ -36,12 +39,14 @@ class _SmartAlertsPageState extends State<SmartAlertsPage> {
   final NotificationService _notificationService = NotificationService();
   final LostPetService _lostPetService = LostPetService();
   final AppPreferencesService _preferencesService = AppPreferencesService();
+  final TelemetryService _telemetryService = TelemetryService();
 
   List<PetModel> _pets = const [];
   List<SmartAlertItem> _alerts = const [];
   List<NotificationModel> _notifications = const [];
   Map<String, LostPetReportModel> _lostPetReportsByReportId = const {};
   final Set<String> _dismissedNotificationIds = <String>{};
+  final Set<String> _loggedUrgentVaccineAlertKeys = <String>{};
   String? _selectedPetId;
   bool _isLoading = false;
   String? _errorMessage;
@@ -132,6 +137,7 @@ class _SmartAlertsPageState extends State<SmartAlertsPage> {
             ? normalizedSelection
             : null;
       });
+      _logUrgentVaccineAlertsViewed(alerts);
     } on ApiException catch (error) {
       if (!mounted) {
         return;
@@ -210,6 +216,38 @@ class _SmartAlertsPageState extends State<SmartAlertsPage> {
 
   int _countForPet(String petId) {
     return _alerts.where((item) => item.petId == petId).length;
+  }
+
+  void _logUrgentVaccineAlertsViewed(List<SmartAlertItem> alerts) {
+    for (final alert in alerts) {
+      if (!_isUrgentVaccineAlert(alert)) {
+        continue;
+      }
+
+      final key = [
+        alert.petId,
+        alert.suggestion.title,
+        alert.suggestion.message,
+      ].join('|');
+      if (!_loggedUrgentVaccineAlertKeys.add(key)) {
+        continue;
+      }
+
+      unawaited(_telemetryService.logUrgentVaccineAlertViewed());
+    }
+  }
+
+  bool _isUrgentVaccineAlert(SmartAlertItem alert) {
+    final title = alert.suggestion.title.toLowerCase();
+    final message = alert.suggestion.message.toLowerCase();
+    final text = '$title $message';
+    final isVaccineAlert =
+        text.contains('vaccine') || text.contains('vaccination');
+    final isUrgent =
+        text.contains('overdue') ||
+        text.contains('expired') ||
+        text.contains('missing');
+    return isVaccineAlert && isUrgent;
   }
 
   Future<void> _dismissNotification(NotificationModel notification) async {
