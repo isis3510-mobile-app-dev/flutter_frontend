@@ -10,6 +10,7 @@ import 'package:flutter_frontend/core/models/pet_model.dart';
 import 'package:flutter_frontend/core/models/vaccine_model.dart';
 import 'package:flutter_frontend/core/services/attachment_upload_coordinator.dart';
 import 'package:flutter_frontend/core/services/pet_service.dart';
+import 'package:flutter_frontend/core/services/telemetry_service.dart';
 import 'package:flutter_frontend/core/services/vaccine_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_frontend/presentation/pages/add_flow/utils/date_input.dart';
@@ -40,6 +41,7 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
 
   final VaccineService _vaccineService = VaccineService();
   final PetService _petService = PetService();
+  final TelemetryService _telemetryService = TelemetryService();
   final AttachmentUploadCoordinator _attachmentUploadCoordinator =
       AttachmentUploadCoordinator();
   final ImagePicker _imagePicker = ImagePicker();
@@ -323,7 +325,6 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
 
     final name = _normalizeDropdownValue(prefill.vaccineName);
     if (name != null) {
-
       final firstMatch = _vaccines.firstWhere(
         (vaccine) => vaccine.name == name,
         orElse: () => const VaccineModel(id: '', schema: '', name: ''),
@@ -439,9 +440,11 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
   List<VaccineModel> get _visibleVaccines {
     final vaccines = _vaccines
         .where(_isVaccineAllowedForSelectedPet)
-        .where((vaccine) =>
-            vaccine.name.trim().isNotEmpty &&
-            vaccine.name.trim() != AppStrings.valueNotAvailable)
+        .where(
+          (vaccine) =>
+              vaccine.name.trim().isNotEmpty &&
+              vaccine.name.trim() != AppStrings.valueNotAvailable,
+        )
         .toList(growable: false);
 
     vaccines.sort((left, right) {
@@ -480,8 +483,10 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
     final products = _visibleVaccines
         .where((vaccine) => vaccine.name == _selectedVaccineName)
         .map((vaccine) => vaccine.productName.trim())
-      .where((product) =>
-        product.isNotEmpty && product != AppStrings.valueNotAvailable)
+        .where(
+          (product) =>
+              product.isNotEmpty && product != AppStrings.valueNotAvailable,
+        )
         .toSet()
         .toList();
     products.sort();
@@ -491,7 +496,9 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
   List<String> get _petNameOptions {
     final names = _pets
         .map((pet) => pet.name.trim())
-      .where((name) => name.isNotEmpty && name != AppStrings.valueNotAvailable)
+        .where(
+          (name) => name.isNotEmpty && name != AppStrings.valueNotAvailable,
+        )
         .toSet()
         .toList();
     final selectedName = _selectedPetName?.trim() ?? '';
@@ -647,6 +654,8 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
 
   Future<void> _submitToApi(DateTime dateGiven) async {
     setState(() => _isSubmitting = true);
+    final telemetryStartTime = DateTime.now();
+    final wasEditingVaccination = _isEditingVaccination;
 
     try {
       if (_isEditingVaccination &&
@@ -705,6 +714,14 @@ class _AddVaccinePageState extends State<AddVaccinePage> {
           data: payload,
         );
       }
+
+      unawaited(
+        _telemetryService.logVaccinationRecordSaved(
+          isUpdate: wasEditingVaccination,
+          startTime: telemetryStartTime,
+          endTime: DateTime.now(),
+        ),
+      );
 
       if (!mounted) return;
       Navigator.pop(context, true);

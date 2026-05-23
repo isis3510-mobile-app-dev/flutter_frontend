@@ -199,6 +199,27 @@ class TelemetryService {
     );
   }
 
+  Future<void> logUrgentVaccineAlertViewed() async {
+    final now = DateTime.now();
+    await _logFeatureExecution(
+      featureId: featureViewUrgentVaccineAlertId,
+      startTime: now,
+      endTime: now,
+    );
+  }
+
+  Future<void> logVaccinationRecordSaved({
+    required bool isUpdate,
+    required DateTime startTime,
+    required DateTime endTime,
+  }) async {
+    await _logFeatureExecution(
+      featureId: isUpdate ? featureEditVaccinationId : featureAddVaccinationId,
+      startTime: startTime,
+      endTime: endTime,
+    );
+  }
+
   Future<String?> _getUserId() async {
     final cached = _cachedUserId;
     if (cached != null && cached.isNotEmpty) {
